@@ -1,5 +1,18 @@
 ::
-:: @bat.file.header
+:: Copyright (C) GridGain Systems. All Rights Reserved.
+::
+:: Licensed under the Apache License, Version 2.0 (the "License");
+:: you may not use this file except in compliance with the License.
+:: You may obtain a copy of the License at
+
+::    http://www.apache.org/licenses/LICENSE-2.0
+:: 
+:: Unless required by applicable law or agreed to in writing, software
+:: distributed under the License is distributed on an "AS IS" BASIS,
+:: WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+:: See the License for the specific language governing permissions and
+:: limitations under the License.
+
 :: _________        _____ __________________        _____
 :: __  ____/___________(_)______  /__  ____/______ ____(_)_______
 :: _  / __  __  ___/__  / _  __  / _  / __  _  __ `/__  / __  __ \
@@ -47,7 +60,7 @@ goto error_finish
 :checkGridGainHome1
 if defined GRIDGAIN_HOME goto checkGridGainHome2
     echo %0, WARN: GRIDGAIN_HOME environment variable is not found.
-    pushd "%~dp0"/../..
+    pushd "%~dp0"/..
     set GRIDGAIN_HOME=%CD%
     popd
 
@@ -71,7 +84,7 @@ if exist "%GRIDGAIN_HOME%\config" goto checkGridGainHome4
     goto error_finish
 
 :checkGridGainHome4
-if /i "%GRIDGAIN_HOME%\os\bin\" == "%~dp0" goto setProgName
+if /i "%GRIDGAIN_HOME%\bin\" == "%~dp0" goto setProgName
     echo %0, WARN: GRIDGAIN_HOME environment variable may be pointing to wrong folder: %GRIDGAIN_HOME%
 
 :setProgName
@@ -89,15 +102,15 @@ set ANT_AUGMENTED_GGJAR=gridgain.jar
 ::
 :: Set GRIDGAIN_LIBS
 ::
-call "%GRIDGAIN_HOME%\os\bin\include\setenv.bat"
+call "%GRIDGAIN_HOME%\bin\include\setenv.bat"
 
 set CP=%GRIDGAIN_LIBS%;%GRIDGAIN_HOME%\%ANT_AUGMENTED_GGJAR%
 
 ::
 :: Parse command line parameters.
 ::
-if not defined DEFAULT_CONFIG set "DEFAULT_CONFIG=%GRIDGAIN_HOME%\os\config\default-config.xml"
-call "%GRIDGAIN_HOME%\os\bin\include\parseargs.bat" %*
+if not defined DEFAULT_CONFIG set "DEFAULT_CONFIG=%GRIDGAIN_HOME%\config\default-config.xml"
+call "%GRIDGAIN_HOME%\bin\include\parseargs.bat" %*
 if %ERRORLEVEL% neq 0 (
     echo Arguments parsing failed
     exit /b %ERRORLEVEL%

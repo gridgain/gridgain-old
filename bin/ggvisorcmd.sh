@@ -1,6 +1,19 @@
 #!/bin/bash
 #
-# @sh.file.header
+# Copyright (C) GridGain Systems. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #  _________        _____ __________________        _____
 #  __  ____/___________(_)______  /__  ____/______ ____(_)_______
 #  _  / __  __  ___/__  / _  __  / _  / __  _  __ `/__  / __  __ \
@@ -16,11 +29,11 @@
 # Import common functions.
 #
 if [ "${GRIDGAIN_HOME}" = "" ];
-    then GRIDGAIN_HOME_TMP="$(dirname "$(cd "$(dirname "$0")"; "pwd")")";GRIDGAIN_HOME_TMP="$(dirname "${GRIDGAIN_HOME_TMP}")"
+    then GRIDGAIN_HOME_TMP="$(dirname "$(cd "$(dirname "$0")"; "pwd")")";
     else GRIDGAIN_HOME_TMP=${GRIDGAIN_HOME};
 fi
 
-source "${GRIDGAIN_HOME_TMP}"/os/bin/include/functions.sh
+source "${GRIDGAIN_HOME_TMP}"/bin/include/functions.sh
 
 #
 # Discover path to Java executable and check it's version.
@@ -35,15 +48,15 @@ setGridGainHome
 #
 # Parse command line parameters.
 #
-. "${GRIDGAIN_HOME}"/os/bin/include/parseargs.sh
+. "${GRIDGAIN_HOME}"/bin/include/parseargs.sh
 
 #
 # Set GRIDGAIN_LIBS.
 #
-. "${GRIDGAIN_HOME}"/os/bin/include/setenv.sh
+. "${GRIDGAIN_HOME}"/bin/include/setenv.sh
 
 CP="${GRIDGAIN_LIBS}"
-CP="${CP}":"${GRIDGAIN_HOME}"/os/modules/visor-console/libs/*
+
 #
 # JVM options. See http://java.sun.com/javase/technologies/hotspot/vmoptions.jsp for more details.
 #
