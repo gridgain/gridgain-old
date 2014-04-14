@@ -19,8 +19,11 @@
  * <p>
  * You can also start a stand-alone GridGain instance by passing the path
  * to configuration file to <c>ggstart.{sh|bat}</c> script, like so:
- * <c>ggstart.sh examples/config/example-cache.xml'</c>, but this example will only work if
- * the GRIDGAIN_HOME/examples classes are in the node's classpath.
+ * <c>ggstart.sh examples/config/example-cache.xml'</c>.
+ * <p>
+ * Note that this example requires <c>org.gridgain.examples.misc.client.api.ClientExampleTask</c>
+ * class to be present in remote nodes' classpath. If remote nodes are run by <c>ggstart.{sh|bat}</c> script
+ * then <c>GRIDGAIN_HOME/gridgain-examples.jar</c> file should be placed to <c>GRIDGAIN_HOME/libs/ext</c> folder.
  * <p>
  * After node has been started this example creates a client connection and performs some
  * Compute Grid related operations.
@@ -60,7 +63,7 @@ void clientComputeExample(TGridClientPtr& client) {
 
     TGridClientComputePtr prj = clientCompute->projection(*p);
 
-    GridClientVariant rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask");
+    GridClientVariant rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask", "GridClientNode projection task arg");
 
     cout << ">>> GridClientNode projection: there are totally " << rslt.toString() <<
         " test entries on the grid" << endl;
@@ -71,7 +74,7 @@ void clientComputeExample(TGridClientPtr& client) {
 
     prj = clientCompute->projection(prjNodes);
 
-    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask");
+    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask","Collection execution task arg");
 
     cout << ">>> Collection execution: there are totally " << rslt.toString() <<
         " test entries on the grid" << endl;
@@ -79,7 +82,7 @@ void clientComputeExample(TGridClientPtr& client) {
     std::function<bool (const GridClientNode&)> filter = [&randNodeId](const GridClientNode& node) { return node.getNodeId() == randNodeId; };
     prj = clientCompute->projection(filter);
 
-    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask");
+    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask", "Predicate execution task arg");
 
     cout << ">>> Predicate execution: there are totally " << rslt.toString() <<
         " test entries on the grid" << endl;
@@ -91,7 +94,7 @@ void clientComputeExample(TGridClientPtr& client) {
     std::function<bool (const GridClientNode&)> filter1 = [&randNodeId](const GridClientNode& node) { return node.getNodeId() == randNodeId; };
     prj = clientCompute->projection(filter1, balancer);
 
-    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask");
+    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask", "Predicate execution with balancer task arg");
 
     cout << ">>> Predicate execution with balancer: there are totally " << rslt.toString() <<
             " test entries on the grid" << endl;
@@ -101,12 +104,12 @@ void clientComputeExample(TGridClientPtr& client) {
 
     prj = prj->projection(prjNodes, balancer);
 
-    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask");
+    rslt = prj->execute("org.gridgain.examples.misc.client.api.ClientExampleTask", "GridClientNode projection task arg");
 
     cout << ">>> GridClientNode projection: there are totally " << rslt.toString() <<
             " test entries on the grid" << endl;
 
-    TGridClientFutureVariant futVal = prj->executeAsync("org.gridgain.examples.misc.client.api.ClientExampleTask");
+    TGridClientFutureVariant futVal = prj->executeAsync("org.gridgain.examples.misc.client.api.ClientExampleTask", "Execute async task arg");
 
     cout << ">>> Execute async: there are totally " << futVal->get().toString() <<
        " test entries on the grid" << endl;
