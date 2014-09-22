@@ -2994,14 +2994,23 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
      * @throws Exception If failed.
      */
     public void testRemoveAfterClear() throws Exception {
-        List<Integer> keys = new ArrayList<>();
-
-        int key = 0;
-
         GridEx grid = grid(0);
+
+        GridCacheDistributionMode distroMode = grid.cache(null).configuration().getDistributionMode();
+
+        if (distroMode == GridCacheDistributionMode.NEAR_ONLY || distroMode == GridCacheDistributionMode.CLIENT_ONLY) {
+            if (gridCount() < 2)
+                return;
+
+            grid = grid(1);
+        }
 
         GridCacheProjection<Integer, Integer> cache = grid.cache(null)
             .projection(Integer.class, Integer.class);
+
+        int key = 0;
+
+        List<Integer> keys = new ArrayList<>();
 
         for (int k = 0; k < 2; k++) {
             while (!grid.cache(null).affinity().isPrimary(grid.localNode(), key))
@@ -3033,13 +3042,22 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
      * @throws Exception If failed.
      */
     public void testRemoveFilteredAfterClear() throws Exception {
+        GridEx grid = grid(0);
+
+        GridCacheDistributionMode distroMode = grid.cache(null).configuration().getDistributionMode();
+
+        if (distroMode == GridCacheDistributionMode.NEAR_ONLY || distroMode == GridCacheDistributionMode.CLIENT_ONLY) {
+            if (gridCount() < 2)
+                return;
+
+            grid = grid(1);
+        }
+
+        GridCacheProjection<Integer, Integer> cache = grid.cache(null);
+
         List<Integer> keys = new ArrayList<>();
 
         int key = 0;
-
-        GridEx grid = grid(0);
-
-        GridCacheProjection<Integer, Integer> cache = grid.cache(null);
 
         for (int k = 0; k < 2; k++) {
             while (!grid.cache(null).affinity().isPrimary(grid.localNode(), key))
@@ -3064,8 +3082,6 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
             grid0.cache(null).removeAll(new GridPredicate<GridCacheEntry<Object, Object>>() {
                 @Override public boolean apply(GridCacheEntry<Object, Object> e) {
                     Object val = e.peek();
-
-                    System.out.println(">>>>>>>> Got value in filter: " + val);
 
                     return val instanceof Integer && (Integer)val > 0;
                 }
