@@ -1260,6 +1260,10 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         return updRes;
     }
 
+    /**
+     * @param entries Entries.
+     * @throws GridException If failed.
+     */
     private void reloadIfNeeded(final List<GridDhtCacheEntry<K, V>> entries) throws GridException {
         Map<K, Integer> needReload = null;
 
