@@ -11,8 +11,10 @@ package org.gridgain.grid.kernal.processors.cache.distributed.near;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
+import org.gridgain.grid.cache.store.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.spi.discovery.tcp.*;
+import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.testframework.junits.common.*;
@@ -22,8 +24,6 @@ import static org.gridgain.grid.cache.GridCacheAtomicityMode.*;
 import static org.gridgain.grid.cache.GridCacheDistributionMode.*;
 import static org.gridgain.grid.cache.GridCachePreloadMode.*;
 import static org.gridgain.grid.cache.GridCacheWriteSynchronizationMode.*;
-
-import java.util.*;
 
 /**
  * Test clear operation in NEAR_PARTITIONED transactional cache.
@@ -39,8 +39,11 @@ public class GridCacheNearPartitionedClearSelfTest extends GridCommonAbstractTes
     /** Cache name. */
     private static final String CACHE_NAME = "cache";
 
+    /** */
+    private static GridCacheStore<Object, Object> store = new GridCacheGenericTestStore<>();
+
     /** Shared IP finder. */
-    private static final GridTcpDiscoveryVmIpFinder IP_FINDER = new GridTcpDiscoveryVmIpFinder(true);
+    private static final GridTcpDiscoveryIpFinder IP_FINDER = new GridTcpDiscoveryVmIpFinder(true);
 
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
@@ -73,7 +76,7 @@ public class GridCacheNearPartitionedClearSelfTest extends GridCommonAbstractTes
         ccfg.setPreloadMode(SYNC);
         ccfg.setWriteSynchronizationMode(FULL_SYNC);
         ccfg.setBackups(BACKUP_CNT);
-        ccfg.setStore(new GridCacheGenericTestStore<>());
+        ccfg.setStore(store);
 
         cfg.setCacheConfiguration(ccfg);
 

@@ -491,6 +491,10 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
         rdrs = Collections.emptyList();
     }
 
+    @Override public synchronized void clearReader(UUID nodeId) {
+        super.clearReader(nodeId);
+    }
+
     /**
      * Marks entry as obsolete and, if possible or required, removes it
      * from swap storage.
