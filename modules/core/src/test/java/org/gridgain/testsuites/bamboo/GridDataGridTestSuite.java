@@ -178,6 +178,7 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTest(new TestSuite(GridCachePartitionedUnloadEventsSelfTest.class));
         suite.addTest(new TestSuite(GridCachePartitionedAffinityHashIdResolverSelfTest.class));
         suite.addTest(new TestSuite(GridCacheColocatedOptimisticTransactionSelfTest.class));
+        suite.addTest(new TestSuite(GridCacheNearPartitionedClearSelfTest.class));
         suite.addTestSuite(GridCacheAtomicMessageCountSelfTest.class);
 
         suite.addTest(new TestSuite(GridCacheDhtExpiredEntriesPreloadSelfTest.class));
