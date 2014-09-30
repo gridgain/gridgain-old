@@ -21,6 +21,7 @@ import org.gridgain.grid.util.tostring.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Replicated cache entry.
@@ -42,7 +43,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
 
     /** Reader clients. */
     @GridToStringInclude
-    private volatile List<ReaderId<K, V>> rdrs = Collections.emptyList();
+    private final List<ReaderId<K, V>> rdrs = new CopyOnWriteArrayList<>();
 
     /** Local partition. */
     private final GridDhtLocalPartition<K, V> locPart;
@@ -69,10 +70,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
     @Override public int memorySize() throws GridException {
         int rdrsOverhead = 0;
 
-        synchronized (this) {
-            if (rdrs != null)
-                rdrsOverhead += ReaderId.READER_ID_SIZE * rdrs.size();
-        }
+        rdrsOverhead += ReaderId.READER_ID_SIZE * rdrs.size();
 
         return super.memorySize() + DHT_SIZE_OVERHEAD + rdrsOverhead;
     }
@@ -327,10 +325,15 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
      * @param nodeId Node ID.
      * @return reader ID.
      */
+    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Nullable public ReaderId<K, V> readerId(UUID nodeId) {
-        for (ReaderId<K, V> reader : rdrs)
+        // Avoid iterator creation.
+        for (int i = 0; i < rdrs.size(); i++) {
+            ReaderId<K, V> reader = rdrs.get(i);
+
             if (reader.nodeId().equals(nodeId))
                 return reader;
+        }
 
         return null;
     }
@@ -392,12 +395,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
             if (reader == null) {
                 reader = new ReaderId<>(nodeId, msgId);
 
-                rdrs = new LinkedList<>(rdrs);
-
                 rdrs.add(reader);
-
-                // Seal.
-                rdrs = Collections.unmodifiableList(rdrs);
 
                 // No transactions in ATOMIC cache.
                 if (!cctx.atomic()) {
@@ -474,12 +472,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
         if (reader == null || (reader.messageId() > msgId && msgId >= 0))
             return false;
 
-        rdrs = new LinkedList<>(rdrs);
-
         rdrs.remove(reader);
-
-        // Seal.
-        rdrs = Collections.unmodifiableList(rdrs);
 
         return true;
     }
@@ -487,8 +480,8 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
     /**
      * Clears all readers (usually when partition becomes invalid and ready for eviction).
      */
-    @Override public synchronized void clearReaders() {
-        rdrs = Collections.emptyList();
+    @Override public void clearReaders() {
+        rdrs.clear();
     }
 
     /** {@inheritDoc} */
@@ -521,7 +514,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
                     return false;
                 }
 
-                rdrs = Collections.emptyList();
+                rdrs.clear();
 
                 if (log.isDebugEnabled())
                     log.debug("Entry has been marked obsolete: " + this);
@@ -553,13 +546,17 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
      * @return Collection of readers after check.
      * @throws GridCacheEntryRemovedException If removed.
      */
+    @SuppressWarnings("ForLoopReplaceableByForEach")
     public synchronized Collection<ReaderId<K, V>> checkReaders() throws GridCacheEntryRemovedException {
         checkObsolete();
 
         if (!rdrs.isEmpty()) {
             List<ReaderId> rmv = null;
 
-            for (ReaderId reader : rdrs) {
+            // Avoid iterators creation.
+            for (int i = 0; i < rdrs.size(); i++) {
+                ReaderId reader = rdrs.get(i);
+
                 if (!cctx.discovery().alive(reader.nodeId())) {
                     if (rmv == null)
                         rmv = new LinkedList<>();
@@ -568,14 +565,8 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
                 }
             }
 
-            if (rmv != null) {
-                rdrs = new LinkedList<>(rdrs);
-
-                for (ReaderId rdr : rmv)
-                    rdrs.remove(rdr);
-
-                rdrs = Collections.unmodifiableList(rdrs);
-            }
+            if (rmv != null)
+                rdrs.removeAll(rmv);
         }
 
         return rdrs;
