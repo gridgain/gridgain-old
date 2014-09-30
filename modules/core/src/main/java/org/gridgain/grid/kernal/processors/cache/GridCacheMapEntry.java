@@ -1917,7 +1917,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
     /**
      * @param nodeId Node ID to clear.
      */
-    protected void clearReader(UUID nodeId) {
+    protected void clearReader(UUID nodeId) throws GridCacheEntryRemovedException {
         // No-op.
     }
 

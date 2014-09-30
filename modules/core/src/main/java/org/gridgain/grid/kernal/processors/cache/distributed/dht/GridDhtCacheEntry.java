@@ -471,7 +471,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
 
         ReaderId reader = readerId(nodeId);
 
-        if (reader == null || reader.messageId() > msgId)
+        if (reader == null || (reader.messageId() > msgId && msgId >= 0))
             return false;
 
         rdrs = new LinkedList<>(rdrs);
@@ -491,8 +491,9 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
         rdrs = Collections.emptyList();
     }
 
-    @Override public synchronized void clearReader(UUID nodeId) {
-        super.clearReader(nodeId);
+    /** {@inheritDoc} */
+    @Override public synchronized void clearReader(UUID nodeId) throws GridCacheEntryRemovedException {
+        removeReader(nodeId, -1);
     }
 
     /**
