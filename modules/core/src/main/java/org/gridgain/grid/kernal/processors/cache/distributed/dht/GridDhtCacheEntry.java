@@ -720,6 +720,28 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
         }
 
         /** {@inheritDoc} */
+        @Override public boolean equals(Object o) {
+            if (this == o)
+                return true;
+
+            if (!(o instanceof ReaderId))
+                return false;
+
+            ReaderId readerId = (ReaderId)o;
+
+            return msgId == readerId.msgId && nodeId.equals(readerId.nodeId);
+        }
+
+        /** {@inheritDoc} */
+        @Override public int hashCode() {
+            int res = nodeId.hashCode();
+
+            res = 31 * res + (int)(msgId ^ (msgId >>> 32));
+
+            return res;
+        }
+
+        /** {@inheritDoc} */
         @Override public String toString() {
             return S.toString(ReaderId.class, this);
         }
