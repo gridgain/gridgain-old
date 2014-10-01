@@ -21,7 +21,6 @@ import org.gridgain.grid.util.tostring.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 /**
  * Replicated cache entry.
@@ -43,7 +42,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
 
     /** Reader clients. */
     @GridToStringInclude
-    private final List<ReaderId<K, V>> rdrs = new CopyOnWriteArrayList<>();
+    private volatile List<ReaderId<K, V>> rdrs = Collections.emptyList();
 
     /** Local partition. */
     private final GridDhtLocalPartition<K, V> locPart;
@@ -70,7 +69,10 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
     @Override public int memorySize() throws GridException {
         int rdrsOverhead = 0;
 
-        rdrsOverhead += ReaderId.READER_ID_SIZE * rdrs.size();
+        synchronized (this) {
+            if (rdrs != null)
+                rdrsOverhead += ReaderId.READER_ID_SIZE * rdrs.size();
+        }
 
         return super.memorySize() + DHT_SIZE_OVERHEAD + rdrsOverhead;
     }
@@ -325,15 +327,10 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
      * @param nodeId Node ID.
      * @return reader ID.
      */
-    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Nullable public ReaderId<K, V> readerId(UUID nodeId) {
-        // Avoid iterator creation.
-        for (int i = 0; i < rdrs.size(); i++) {
-            ReaderId<K, V> reader = rdrs.get(i);
-
+        for (ReaderId<K, V> reader : rdrs)
             if (reader.nodeId().equals(nodeId))
                 return reader;
-        }
 
         return null;
     }
@@ -395,7 +392,13 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
             if (reader == null) {
                 reader = new ReaderId<>(nodeId, msgId);
 
+                List<ReaderId<K, V>> rdrs = new ArrayList<>(this.rdrs.size() + 1);
+
+                rdrs.addAll(this.rdrs);
                 rdrs.add(reader);
+
+                // Seal.
+                this.rdrs = Collections.unmodifiableList(rdrs);
 
                 // No transactions in ATOMIC cache.
                 if (!cctx.atomic()) {
@@ -472,7 +475,15 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
         if (reader == null || (reader.messageId() > msgId && msgId >= 0))
             return false;
 
-        rdrs.remove(reader);
+        List<ReaderId<K, V>> rdrs = new ArrayList<>(this.rdrs.size());
+
+        for (ReaderId<K, V> rdr : this.rdrs) {
+            if (!rdr.equals(reader))
+                rdrs.add(rdr);
+        }
+
+        // Seal.
+        this.rdrs = rdrs.isEmpty() ? Collections.<ReaderId<K, V>>emptyList() : Collections.unmodifiableList(rdrs);
 
         return true;
     }
@@ -480,8 +491,8 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
     /**
      * Clears all readers (usually when partition becomes invalid and ready for eviction).
      */
-    @Override public void clearReaders() {
-        rdrs.clear();
+    @Override public synchronized void clearReaders() {
+        rdrs = Collections.emptyList();
     }
 
     /** {@inheritDoc} */
@@ -514,7 +525,7 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
                     return false;
                 }
 
-                rdrs.clear();
+                rdrs = Collections.emptyList();
 
                 if (log.isDebugEnabled())
                     log.debug("Entry has been marked obsolete: " + this);
@@ -546,27 +557,33 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
      * @return Collection of readers after check.
      * @throws GridCacheEntryRemovedException If removed.
      */
-    @SuppressWarnings("ForLoopReplaceableByForEach")
     public synchronized Collection<ReaderId<K, V>> checkReaders() throws GridCacheEntryRemovedException {
         checkObsolete();
 
         if (!rdrs.isEmpty()) {
-            List<ReaderId> rmv = null;
+            Collection<ReaderId> rmv = null;
 
-            // Avoid iterators creation.
-            for (int i = 0; i < rdrs.size(); i++) {
-                ReaderId reader = rdrs.get(i);
-
+            for (ReaderId reader : rdrs) {
                 if (!cctx.discovery().alive(reader.nodeId())) {
                     if (rmv == null)
-                        rmv = new LinkedList<>();
+                        rmv = new HashSet<>();
 
                     rmv.add(reader);
                 }
             }
 
-            if (rmv != null)
-                rdrs.removeAll(rmv);
+            if (rmv != null) {
+                List<ReaderId<K, V>> rdrs = new ArrayList<>(this.rdrs.size() - rmv.size());
+
+                for (ReaderId<K, V> rdr : this.rdrs) {
+                    if (!rmv.contains(rdr))
+                        rdrs.add(rdr);
+                }
+
+                // Seal.
+                this.rdrs = rdrs.isEmpty() ? Collections.<ReaderId<K, V>>emptyList() :
+                    Collections.unmodifiableList(rdrs);
+            }
         }
 
         return rdrs;
