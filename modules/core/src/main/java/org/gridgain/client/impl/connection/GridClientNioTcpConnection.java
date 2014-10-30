@@ -165,7 +165,12 @@ public class GridClientNioTcpConnection extends GridClientConnection {
             sock.setTcpNoDelay(tcpNoDelay);
             sock.setKeepAlive(true);
 
-            sock.connect(srvAddr, connectTimeout);
+            try {
+                sock.connect(srvAddr, connectTimeout);
+            } catch (IOException e) {
+                sock.close();
+                throw new GridClientException(e);
+            }
 
             GridClientFuture<?> handshakeFut = new GridClientFutureAdapter<>();
 
