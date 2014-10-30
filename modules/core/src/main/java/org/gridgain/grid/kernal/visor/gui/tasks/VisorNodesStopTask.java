@@ -32,7 +32,7 @@ public class VisorNodesStopTask extends VisorMultiNodeTask<Void, Void, Void> {
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Void reduce(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override public Void reduce0(List<GridComputeJobResult> results) throws GridException {
         return null;
     }
 

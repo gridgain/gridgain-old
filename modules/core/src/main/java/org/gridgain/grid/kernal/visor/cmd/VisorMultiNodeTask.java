@@ -15,6 +15,7 @@ import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.resources.*;
 import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
@@ -32,6 +33,8 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
+    protected long start;
+
     /**
      * @param arg Task arg.
      * @return New job.
@@ -43,6 +46,8 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         @Nullable GridBiTuple<Set<UUID>, A> arg) throws GridException {
         assert arg != null;
         assert arg.get1() != null;
+
+        start = U.currentTimeMillis();
 
         Set<UUID> nodeIds = arg.get1();
         taskArg = arg.get2();
@@ -61,5 +66,20 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         List<GridComputeJobResult> rcvd) throws GridException {
         // All Visor tasks should handle exceptions in reduce method.
         return GridComputeJobResultPolicy.WAIT;
+    }
+
+    /** {@inheritDoc} */
+    @Nullable public abstract R reduce0(List<GridComputeJobResult> results) throws GridException;
+
+    /** {@inheritDoc} */
+    @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
+        R result = reduce0(results);
+
+        long end = U.currentTimeMillis();
+
+        if (g.log().isDebugEnabled())
+            g.log().debug("Visor task=" + U.compact(getClass().getName()) + ", duration=" + (end - start));
+
+        return result;
     }
 }

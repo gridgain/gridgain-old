@@ -14,6 +14,8 @@ import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.resources.*;
+import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 /**
@@ -39,7 +41,16 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @Nullable @Override public Object execute() throws GridException {
         A arg = argument(0);
 
-        return run(arg);
+        long start = U.currentTimeMillis();
+
+        R result = run(arg);
+
+        long end = U.currentTimeMillis();
+
+        if (g.log().isDebugEnabled())
+            g.log().debug("Visor job=" + U.compact(getClass().getName()) + ", duration=" + (end - start));
+
+        return result;
     }
 
     /**

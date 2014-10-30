@@ -52,6 +52,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
         Map<GridComputeJob, GridNode> map = new HashMap<>();
 
+        start = U.currentTimeMillis();
+
         // Collect data from ALL nodes.
         for (GridNode node : g.nodes())
             map.put(job(taskArg), node);
@@ -65,7 +67,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public VisorDataCollectorTaskResult reduce(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override public VisorDataCollectorTaskResult reduce0(List<GridComputeJobResult> results) throws GridException {
         VisorDataCollectorTaskResult data = new VisorDataCollectorTaskResult();
 
         for (GridComputeJobResult res : results) {

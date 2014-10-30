@@ -51,7 +51,7 @@ public class VisorLogSearchTask extends VisorMultiNodeTask<VisorLogSearchTask.Vi
 
     /** {@inheritDoc} */
     @Nullable @Override public GridBiTuple<Iterable<GridBiTuple<Exception, UUID>>,
-        Iterable<VisorLogSearchResult>> reduce(List<GridComputeJobResult> results) throws GridException {
+        Iterable<VisorLogSearchResult>> reduce0(List<GridComputeJobResult> results) throws GridException {
 
         Collection<VisorLogSearchResult> searchRes = new ArrayList<>();
         Collection<GridBiTuple<Exception, UUID>> exRes = new ArrayList<>();

@@ -35,7 +35,7 @@ public class VisorGcTask extends VisorMultiNodeTask<Boolean, Map<UUID, GridBiTup
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Map<UUID, GridBiTuple<Long, Long>> reduce(List<GridComputeJobResult> results)
+    @Nullable @Override public Map<UUID, GridBiTuple<Long, Long>> reduce0(List<GridComputeJobResult> results)
         throws GridException {
         Map<UUID, GridBiTuple<Long, Long>> total = new HashMap<>();
 

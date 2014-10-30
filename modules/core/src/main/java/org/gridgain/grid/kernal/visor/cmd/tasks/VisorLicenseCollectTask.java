@@ -35,7 +35,7 @@ public class VisorLicenseCollectTask extends
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Iterable<GridBiTuple<UUID, VisorLicense>> reduce(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override public Iterable<GridBiTuple<UUID, VisorLicense>> reduce0(List<GridComputeJobResult> results) throws GridException {
         Collection<GridBiTuple<UUID, VisorLicense>> licenses = new ArrayList<>(results.size());
 
         for (GridComputeJobResult r : results) {
