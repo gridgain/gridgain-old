@@ -1,6 +1,19 @@
 #!/bin/bash
 #
-# @sh.file.header
+# Copyright (C) GridGain Systems. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #  _________        _____ __________________        _____
 #  __  ____/___________(_)______  /__  ____/______ ____(_)_______
 #  _  / __  __  ___/__  / _  __  / _  / __  _  __ `/__  / __  __ \
@@ -18,14 +31,14 @@
 # Import common functions.
 #
 if [ "${GRIDGAIN_HOME}" = "" ];
-    then GRIDGAIN_HOME_TMP="$(dirname "$(cd "$(dirname "$0")"; "pwd")")";GRIDGAIN_HOME_TMP="$(dirname "${GRIDGAIN_HOME_TMP}")" # Will be removed in release.
+    then GRIDGAIN_HOME_TMP="$(dirname "$(cd "$(dirname "$0")"; "pwd")")";
     else GRIDGAIN_HOME_TMP=${GRIDGAIN_HOME};
 fi
 
 #
 # Set SCRIPTS_HOME - base path to scripts.
 #
-SCRIPTS_HOME="${GRIDGAIN_HOME_TMP}/os/bin" # Will be replaced by SCRIPTS_HOME=${GRIDGAIN_HOME_TMP}/bin in release.
+SCRIPTS_HOME="${GRIDGAIN_HOME_TMP}/bin"
 
 source "${SCRIPTS_HOME}"/include/functions.sh
 
@@ -52,7 +65,7 @@ fi
 # Set GRIDGAIN_LIBS.
 #
 . "${SCRIPTS_HOME}"/include/setenv.sh
-. "${SCRIPTS_HOME}"/include/target-classpath.sh # Will be removed in release.
+
 CP="${GRIDGAIN_LIBS}"
 
 RANDOM_NUMBER=$("$JAVA" -cp "${CP}" org.gridgain.grid.startup.cmdline.GridCommandLineRandomNumberGenerator)
@@ -104,7 +117,7 @@ fi
 # Assertions are disabled by default since version 3.5.
 # If you want to enable them - set 'ENABLE_ASSERTIONS' flag to '1'.
 #
-ENABLE_ASSERTIONS="1"
+ENABLE_ASSERTIONS="0"
 
 #
 # Set '-ea' options if assertions are enabled.
@@ -134,12 +147,12 @@ do
         case $osname in
             Darwin*)
                 "$JAVA" ${JVM_OPTS} ${QUIET} "${DOCK_OPTS}" "${RESTART_SUCCESS_OPT}" ${JMX_MON} \
-                -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
+                 -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
                 -DGRIDGAIN_PROG_NAME="$0" ${JVM_XOPTS} -cp "${CP}" ${MAIN_CLASS}
             ;;
             *)
                 "$JAVA" ${JVM_OPTS} ${QUIET} "${RESTART_SUCCESS_OPT}" ${JMX_MON} \
-                -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
+                 -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
                 -DGRIDGAIN_PROG_NAME="$0" ${JVM_XOPTS} -cp "${CP}" ${MAIN_CLASS}
             ;;
         esac
@@ -147,12 +160,12 @@ do
         case $osname in
             Darwin*)
                 "$JAVA" ${JVM_OPTS} ${QUIET} "${DOCK_OPTS}" "${RESTART_SUCCESS_OPT}" ${JMX_MON} \
-                 -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
+                  -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
                  -DGRIDGAIN_PROG_NAME="$0" ${JVM_XOPTS} -cp "${CP}" ${MAIN_CLASS} "${CONFIG}"
             ;;
             *)
                 "$JAVA" ${JVM_OPTS} ${QUIET} "${RESTART_SUCCESS_OPT}" ${JMX_MON} \
-                 -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
+                  -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
                  -DGRIDGAIN_PROG_NAME="$0" ${JVM_XOPTS} -cp "${CP}" ${MAIN_CLASS} "${CONFIG}"
             ;;
         esac
