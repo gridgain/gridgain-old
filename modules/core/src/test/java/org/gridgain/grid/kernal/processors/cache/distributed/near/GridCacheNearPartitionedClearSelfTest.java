@@ -91,7 +91,7 @@ public class GridCacheNearPartitionedClearSelfTest extends GridCommonAbstractTes
     public void testClear() throws Exception {
         GridCache cache = cacheForIndex(0);
 
-        int key = primaryKey(cache);
+        int key = primaryKey0(cache);
 
         cache.putx(key, 1);
         cache.clear(key);
@@ -117,7 +117,7 @@ public class GridCacheNearPartitionedClearSelfTest extends GridCommonAbstractTes
      * @return Primary key.
      * @throws Exception If failed.
      */
-    private int primaryKey(GridCache cache) throws Exception {
+    private int primaryKey0(GridCache cache) throws Exception {
         GridNode locNode = cache.gridProjection().grid().localNode();
 
         for (int i = 0; i < Integer.MAX_VALUE; i++) {

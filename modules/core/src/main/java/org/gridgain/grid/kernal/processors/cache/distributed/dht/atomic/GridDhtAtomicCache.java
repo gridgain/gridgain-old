@@ -1291,7 +1291,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             if (entry == null)
                 continue;
 
-            V val = entry.rawGetOrUnmarshal();
+            V val = entry.rawGetOrUnmarshal(false);
 
             if (val == null) {
                 if (needReload == null)
