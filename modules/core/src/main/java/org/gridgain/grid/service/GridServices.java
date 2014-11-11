@@ -116,9 +116,9 @@ import java.util.*;
  */
 public interface GridServices {
     /**
-     * Gets grid projection to which this {@code GridCompute} instance belongs.
+     * Gets grid projection to which this {@code GridServices} instance belongs.
      *
-     * @return Grid projection to which this {@code GridCompute} instance belongs.
+     * @return Grid projection to which this {@code GridServices} instance belongs.
      */
     public GridProjection projection();
 
@@ -306,4 +306,16 @@ public interface GridServices {
      * @return all deployed services with specified name.
      */
     public <T> Collection<T> services(String name);
+
+    /**
+     * Gets a remote handle on the service. If service is available locally,
+     * then local instance is returned, otherwise, a remote proxy is dynamically
+     * created and provided for the specified service.
+     *
+     * @param svcItf Interface for the service.
+     * @param sticky Whether or not GridGain should always contact the same remote
+     *      service or try to load-balance between services.
+     * @return Either proxy over remote service or local service if it is deployed locally.
+     */
+    public <T> T serviceProxy(String name, Class<? super T> svcItf, boolean sticky) throws GridRuntimeException;
 }

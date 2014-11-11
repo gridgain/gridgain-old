@@ -28,6 +28,7 @@ import org.gridgain.grid.spi.*;
 import org.gridgain.grid.spi.indexing.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.future.*;
+import org.gridgain.grid.util.io.*;
 import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -59,13 +60,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     public static final GridProductVersion QUERY_EVENTS_SINCE = GridProductVersion.fromString("6.2.1");
 
     /** */
-    private static final Collection<String> IGNORED_FIELDS = F.asList(
-        "_GG_VAL_STR__",
-        "_GG_VER__",
-        "_GG_EXPIRES__"
-    );
-
-    /** */
     protected GridIndexingManager idxMgr;
 
     /** Indexing SPI name. */
@@ -85,8 +79,11 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         new ConcurrentHashMap8<>();
 
     /** */
-    private final ConcurrentMap<UUID, Map<Long, GridFutureAdapter<GridIndexingFieldsResult>>> fieldsQryRes =
+    private final ConcurrentMap<UUID, Map<Long, GridFutureAdapter<FieldsResult>>> fieldsQryRes =
         new ConcurrentHashMap8<>();
+
+    /** */
+    private volatile ConcurrentMap<Object, CachedResult<?>> qryResCache = new ConcurrentHashMap8<>();
 
     /** */
     private final GridSpinBusyLock busyLock = new GridSpinBusyLock();
@@ -105,23 +102,27 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                 Map<Long, GridFutureAdapter<QueryResult<K, V>>> futs = qryIters.remove(nodeId);
 
                 if (futs != null) {
-                    for (GridFutureAdapter<QueryResult<K, V>> fut : futs.values()) {
-                        fut.listenAsync(new CIX1<GridFuture<QueryResult<K, V>>>() {
+                    for (Map.Entry<Long, GridFutureAdapter<QueryResult<K, V>>> entry : futs.entrySet()) {
+                        final Object recipient = recipient(nodeId, entry.getKey());
+
+                        entry.getValue().listenAsync(new CIX1<GridFuture<QueryResult<K, V>>>() {
                             @Override public void applyx(GridFuture<QueryResult<K, V>> f) throws GridException {
-                                f.get().iter.close();
+                                f.get().closeIfNotShared(recipient);
                             }
                         });
                     }
                 }
 
-                Map<Long, GridFutureAdapter<GridIndexingFieldsResult>> fieldsFuts = fieldsQryRes.remove(nodeId);
+                Map<Long, GridFutureAdapter<FieldsResult>> fieldsFuts = fieldsQryRes.remove(nodeId);
 
                 if (fieldsFuts != null) {
-                    for (GridFutureAdapter<GridIndexingFieldsResult> fut : fieldsFuts.values()) {
-                        fut.listenAsync(new CIX1<GridFuture<GridIndexingFieldsResult>>() {
-                            @Override public void applyx(GridFuture<GridIndexingFieldsResult> f)
+                    for (Map.Entry<Long, GridFutureAdapter<FieldsResult>> entry : fieldsFuts.entrySet()) {
+                        final Object recipient = recipient(nodeId, entry.getKey());
+
+                        entry.getValue().listenAsync(new CIX1<GridFuture<FieldsResult>>() {
+                            @Override public void applyx(GridFuture<FieldsResult> f)
                                 throws GridException {
-                                f.get().iterator().close();
+                                f.get().closeIfNotShared(recipient);
                             }
                         });
                     }
@@ -302,6 +303,14 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     }
 
     /**
+     *
+     */
+    private void invalidateResultCache() {
+        if (!qryResCache.isEmpty())
+            qryResCache = new ConcurrentHashMap8<>();
+    }
+
+    /**
      * Writes key-value pair to index.
      *
      * @param key Key.
@@ -331,6 +340,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             idxMgr.store(spi, space, key, keyBytes, val, valBytes, CU.versionToBytes(ver), expirationTime);
         }
         finally {
+            invalidateResultCache();
+
             leaveBusy();
         }
     }
@@ -355,6 +366,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             return idxMgr.remove(spi, space, key, keyBytes);
         }
         finally {
+            invalidateResultCache();
+
             leaveBusy();
         }
     }
@@ -375,6 +388,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             throw new GridRuntimeException(e);
         }
         finally {
+            invalidateResultCache();
+
             leaveBusy();
         }
     }
@@ -429,11 +444,15 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param qry Query.
      * @param args Arguments.
      * @param loc Local query or not.
+     * @param subjId Security subject ID.
+     * @param taskName Task name.
+     * @param recipient ID of the recipient.
      * @return Collection of found keys.
      * @throws GridException In case of error.
      */
-    private GridCloseableIterator<GridIndexingKeyValueRow<K, V>> executeQuery(GridCacheQueryAdapter<?> qry,
-        @Nullable Object[] args, boolean loc, @Nullable UUID subjId, @Nullable String taskName) throws GridException {
+    private QueryResult<K, V> executeQuery(GridCacheQueryAdapter<?> qry,
+        @Nullable Object[] args, boolean loc, @Nullable UUID subjId, @Nullable String taskName, Object recipient)
+        throws GridException {
         if (qry.type() == null) {
             assert !loc;
 
@@ -442,72 +461,118 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                 "GridCacheConfiguration.getMaximumQueryIteratorCount() configuration property).");
         }
 
-        switch (qry.type()) {
-            case SQL:
-                if (cctx.gridEvents().isRecordable(EVT_CACHE_SQL_QUERY_EXECUTED)) {
-                    cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
-                        cctx.localNode(),
-                        "SQL query executed.",
-                        EVT_CACHE_SQL_QUERY_EXECUTED,
-                        cctx.namex(),
-                        qry.queryClassName(),
-                        qry.clause(),
-                        null,
-                        null,
-                        args,
-                        subjId,
-                        taskName));
-                }
+        QueryResult<K, V> res;
 
-                return idxMgr.query(spi, space, qry.clause(), F.asList(args),
-                    qry.queryClassName(), qry.includeBackups(), projectionFilter(qry));
+        T3<String, String, List<Object>> resKey = null;
 
-            case SCAN:
-                if (cctx.gridEvents().isRecordable(EVT_CACHE_SCAN_QUERY_EXECUTED)) {
-                    cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
-                        cctx.localNode(),
-                        "Scan query executed.",
-                        EVT_CACHE_SCAN_QUERY_EXECUTED,
-                        cctx.namex(),
-                        null,
-                        null,
-                        qry.scanFilter(),
-                        null,
-                        null,
-                        subjId,
-                        taskName));
-                }
+        if (qry.type() == SQL) {
+            resKey = new T3<>(qry.queryClassName(), qry.clause(), F.asList(args));
 
-                return scanIterator(qry);
+            res = (QueryResult<K, V>)qryResCache.get(resKey);
 
-            case TEXT:
-                if (cctx.gridEvents().isRecordable(EVT_CACHE_FULL_TEXT_QUERY_EXECUTED)) {
-                    cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
-                        cctx.localNode(),
-                        "Full text query executed.",
-                        EVT_CACHE_FULL_TEXT_QUERY_EXECUTED,
-                        cctx.namex(),
-                        qry.queryClassName(),
-                        qry.clause(),
-                        null,
-                        null,
-                        null,
-                        subjId,
-                        taskName));
-                }
+            if (res != null && res.addRecipient(recipient))
+                return res;
 
-                return idxMgr.queryText(spi, space, qry.clause(), qry.queryClassName(),
-                    qry.includeBackups(), projectionFilter(qry));
+            res = new QueryResult<>(qry.type(), recipient);
 
-            case SET:
-                return setIterator(qry);
-
-            case SQL_FIELDS:
-                assert false : "SQL fields query is incorrectly processed.";
-
-            default:
-                throw new GridException("Unknown query type: " + qry.type());
+            if (qryResCache.putIfAbsent(resKey, res) != null)
+                resKey = null;
         }
+        else
+            res = new QueryResult<>(qry.type(), recipient);
+
+        GridCloseableIterator<GridIndexingKeyValueRow<K, V>> iter;
+
+        try {
+            switch (qry.type()) {
+                case SQL:
+                    if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_EXECUTED)) {
+                        cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
+                            cctx.localNode(),
+                            "SQL query executed.",
+                            EVT_CACHE_QUERY_EXECUTED,
+                            org.gridgain.grid.cache.query.GridCacheQueryType.SQL,
+                            cctx.namex(),
+                            qry.queryClassName(),
+                            qry.clause(),
+                            null,
+                            null,
+                            args,
+                            subjId,
+                            taskName));
+                    }
+
+                    iter = idxMgr.query(spi, space, qry.clause(), F.asList(args),
+                        qry.queryClassName(), qry.includeBackups(), projectionFilter(qry));
+
+                    break;
+
+                case SCAN:
+                    if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_EXECUTED)) {
+                        cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
+                            cctx.localNode(),
+                            "Scan query executed.",
+                            EVT_CACHE_QUERY_EXECUTED,
+                            org.gridgain.grid.cache.query.GridCacheQueryType.SCAN,
+                            cctx.namex(),
+                            null,
+                            null,
+                            qry.scanFilter(),
+                            null,
+                            null,
+                            subjId,
+                            taskName));
+                    }
+
+                    iter = scanIterator(qry);
+
+                    break;
+
+                case TEXT:
+                    if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_EXECUTED)) {
+                        cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
+                            cctx.localNode(),
+                            "Full text query executed.",
+                            EVT_CACHE_QUERY_EXECUTED,
+                            org.gridgain.grid.cache.query.GridCacheQueryType.FULL_TEXT,
+                            cctx.namex(),
+                            qry.queryClassName(),
+                            qry.clause(),
+                            null,
+                            null,
+                            null,
+                            subjId,
+                            taskName));
+                    }
+
+                    iter = idxMgr.queryText(spi, space, qry.clause(), qry.queryClassName(),
+                        qry.includeBackups(), projectionFilter(qry));
+
+                    break;
+
+                case SET:
+                    iter = setIterator(qry);
+
+                    break;
+
+                case SQL_FIELDS:
+                    assert false : "SQL fields query is incorrectly processed.";
+
+                default:
+                    throw new GridException("Unknown query type: " + qry.type());
+            }
+
+            res.onDone(iter);
+        }
+        catch (Exception e) {
+            res.onDone(e);
+        }
+        finally {
+            if (resKey != null)
+                qryResCache.remove(resKey, res);
+        }
+
+        return res;
     }
 
     /**
@@ -516,11 +581,14 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param qry Query.
      * @param args Arguments.
      * @param loc Local query or not.
+     * @param subjId Security subject ID.
+     * @param taskName Task name.
+     * @param recipient ID of the recipient.
      * @return Collection of found keys.
      * @throws GridException In case of error.
      */
-    private GridIndexingFieldsResult executeFieldsQuery(GridCacheQueryAdapter<?> qry, @Nullable Object[] args,
-        boolean loc, @Nullable UUID subjId, @Nullable String taskName) throws GridException {
+    private FieldsResult executeFieldsQuery(GridCacheQueryAdapter<?> qry, @Nullable Object[] args,
+        boolean loc, @Nullable UUID subjId, @Nullable String taskName, Object recipient) throws GridException {
         assert qry != null;
 
         if (qry.clause() == null) {
@@ -533,11 +601,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         assert qry.type() == SQL_FIELDS;
 
-        if (cctx.gridEvents().isRecordable(EVT_CACHE_SQL_FIELDS_QUERY_EXECUTED)) {
+        if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_EXECUTED)) {
             cctx.gridEvents().record(new GridCacheQueryExecutedEvent<>(
                 cctx.localNode(),
                 "SQL fields query executed.",
-                EVT_CACHE_SQL_FIELDS_QUERY_EXECUTED,
+                EVT_CACHE_QUERY_EXECUTED,
+                org.gridgain.grid.cache.query.GridCacheQueryType.SQL_FIELDS,
                 cctx.namex(),
                 null,
                 qry.clause(),
@@ -548,8 +617,34 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                 taskName));
         }
 
-        return idxMgr.queryFields(spi, space, qry.clause(), F.asList(args), qry.includeBackups(),
-            projectionFilter(qry));
+        T2<String, List<Object>> resKey = new T2<>(qry.clause(), F.asList(args));
+
+        FieldsResult res = (FieldsResult)qryResCache.get(resKey);
+
+        if (res != null && res.addRecipient(recipient))
+            return res;
+
+        res = new FieldsResult(recipient);
+
+        boolean cached = qryResCache.putIfAbsent(resKey, res) == null;
+
+        try {
+            GridIndexingFieldsResult qryRes = idxMgr.queryFields(spi, space, qry.clause(), F.asList(args),
+                qry.includeBackups(), projectionFilter(qry));
+
+            res.metaData(qryRes.metaData());
+
+            res.onDone(qryRes.iterator());
+        }
+        catch (Exception e) {
+            res.onDone(e);
+        }
+        finally {
+            if (cached)
+                qryResCache.remove(resKey, res);
+        }
+
+        return res;
     }
 
     /**
@@ -609,21 +704,23 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     @SuppressWarnings({"unchecked"})
     private GridCloseableIterator<GridIndexingKeyValueRow<K, V>> scanIterator(final GridCacheQueryAdapter<?> qry)
         throws GridException {
+        GridPredicate<GridCacheEntry<K, V>> filter = null;
 
-        GridPredicate<GridCacheEntry<K, V>> filter = new P1<GridCacheEntry<K, V>>() {
-            @Override public boolean apply(GridCacheEntry<K, V> e) {
-                return qry.projectionFilter() == null ||
-                    qry.projectionFilter().apply((GridCacheEntry<Object, Object>)e);
-            }
-        };
+        if (qry.projectionFilter() != null) {
+            filter = new P1<GridCacheEntry<K, V>>() {
+                @Override public boolean apply(GridCacheEntry<K, V> e) {
+                    return qry.projectionFilter().apply((GridCacheEntry<Object, Object>)e);
+                }
+            };
+        }
 
-        final GridCacheProjection<K, V> prj = cctx.cache().projection(filter);
+        final GridCacheProjection<K, V> prj = filter != null ? cctx.cache().projection(filter) : cctx.cache();
 
         final GridBiPredicate<K, V> keyValFilter = qry.scanFilter();
 
         injectResources(keyValFilter);
 
-        final GridIterator<GridIndexingKeyValueRow<K, V>> it = new GridIteratorAdapter<GridIndexingKeyValueRow<K, V>>() {
+        GridIterator<GridIndexingKeyValueRow<K, V>> heapIt = new GridIteratorAdapter<GridIndexingKeyValueRow<K, V>>() {
             private GridIndexingKeyValueRow<K, V> next;
 
             private Iterator<K> iter = prj.keySet().iterator();
@@ -677,16 +774,33 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             }
 
             private boolean checkPredicate(Map.Entry<K, V> e) {
-                try {
+                if (keyValFilter != null) {
                     Map.Entry<K, V> e0 = (Map.Entry<K, V>)cctx.unwrapPortableIfNeeded(e, qry.keepPortable());
 
-                    return keyValFilter == null || keyValFilter.apply(e0.getKey(), e0.getValue());
+                    return keyValFilter.apply(e0.getKey(), e0.getValue());
                 }
-                catch (GridException ex) {
-                    throw new GridRuntimeException(ex);
-                }
+
+                return true;
             }
         };
+
+        final GridIterator<GridIndexingKeyValueRow<K, V>> it;
+
+        if (cctx.isSwapOrOffheapEnabled()) {
+            List<GridIterator<GridIndexingKeyValueRow<K, V>>> iters = new ArrayList<>(3);
+
+            iters.add(heapIt);
+
+            if (cctx.isOffHeapEnabled())
+                iters.add(offheapIterator(qry));
+
+            if (cctx.swap().swapEnabled())
+                iters.add(swapIterator(qry));
+
+            it = new CompoundIterator<>(iters);
+        }
+        else
+            it = heapIt;
 
         return new GridCloseableIteratorAdapter<GridIndexingKeyValueRow<K, V>>() {
             @Override protected boolean onHasNext() {
@@ -699,6 +813,113 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
             @Override protected void onRemove() {
                 it.remove();
+            }
+        };
+    }
+
+    /**
+     * @param qry Query.
+     * @return Swap iterator.
+     * @throws GridException If failed.
+     */
+    private GridIterator<GridIndexingKeyValueRow<K, V>> swapIterator(GridCacheQueryAdapter<?> qry)
+        throws GridException {
+        GridPredicate<GridCacheEntry<Object, Object>> prjPred = qry.projectionFilter();
+
+        GridBiPredicate<K, V> filter = qry.scanFilter();
+
+        Iterator<Map.Entry<byte[], byte[]>> it = cctx.swap().rawSwapIterator();
+
+        return scanIterator(it, prjPred, filter, qry.keepPortable());
+    }
+
+    /**
+     * @param qry Query.
+     * @return Offheap iterator.
+     */
+    private GridIterator<GridIndexingKeyValueRow<K, V>> offheapIterator(GridCacheQueryAdapter<?> qry) {
+        GridPredicate<GridCacheEntry<Object, Object>> prjPred = qry.projectionFilter();
+
+        GridBiPredicate<K, V> filter = qry.scanFilter();
+
+        if ((cctx.portableEnabled() && cctx.offheapTiered()) && (prjPred != null || filter != null)) {
+            OffheapIteratorClosure c = new OffheapIteratorClosure(prjPred, filter, qry.keepPortable());
+
+            return cctx.swap().rawOffHeapIterator(c);
+        }
+        else {
+            Iterator<Map.Entry<byte[], byte[]>> it = cctx.swap().rawOffHeapIterator();
+
+            return scanIterator(it, prjPred, filter, qry.keepPortable());
+        }
+    }
+
+    /**
+     * @param it Lazy swap or offheap iterator.
+     * @param prjPred Projection predicate.
+     * @param filter Scan filter.
+     * @param keepPortable Keep portable flag.
+     * @return Iterator.
+     */
+    private GridIteratorAdapter<GridIndexingKeyValueRow<K, V>> scanIterator(
+        @Nullable final Iterator<Map.Entry<byte[], byte[]>> it,
+        @Nullable final GridPredicate<GridCacheEntry<Object, Object>> prjPred,
+        @Nullable final GridBiPredicate<K, V> filter,
+        final boolean keepPortable) {
+        if (it == null)
+            return new GridEmptyCloseableIterator<>();
+
+        return new GridIteratorAdapter<GridIndexingKeyValueRow<K, V>>() {
+            private GridIndexingKeyValueRow<K, V> next;
+
+            {
+                advance();
+            }
+
+            @Override public boolean hasNextX() {
+                return next != null;
+            }
+
+            @Override public GridIndexingKeyValueRow<K, V> nextX() {
+                if (next == null)
+                    throw new NoSuchElementException();
+
+                GridIndexingKeyValueRow<K, V> next0 = next;
+
+                advance();
+
+                return next0;
+            }
+
+            @Override public void removeX() {
+                throw new UnsupportedOperationException();
+            }
+
+            private void advance() {
+                next = null;
+
+                while (it.hasNext()) {
+                    final LazySwapEntry e = new LazySwapEntry(it.next());
+
+                    if (prjPred != null) {
+                        GridCacheEntry<K, V> cacheEntry = new GridCacheScanSwapEntry(e);
+
+                        if (!prjPred.apply((GridCacheEntry<Object, Object>)cacheEntry))
+                            continue;
+                    }
+
+                    if (filter != null) {
+                        K key = (K)cctx.unwrapPortableIfNeeded(e.key(), keepPortable);
+                        V val = (V)cctx.unwrapPortableIfNeeded(e.value(), keepPortable);
+
+                        if (!filter.apply(key, val))
+                            continue;
+                    }
+
+                    next = new GridIndexingKeyValueRowAdapter<>(e.key(), e.value());
+
+                    break;
+                }
             }
         };
     }
@@ -765,8 +986,9 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
                 String taskName = cctx.kernalContext().task().resolveTaskName(qry.taskHash());
 
-                GridIndexingFieldsResult res = qryInfo.local() ?
-                    executeFieldsQuery(qry, qryInfo.arguments(), qryInfo.local(), qry.subjectId(), taskName) :
+                FieldsResult res = qryInfo.local() ?
+                    executeFieldsQuery(qry, qryInfo.arguments(), qryInfo.local(), qry.subjectId(), taskName,
+                    recipient(qryInfo.senderId(), qryInfo.requestId())) :
                     fieldsQueryResult(qryInfo, taskName);
 
                 // If metadata needs to be returned to user and cleaned from internal fields - copy it.
@@ -774,31 +996,11 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                     (res.metaData() != null ? new ArrayList<>(res.metaData()) : null) :
                     res.metaData();
 
-                BitSet ignored = new BitSet();
-
-                // Filter internal fields.
-                if (meta != null) {
-                    Iterator<GridIndexingFieldMetadata> metaIt = meta.iterator();
-
-                    int i = 0;
-
-                    while (metaIt.hasNext()) {
-                        if (IGNORED_FIELDS.contains(metaIt.next().fieldName())) {
-                            ignored.set(i);
-
-                            if (qryInfo.includeMetaData())
-                                metaIt.remove();
-                        }
-
-                        i++;
-                    }
-                }
-
                 if (!qryInfo.includeMetaData())
                     meta = null;
 
-                GridCloseableIterator<List<GridIndexingEntity<?>>> it =
-                    new GridSpiCloseableIteratorWrapper<>(res.iterator());
+                GridCloseableIterator<List<GridIndexingEntity<?>>> it = new GridSpiCloseableIteratorWrapper<>(
+                    res.nextPageIterator(recipient(qryInfo.senderId(), qryInfo.requestId())));
 
                 if (log.isDebugEnabled())
                     log.debug("Received fields iterator [iterHasNext=" + it.hasNext() + ']');
@@ -825,23 +1027,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                         break;
                     }
 
-                    // Filter internal fields.
-                    Iterator<GridIndexingEntity<?>> rowIt = row.iterator();
-
-                    int i = 0;
-
-                    while (rowIt.hasNext()) {
-                        rowIt.next();
-
-                        if (ignored.get(i++))
-                            rowIt.remove();
-                    }
-
-                    if (cctx.gridEvents().isRecordable(EVT_CACHE_SQL_FIELDS_QUERY_OBJECT_READ)) {
+                    if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ)) {
                         cctx.gridEvents().record(new GridCacheQueryReadEvent<K, V>(
                             cctx.localNode(),
                             "SQL fields query result set row read.",
-                            EVT_CACHE_SQL_FIELDS_QUERY_OBJECT_READ,
+                            EVT_CACHE_QUERY_OBJECT_READ,
+                            org.gridgain.grid.cache.query.GridCacheQueryType.SQL_FIELDS,
                             cctx.namex(),
                             null,
                             qry.clause(),
@@ -929,7 +1120,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param qryInfo Query info.
      */
     @SuppressWarnings("unchecked")
-    protected <R> void runQuery(GridCacheQueryInfo qryInfo) {
+    protected void runQuery(GridCacheQueryInfo qryInfo) {
         assert qryInfo != null;
 
         if (!enterBusy()) {
@@ -965,19 +1156,18 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
                 String taskName = cctx.kernalContext().task().resolveTaskName(qry.taskHash());
 
-                GridCloseableIterator<GridIndexingKeyValueRow<K, V>> iter;
+                GridSpiCloseableIterator<GridIndexingKeyValueRow<K, V>> iter;
                 GridCacheQueryType type;
 
-                if (loc) {
-                    iter = executeQuery(qry, qryInfo.arguments(), loc, qry.subjectId(), taskName);
-                    type = qry.type();
-                }
-                else {
-                    QueryResult<K, V> res = queryResult(qryInfo, taskName);
+                QueryResult<K, V> res;
 
-                    iter = res.iter;
-                    type = res.type;
-                }
+                res = loc ?
+                    executeQuery(qry, qryInfo.arguments(), loc, qry.subjectId(), taskName,
+                    recipient(qryInfo.senderId(), qryInfo.requestId())) :
+                    queryResult(qryInfo, taskName);
+
+                iter = res.nextPageIterator(recipient(qryInfo.senderId(), qryInfo.requestId()));
+                type = res.type();
 
                 GridCacheAdapter<K, V> cache = cctx.cache();
 
@@ -1037,11 +1227,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
                     switch (type) {
                         case SQL:
-                            if (cctx.gridEvents().isRecordable(EVT_CACHE_SQL_QUERY_OBJECT_READ)) {
+                            if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ)) {
                                 cctx.gridEvents().record(new GridCacheQueryReadEvent<>(
                                     cctx.localNode(),
                                     "SQL query entry read.",
-                                    EVT_CACHE_SQL_QUERY_OBJECT_READ,
+                                    EVT_CACHE_QUERY_OBJECT_READ,
+                                    org.gridgain.grid.cache.query.GridCacheQueryType.SQL,
                                     cctx.namex(),
                                     qry.queryClassName(),
                                     qry.clause(),
@@ -1059,11 +1250,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                             break;
 
                         case TEXT:
-                            if (cctx.gridEvents().isRecordable(EVT_CACHE_FULL_TEXT_QUERY_OBJECT_READ)) {
+                            if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ)) {
                                 cctx.gridEvents().record(new GridCacheQueryReadEvent<>(
                                     cctx.localNode(),
                                     "Full text query entry read.",
-                                    EVT_CACHE_FULL_TEXT_QUERY_OBJECT_READ,
+                                    EVT_CACHE_QUERY_OBJECT_READ,
+                                    org.gridgain.grid.cache.query.GridCacheQueryType.FULL_TEXT,
                                     cctx.namex(),
                                     qry.queryClassName(),
                                     qry.clause(),
@@ -1081,11 +1273,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                             break;
 
                         case SCAN:
-                            if (cctx.gridEvents().isRecordable(EVT_CACHE_SCAN_QUERY_OBJECT_READ)) {
+                            if (cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ)) {
                                 cctx.gridEvents().record(new GridCacheQueryReadEvent<>(
                                     cctx.localNode(),
                                     "Scan query entry read.",
-                                    EVT_CACHE_SCAN_QUERY_OBJECT_READ,
+                                    EVT_CACHE_QUERY_OBJECT_READ,
+                                    org.gridgain.grid.cache.query.GridCacheQueryType.SCAN,
                                     cctx.namex(),
                                     null,
                                     null,
@@ -1175,7 +1368,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @throws GridException In case of error.
      */
     private QueryResult<K, V> queryResult(GridCacheQueryInfo qryInfo, String taskName) throws GridException {
-        UUID sndId = qryInfo.senderId();
+        final UUID sndId = qryInfo.senderId();
 
         assert sndId != null;
 
@@ -1189,7 +1382,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
                     if (rmv) {
                         try {
-                            e.getValue().get().iter.close();
+                            e.getValue().get().closeIfNotShared(recipient(sndId, e.getKey()));
                         }
                         catch (GridException ex) {
                             U.error(log, "Failed to close query iterator.", ex);
@@ -1238,8 +1431,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         if (exec) {
             try {
-                fut.onDone(new QueryResult<>(executeQuery(qryInfo.query(), qryInfo.arguments(), false,
-                    qryInfo.query().subjectId(), taskName), qryInfo.query().type()));
+                fut.onDone(executeQuery(qryInfo.query(), qryInfo.arguments(), false,
+                    qryInfo.query().subjectId(), taskName, recipient(qryInfo.senderId(), qryInfo.requestId())));
             }
             catch (Error e) {
                 fut.onDone(e);
@@ -1274,7 +1467,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
             if (fut != null) {
                 try {
-                    fut.get().iter.close();
+                    fut.get().closeIfNotShared(recipient(sndId, reqId));
                 }
                 catch (GridException e) {
                     U.error(log, "Failed to close iterator.", e);
@@ -1284,30 +1477,38 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     }
 
     /**
+     * @param sndId Sender node ID.
+     * @param reqId Request ID.
+     * @return Recipient ID.
+     */
+    private static Object recipient(UUID sndId, long reqId) {
+        assert sndId != null;
+
+        return new GridBiTuple<>(sndId, reqId);
+    }
+
+    /**
      * @param qryInfo Info.
      * @return Iterator.
      * @throws GridException In case of error.
      */
-    private GridIndexingFieldsResult fieldsQueryResult(GridCacheQueryInfo qryInfo, String taskName)
+    private FieldsResult fieldsQueryResult(GridCacheQueryInfo qryInfo, String taskName)
         throws GridException {
-        UUID sndId = qryInfo.senderId();
+        final UUID sndId = qryInfo.senderId();
 
         assert sndId != null;
 
-        Map<Long, GridFutureAdapter<GridIndexingFieldsResult>> iters = fieldsQryRes.get(sndId);
+        Map<Long, GridFutureAdapter<FieldsResult>> iters = fieldsQryRes.get(sndId);
 
         if (iters == null) {
-            iters = new LinkedHashMap<Long, GridFutureAdapter<GridIndexingFieldsResult>>(16, 0.75f, true) {
+            iters = new LinkedHashMap<Long, GridFutureAdapter<FieldsResult>>(16, 0.75f, true) {
                 @Override protected boolean removeEldestEntry(Map.Entry<Long,
-                    GridFutureAdapter<GridIndexingFieldsResult>> e) {
+                    GridFutureAdapter<FieldsResult>> e) {
                     boolean rmv = size() > maxIterCnt;
 
                     if (rmv) {
                         try {
-                            GridCloseableIterator<List<GridIndexingEntity<?>>> it =
-                                new GridSpiCloseableIteratorWrapper<>(e.getValue().get().iterator());
-
-                            it.close();
+                            e.getValue().get().closeIfNotShared(recipient(sndId, e.getKey()));
                         }
                         catch (GridException ex) {
                             U.error(log, "Failed to close fields query iterator.", ex);
@@ -1322,7 +1523,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                 }
             };
 
-            Map<Long, GridFutureAdapter<GridIndexingFieldsResult>> old = fieldsQryRes.putIfAbsent(sndId, iters);
+            Map<Long, GridFutureAdapter<FieldsResult>> old = fieldsQryRes.putIfAbsent(sndId, iters);
 
             if (old != null)
                 iters = old;
@@ -1339,12 +1540,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      */
     @SuppressWarnings({"SynchronizationOnLocalVariableOrMethodParameter",
         "NonPrivateFieldAccessedInSynchronizedContext"})
-    private GridIndexingFieldsResult fieldsQueryResult(Map<Long, GridFutureAdapter<GridIndexingFieldsResult>> resMap,
+    private FieldsResult fieldsQueryResult(Map<Long, GridFutureAdapter<FieldsResult>> resMap,
         GridCacheQueryInfo qryInfo, String taskName) throws GridException {
         assert resMap != null;
         assert qryInfo != null;
 
-        GridFutureAdapter<GridIndexingFieldsResult> fut;
+        GridFutureAdapter<FieldsResult> fut;
 
         boolean exec = false;
 
@@ -1362,7 +1563,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         if (exec) {
             try {
                 fut.onDone(executeFieldsQuery(qryInfo.query(), qryInfo.arguments(), false,
-                    qryInfo.query().subjectId(), taskName));
+                    qryInfo.query().subjectId(), taskName, recipient(qryInfo.senderId(), qryInfo.requestId())));
             }
             catch (GridException e) {
                 fut.onDone(e);
@@ -1381,10 +1582,10 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         if (sndId == null)
             return;
 
-        Map<Long, GridFutureAdapter<GridIndexingFieldsResult>> futs = fieldsQryRes.get(sndId);
+        Map<Long, GridFutureAdapter<FieldsResult>> futs = fieldsQryRes.get(sndId);
 
         if (futs != null) {
-            GridFuture<GridIndexingFieldsResult> fut;
+            GridFuture<FieldsResult> fut;
 
             synchronized (futs) {
                 fut = futs.remove(reqId);
@@ -1392,7 +1593,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
             if (fut != null) {
                 try {
-                    fut.get().iterator().close();
+                    fut.get().closeIfNotShared(recipient(sndId, reqId));
                 }
                 catch (GridException e) {
                     U.error(log, "Failed to close iterator.", e);
@@ -1549,24 +1750,31 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @return Filter.
      */
     @SuppressWarnings("unchecked")
-    private GridIndexingQueryFilter<K, V> projectionFilter(GridCacheQueryAdapter<?> qry) {
+    @Nullable private GridIndexingQueryFilter projectionFilter(GridCacheQueryAdapter<?> qry) {
         assert qry != null;
 
         final GridPredicate<GridCacheEntry<Object, Object>> prjFilter = qry.projectionFilter();
 
-        return new GridIndexingQueryFilter<K, V>() {
-            @Override public boolean apply(String s, K k, V v) {
-                if (prjFilter == null || F.isAlwaysTrue(prjFilter) || !F.eq(space, s))
-                    return true;
+        if (prjFilter == null || F.isAlwaysTrue(prjFilter))
+            return null;
 
-                try {
-                    GridCacheEntry<K, V> entry = context().cache().entry(k);
+        return new GridIndexingQueryFilter() {
+            @Nullable @Override public GridBiPredicate<K, V> forSpace(String spaceName) throws GridException {
+                if (!F.eq(space, spaceName))
+                    return null;
 
-                    return entry != null && prjFilter.apply((GridCacheEntry<Object, Object>)entry);
-                }
-                catch (GridDhtInvalidPartitionException ignore) {
-                    return false;
-                }
+                return new GridBiPredicate<K, V>() {
+                    @Override public boolean apply(K k, V v) {
+                        try {
+                            GridCacheEntry<K, V> entry = context().cache().entry(k);
+
+                            return entry != null && prjFilter.apply((GridCacheEntry<Object, Object>)entry);
+                        }
+                        catch (GridDhtInvalidPartitionException ignore) {
+                            return false;
+                        }
+                    }
+                };
             }
         };
     }
@@ -1652,12 +1860,11 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                 @Override public CacheSqlMetadata apply(String cacheName) {
                     Collection<GridIndexingTypeDescriptor> types = ctx.indexing().types(cacheName);
 
-                    Collection<String> names = new HashSet<>(types.size());
-                    Map<String, String> keyClasses = new HashMap<>(types.size());
-                    Map<String, String> valClasses = new HashMap<>(types.size());
-                    Map<String, Map<String, String>> fields = new HashMap<>(types.size());
-                    Map<String, Collection<GridCacheSqlIndexMetadata>> indexes =
-                        new HashMap<>(types.size());
+                    Collection<String> names = U.newHashSet(types.size());
+                    Map<String, String> keyClasses = U.newHashMap(types.size());
+                    Map<String, String> valClasses = U.newHashMap(types.size());
+                    Map<String, Map<String, String>> fields = U.newHashMap(types.size());
+                    Map<String, Collection<GridCacheSqlIndexMetadata>> indexes = U.newHashMap(types.size());
 
                     for (GridIndexingTypeDescriptor type : types) {
                         // Filter internal types (e.g., data structures).
@@ -1671,7 +1878,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
                         int size = 2 + type.keyFields().size() + type.valueFields().size();
 
-                        Map<String, String> fieldsMap = new LinkedHashMap<>(size);
+                        Map<String, String> fieldsMap = U.newLinkedHashMap(size);
 
                         // _KEY and _VAL are not included in GridIndexingTypeDescriptor.valueFields
                         fieldsMap.put("_KEY", type.keyClass().getName());
@@ -1939,20 +2146,56 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
     /**
      */
-    private static class QueryResult<K, V> {
-        /** */
-        private final GridCloseableIterator<GridIndexingKeyValueRow<K, V>> iter;
-
+    private static class QueryResult<K, V> extends CachedResult<GridIndexingKeyValueRow<K, V>> {
         /** */
         private final GridCacheQueryType type;
 
         /**
-         * @param iter Iterator.
          * @param type Query type.
+         * @param recipient ID of the recipient.
          */
-        private QueryResult(GridCloseableIterator<GridIndexingKeyValueRow<K, V>> iter, GridCacheQueryType type) {
-            this.iter = iter;
+        private QueryResult(GridCacheQueryType type, Object recipient) {
+            super(recipient);
+
             this.type = type;
+        }
+
+        /**
+         * @return Type.
+         */
+        public GridCacheQueryType type() {
+            return type;
+        }
+    }
+
+    /**
+     *
+     */
+    private static class FieldsResult extends CachedResult<List<GridIndexingEntity<?>>> {
+        /** */
+        private List<GridIndexingFieldMetadata> meta;
+
+        /**
+         * @param recipient ID of the recipient.
+         */
+        FieldsResult(Object recipient) {
+            super(recipient);
+        }
+
+        /**
+         * @return Metadata.
+         */
+        public List<GridIndexingFieldMetadata> metaData() throws GridException {
+            get(); // Ensure that result is ready.
+
+            return meta;
+        }
+
+        /**
+         * @param meta Metadata.
+         */
+        public void metaData(List<GridIndexingFieldMetadata> meta) {
+            this.meta = meta;
         }
     }
 
@@ -2030,6 +2273,919 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             }
 
             return true;
+        }
+    }
+
+    /**
+     *
+     */
+    private abstract class AbstractLazySwapEntry {
+        /** */
+        private K key;
+
+        /** */
+        private V val;
+
+        /**
+         * @return Key bytes.
+         */
+        protected abstract byte[] keyBytes();
+
+        /**
+         * @return Value.
+         * @throws GridException If failed.
+         */
+        protected abstract V unmarshalValue() throws GridException;
+
+        /**
+         * @return Key.
+         */
+        K key() {
+            try {
+                if (key != null)
+                    return key;
+
+                key = cctx.marshaller().unmarshal(keyBytes(), cctx.deploy().globalLoader());
+
+                return key;
+            }
+            catch (GridException e) {
+                throw new GridRuntimeException(e);
+            }
+        }
+
+        /**
+         * @return Value.
+         */
+        V value() {
+            try {
+                if (val != null)
+                    return val;
+
+                val = unmarshalValue();
+
+                return val;
+            }
+            catch (GridException e) {
+                throw new GridRuntimeException(e);
+            }
+        }
+
+        /**
+         * @return TTL.
+         */
+        abstract long timeToLive();
+
+        /**
+         * @return Expire time.
+         */
+        abstract long expireTime();
+
+        /**
+         * @return Version.
+         */
+        abstract GridCacheVersion version();
+    }
+
+    /**
+     *
+     */
+    private class LazySwapEntry extends AbstractLazySwapEntry {
+        /** */
+        private final Map.Entry<byte[], byte[]> e;
+
+        /**
+         * @param e Entry with
+         */
+        LazySwapEntry(Map.Entry<byte[], byte[]> e) {
+            this.e = e;
+        }
+
+        /** {@inheritDoc} */
+        @Override protected byte[] keyBytes() {
+            return e.getKey();
+        }
+
+        /** {@inheritDoc} */
+        @SuppressWarnings("IfMayBeConditional")
+        @Override protected V unmarshalValue() throws GridException {
+            byte[] bytes = e.getValue();
+
+            byte[] val = GridCacheSwapEntryImpl.getValueIfByteArray(bytes);
+
+            if (val != null)
+                return (V)val;
+
+            if (cctx.offheapTiered() && cctx.portableEnabled())
+                return (V)cctx.portable().unmarshal(bytes, GridCacheSwapEntryImpl.valueOffset(bytes));
+            else {
+                GridByteArrayInputStream in = new GridByteArrayInputStream(bytes,
+                    GridCacheSwapEntryImpl.valueOffset(bytes),
+                    bytes.length);
+
+                return cctx.marshaller().unmarshal(in, cctx.deploy().globalLoader());
+            }
+        }
+
+        /** {@inheritDoc} */
+        @Override long timeToLive() {
+            return GridCacheSwapEntryImpl.timeToLive(e.getValue());
+        }
+
+        /** {@inheritDoc} */
+        @Override long expireTime() {
+            return GridCacheSwapEntryImpl.expireTime(e.getValue());
+        }
+
+        /** {@inheritDoc} */
+        @Override GridCacheVersion version() {
+            return GridCacheSwapEntryImpl.version(e.getValue());
+        }
+    }
+
+    /**
+     *
+     */
+    private class LazyOffheapEntry extends AbstractLazySwapEntry {
+        /** */
+        private final T2<Long, Integer> keyPtr;
+
+        /** */
+        private final T2<Long, Integer> valPtr;
+
+        /**
+         * @param keyPtr Key address.
+         * @param valPtr Value address.
+         */
+        private LazyOffheapEntry(T2<Long, Integer> keyPtr, T2<Long, Integer> valPtr) {
+            assert keyPtr != null;
+            assert valPtr != null;
+
+            this.keyPtr = keyPtr;
+            this.valPtr = valPtr;
+        }
+
+        /** {@inheritDoc} */
+        @Override protected byte[] keyBytes() {
+            return U.copyMemory(keyPtr.get1(), keyPtr.get2());
+        }
+
+        /** {@inheritDoc} */
+        @Override protected V unmarshalValue() throws GridException {
+            long ptr = GridCacheOffheapSwapEntry.valueAddress(valPtr.get1(), valPtr.get2());
+
+            V val = (V)cctx.portable().unmarshal(ptr, false);
+
+            assert val != null;
+
+            return val;
+        }
+
+        /** {@inheritDoc} */
+        @Override long timeToLive() {
+            return GridCacheOffheapSwapEntry.timeToLive(valPtr.get1());
+        }
+
+        /** {@inheritDoc} */
+        @Override long expireTime() {
+            return GridCacheOffheapSwapEntry.expireTime(valPtr.get1());
+        }
+
+        /** {@inheritDoc} */
+        @Override GridCacheVersion version() {
+            return GridCacheOffheapSwapEntry.version(valPtr.get1());
+        }
+    }
+
+    /**
+     *
+     */
+    private class OffheapIteratorClosure
+        extends CX2<T2<Long, Integer>, T2<Long, Integer>, GridIndexingKeyValueRow<K, V>> {
+        /** */
+        private static final long serialVersionUID = 7410163202728985912L;
+
+        /** */
+        private GridPredicate<GridCacheEntry<Object, Object>> prjPred;
+
+        /** */
+        private GridBiPredicate<K, V> filter;
+
+        /** */
+        private boolean keepPortable;
+
+        /**
+         * @param prjPred Projection filter.
+         * @param filter Filter.
+         * @param keepPortable Keep portable flag.
+         */
+        private OffheapIteratorClosure(
+            @Nullable GridPredicate<GridCacheEntry<Object, Object>> prjPred,
+            @Nullable GridBiPredicate<K, V> filter,
+            boolean keepPortable) {
+            assert prjPred != null || filter != null;
+
+            this.prjPred = prjPred;
+            this.filter = filter;
+            this.keepPortable = keepPortable;
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public GridIndexingKeyValueRow<K, V> applyx(T2<Long, Integer> keyPtr,
+            T2<Long, Integer> valPtr)
+            throws GridException {
+            LazyOffheapEntry e = new LazyOffheapEntry(keyPtr, valPtr);
+
+            if (prjPred != null) {
+                GridCacheEntry<K, V> cacheEntry = new GridCacheScanSwapEntry(e);
+
+                if (!prjPred.apply((GridCacheEntry<Object, Object>)cacheEntry))
+                    return null;
+            }
+
+            if (filter != null) {
+                K key = (K)cctx.unwrapPortableIfNeeded(e.key(), keepPortable);
+                V val = (V)cctx.unwrapPortableIfNeeded(e.value(), keepPortable);
+
+                if (!filter.apply(key, val))
+                    return null;
+            }
+
+            return new GridIndexingKeyValueRowAdapter<>(e.key(), (V)cctx.unwrapTemporary(e.value())) ;
+        }
+    }
+
+    /**
+     *
+     */
+    private static class CompoundIterator<T> extends GridIteratorAdapter<T> {
+        /** */
+        private static final long serialVersionUID = 4585888051556166304L;
+
+        /** */
+        private final List<GridIterator<T>> iters;
+
+        /** */
+        private int idx;
+
+        /** */
+        private GridIterator<T> iter;
+
+        /**
+         * @param iters Iterators.
+         */
+        private CompoundIterator(List<GridIterator<T>> iters) {
+            if (iters.isEmpty())
+                throw new IllegalArgumentException();
+
+            this.iters = iters;
+
+            iter = F.first(iters);
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean hasNextX() throws GridException {
+            if (iter.hasNextX())
+                return true;
+
+            idx++;
+
+            while(idx < iters.size()) {
+                iter = iters.get(idx);
+
+                if (iter.hasNextX())
+                    return true;
+
+                idx++;
+            }
+
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        @Override public T nextX() throws GridException {
+            if (!hasNextX())
+                throw new NoSuchElementException();
+
+            return iter.nextX();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void removeX() throws GridException {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     *
+     */
+    private class GridCacheScanSwapEntry implements GridCacheEntry<K, V> {
+        /** */
+        private static final long serialVersionUID = 1262515168518736214L;
+
+        /** */
+        private final AbstractLazySwapEntry e;
+
+        /**
+         * @param e Entry.
+         */
+        private GridCacheScanSwapEntry(AbstractLazySwapEntry e) {
+            this.e = e;
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V peek() {
+            return e.value();
+        }
+
+        /** {@inheritDoc} */
+        @Override public Object version() {
+            return e.version();
+        }
+
+        /** {@inheritDoc} */
+        @Override public long expirationTime() {
+            return e.expireTime();
+        }
+
+        /** {@inheritDoc} */
+        @Override public long timeToLive() {
+            return e.timeToLive();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V getValue() {
+            return e.value();
+        }
+
+        /** {@inheritDoc} */
+        @Override public K getKey() {
+            return e.key();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridCacheProjection<K, V> projection() {
+            return null;
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V peek(@Nullable Collection<GridCachePeekMode> modes) throws GridException {
+            return null;
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V reload() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<V> reloadAsync() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean isLocked() {
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean isLockedByThread() {
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void timeToLive(long ttl) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean primary() {
+            return cctx.affinity().
+                primary(cctx.localNode(), getKey(), cctx.affinity().affinityTopologyVersion());
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean backup() {
+            return cctx.affinity().
+                backups(getKey(), cctx.affinity().affinityTopologyVersion()).contains(cctx.localNode());
+        }
+
+        /** {@inheritDoc} */
+        @Override public int partition() {
+            return cctx.affinity().partition(getKey());
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V get() {
+            return getValue();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<V> getAsync() {
+            return new GridFinishedFuture<V>(cctx.kernalContext(), getValue());
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V setValue(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V set(V val, GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<V> setAsync(V val, GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V setIfAbsent(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<V> setIfAbsentAsync(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean setx(V val, @Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> setxAsync(V val, @Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean setxIfAbsent(@Nullable V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> setxIfAbsentAsync(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void transform(GridClosure<V, V> transformer) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<?> transformAsync(GridClosure<V, V> transformer) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V replace(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<V> replaceAsync(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean replacex(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> replacexAsync(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean replace(V oldVal, V newVal) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> replaceAsync(V oldVal, V newVal) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public V remove(@Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<V> removeAsync(GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean removex(GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> removexAsync(@Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean remove(V val) throws GridException {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> removeAsync(V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean evict() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean clear() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean compact() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean lock(long timeout, @Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridFuture<Boolean> lockAsync(long timeout,
+            @Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void unlock(GridPredicate<GridCacheEntry<K, V>>... filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean isCached() {
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public int memorySize() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void copyMeta(GridMetadataAware from) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void copyMeta(Map<String, ?> data) {
+            throw new UnsupportedOperationException();
+
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public <V> V addMeta(String name, V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public <V> V putMetaIfAbsent(String name, V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public <V> V putMetaIfAbsent(String name, Callable<V> c) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> V addMetaIfAbsent(String name, V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public <V> V addMetaIfAbsent(String name, @Nullable Callable<V> c) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> V meta(String name) {
+            return null;
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> V removeMeta(String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> boolean removeMeta(String name, V val) {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> Map<String, V> allMeta() {
+            return null;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean hasMeta(String name) {
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> boolean hasMeta(String name, V val) {
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        @Override public <V> boolean replaceMeta(String name, V curVal, V newVal) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     * Cached result.
+     */
+    private abstract static class CachedResult<R> extends GridFutureAdapter<GridSpiCloseableIterator<R>> {
+        /** */
+        private CircularQueue<R> queue;
+
+        /** */
+        private int pruned;
+
+        /** Absolute position of each recipient. */
+        private final Map<Object, Integer> recipients = new GridLeanMap<>(1);
+
+        /**
+         * @param recipient ID of the recipient.
+         */
+        protected CachedResult(Object recipient) {
+            boolean res = addRecipient(recipient);
+
+            assert res;
+        }
+
+
+        /**
+         * Close if this result does not have any other recipients.
+         *
+         * @param recipient ID of the recipient.
+         * @throws GridException If failed.
+         */
+        public void closeIfNotShared(Object recipient) throws GridException {
+            assert isDone();
+
+            synchronized (recipients) {
+                if (recipients.isEmpty())
+                    return;
+
+                recipients.remove(recipient);
+
+                if (recipients.isEmpty())
+                    get().close();
+            }
+        }
+
+        /**
+         * @param recipient ID of the recipient.
+         * @return {@code true} If the recipient successfully added.
+         */
+        public boolean addRecipient(Object recipient) {
+            synchronized (recipients) {
+                if (isDone())
+                    return false;
+
+                assert !recipients.containsKey(recipient) : recipient + " -> " + recipients;
+
+                recipients.put(recipient, 0);
+            }
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean onDone(@Nullable GridSpiCloseableIterator<R> res, @Nullable Throwable err) {
+            synchronized (recipients) {
+                if (!super.onDone(res, err))
+                    return false;
+
+                if (recipients.size() > 1)
+                    queue = new CircularQueue<>(128);
+            }
+
+            return true;
+        }
+
+        /**
+         * Fetches next page into target collection from queue.
+         *
+         * @param recipient ID of the recipient.
+         * @param it Iterator.
+         */
+        private GridSpiCloseableIterator<R> nextPageFromQueue(final Object recipient,
+            final GridSpiCloseableIterator<R> it) {
+            return new GridSpiCloseableIterator<R>() {
+                /** */
+                private R next;
+
+                @Override public void close() throws GridException {
+                    closeIfNotShared(recipient);
+                }
+
+                @Override public boolean hasNext() {
+                    return next != null || (next = nextFromQueue(recipient, it)) != null;
+                }
+
+                @Override public R next() {
+                    if (next == null)
+                        throw new NoSuchElementException();
+
+                    R res = next;
+
+                    next = null;
+
+                    return res;
+                }
+
+                @Override public void remove() {
+                    throw new UnsupportedOperationException();
+                }
+            };
+        }
+
+        /**
+         * @param recipient ID of the recipient.
+         * @param it Iterator.
+         * @return Next element for the given recipient.
+         */
+        @Nullable private R nextFromQueue(Object recipient, GridSpiCloseableIterator<R> it) {
+            synchronized (recipients) {
+                int pos = recipients.get(recipient);
+
+                R res = null;
+
+                try {
+                    int off = pos - pruned; // Offset is relative to queue begin.
+
+                    if (off < queue.size)
+                        res = queue.get(off);
+                    else if (it.hasNext()) {
+                        res = it.next();
+
+                        queue.add(res);
+                    }
+                }
+                finally {
+                    if (res != null)
+                        pruneQueue(recipient, pos + 1);
+                }
+
+                return res;
+            }
+        }
+
+        /**
+         * @param recipient ID of the recipient.
+         * @param newPos New position of the recipient.
+         */
+        private void pruneQueue(Object recipient, int newPos) {
+            recipients.put(recipient, newPos);
+
+            int minPos = Collections.min(recipients.values());
+
+            if (minPos > pruned) {
+                queue.remove(minPos - pruned);
+
+                pruned = minPos;
+            }
+        }
+
+        /**
+         * Fetches next page into target collection.
+         *
+         * @param recipient ID of the recipient.
+         * @throws GridException If failed.
+         */
+        public GridSpiCloseableIterator<R> nextPageIterator(Object recipient)
+            throws GridException {
+            assert recipient != null;
+
+            GridSpiCloseableIterator<R> it = get();
+
+            assert it != null;
+
+            synchronized (recipients) {
+                return queue == null ? it : nextPageFromQueue(recipient, it);
+            }
+        }
+    }
+
+    /**
+     * Queue.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    static class CircularQueue<R> {
+        /** */
+        private int off;
+
+        /** */
+        private int size;
+
+        /** */
+        private R[] arr;
+
+        /**
+         * @param cap Initial capacity.
+         */
+        CircularQueue(int cap) {
+            assert U.isPow2(cap);
+
+            arr = (R[])new Object[cap];
+        }
+
+        /**
+         * @param o Object to add.
+         */
+        public void add(R o) {
+            if (size == arr.length) { // Resize.
+                Object[] newArr = new Object[arr.length << 1];
+
+                int tailSize = arr.length - off;
+
+                System.arraycopy(arr, off, newArr, 0, tailSize);
+
+                if (off != 0) {
+                    System.arraycopy(arr, 0, newArr, tailSize, off);
+
+                    off = 0;
+                }
+
+                arr = (R[])newArr;
+            }
+
+            int idx = (off + size) & (arr.length - 1);
+
+            assert arr[idx] == null;
+
+            arr[idx] = o;
+
+            size++;
+        }
+
+        /**
+         * @param n Number of elements to remove.
+         */
+        public void remove(int n) {
+            assert n > 0 : n;
+            assert n <= size : n + " " + size;
+
+            int mask = arr.length - 1;
+
+            for (int i = 0; i < n; i++) {
+                int idx = (off + i) & mask;
+
+                assert arr[idx] != null;
+
+                arr[idx] = null;
+            }
+
+            size -= n;
+            off += n;
+
+            if (off >= arr.length)
+                off -= arr.length;
+        }
+
+        /**
+         * @param idx Index in queue.
+         * @return Element at the given index.
+         */
+        public R get(int idx) {
+            assert idx >= 0 : idx;
+            assert idx < size : idx + " " + size;
+
+            R res = arr[(idx + off) & (arr.length - 1)];
+
+            assert res != null;
+
+            return res;
+        }
+
+        /**
+         * @return Size.
+         */
+        public int size() {
+            return size;
         }
     }
 }

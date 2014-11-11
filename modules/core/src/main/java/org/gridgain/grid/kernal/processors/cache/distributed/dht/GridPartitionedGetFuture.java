@@ -256,11 +256,11 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
             return;
         }
 
-        Map<GridNode, LinkedHashMap<K, Boolean>> mappings = new HashMap<>(CU.affinityNodes(cctx, topVer).size());
+        Map<GridNode, LinkedHashMap<K, Boolean>> mappings = U.newHashMap(CU.affinityNodes(cctx, topVer).size());
 
         final int keysSize = keys.size();
 
-        Map<K, V> locVals = new HashMap<>(keysSize);
+        Map<K, V> locVals = U.newHashMap(keysSize);
 
         boolean hasRmtNodes = false;
 
@@ -392,6 +392,7 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
                                 /*unmarshal*/true,
                                 /**update-metrics*/true,
                                 /*event*/true,
+                                /*temporary*/false,
                                 subjId,
                                 null,
                                 taskName,

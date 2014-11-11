@@ -22,8 +22,8 @@ import org.gridgain.grid.logger.*;
 import org.gridgain.grid.portables.*;
 import org.gridgain.grid.product.*;
 import org.gridgain.grid.spi.*;
-import org.gridgain.grid.spi.authentication.noop.*;
 import org.gridgain.grid.spi.discovery.*;
+import org.gridgain.grid.util.io.*;
 import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.mbean.*;
 import org.gridgain.grid.util.typedef.*;
@@ -652,17 +652,6 @@ public abstract class GridUtils {
     }
 
     /**
-     * Checks whether authentication SPI other than noop authentication SPI is configured.
-     *
-     * @param cfg Configuration to check.
-     * @return {@code True} if authentication SPI is configured.
-     */
-    public static boolean securityEnabled(GridConfiguration cfg) {
-        return cfg.getAuthenticationSpi() != null &&
-            cfg.getAuthenticationSpi().getClass() != GridNoopAuthenticationSpi.class;
-    }
-
-    /**
      * @return Checks if disco ordering should be enforced.
      */
     public static boolean relaxDiscoveryOrdered() {
@@ -1167,6 +1156,29 @@ public abstract class GridUtils {
      * @throws IOException If failed.
      * @throws ClassNotFoundException If class not found.
      */
+    @Nullable public static Class<?>[] readClassArray(ObjectInput in) throws IOException, ClassNotFoundException {
+        int len = in.readInt();
+
+        Class<?>[] arr = null;
+
+        if (len > 0) {
+            arr = new Class<?>[len];
+
+            for (int i = 0; i < len; i++)
+                arr[i] = (Class<?>)in.readObject();
+        }
+
+        return arr;
+    }
+
+    /**
+     * Reads array from input stream.
+     *
+     * @param in Input stream.
+     * @return Deserialized array.
+     * @throws IOException If failed.
+     * @throws ClassNotFoundException If class not found.
+     */
     @SuppressWarnings("unchecked")
     @Nullable public static <K, V> GridPredicate<GridCacheEntry<K, V>>[] readEntryFilterArray(ObjectInput in)
         throws IOException, ClassNotFoundException {
@@ -1573,7 +1585,7 @@ public abstract class GridUtils {
      * @return List of all known local IPs (empty list if no addresses available).
      */
     public static synchronized Collection<String> allLocalIps() {
-        Collection<String> ips = new HashSet<>(4);
+        List<String> ips = new ArrayList<>(4);
 
         try {
             Enumeration<NetworkInterface> itfs = NetworkInterface.getNetworkInterfaces();
@@ -1583,10 +1595,14 @@ public abstract class GridUtils {
                     if (!itf.isLoopback()) {
                         Enumeration<InetAddress> addrs = itf.getInetAddresses();
 
-                        if (addrs != null)
-                            for (InetAddress addr : asIterable(addrs))
-                                if (!addr.isLoopbackAddress())
-                                    ips.add(addr.getHostAddress());
+                        if (addrs != null) {
+                            for (InetAddress addr : asIterable(addrs)) {
+                                String hostAddr = addr.getHostAddress();
+
+                                if (!addr.isLoopbackAddress() && !ips.contains(hostAddr))
+                                    ips.add(hostAddr);
+                            }
+                        }
                     }
                 }
             }
@@ -1594,6 +1610,8 @@ public abstract class GridUtils {
         catch (SocketException ignore) {
             return Collections.emptyList();
         }
+
+        Collections.sort(ips);
 
         return ips;
     }
@@ -1614,7 +1632,7 @@ public abstract class GridUtils {
      *      if no MACs could be found.
      */
     public static synchronized Collection<String> allLocalMACs() {
-        Collection<String> macs = new HashSet<>(3);
+        List<String> macs = new ArrayList<>(3);
 
         try {
             Enumeration<NetworkInterface> itfs = NetworkInterface.getNetworkInterfaces();
@@ -1627,7 +1645,8 @@ public abstract class GridUtils {
                     if (hwAddr != null && hwAddr.length > 0) {
                         String mac = byteArray2HexString(hwAddr);
 
-                        macs.add(mac);
+                        if (!macs.contains(mac))
+                            macs.add(mac);
                     }
                 }
             }
@@ -1635,6 +1654,8 @@ public abstract class GridUtils {
         catch (SocketException ignore) {
             return Collections.emptyList();
         }
+
+        Collections.sort(macs);
 
         return macs;
     }
@@ -4573,7 +4594,7 @@ public abstract class GridUtils {
         if (size == -1)
             return null;
         else {
-            Map<String, String> map = new HashMap<>(size);
+            Map<String, String> map = U.newHashMap(size);
 
             for (int i = 0; i < size; i++)
                 map.put(in.readUTF(), in.readUTF());
@@ -7755,6 +7776,8 @@ public abstract class GridUtils {
         assert nodeId != null;
         assert fileName != null;
 
+        fileName = GridFilenameUtils.separatorsToSystem(fileName);
+
         int dot = fileName.lastIndexOf('.');
 
         if (dot < 0 || dot == fileName.length() - 1)
@@ -8596,5 +8619,343 @@ public abstract class GridUtils {
             Collection.class.isAssignableFrom(cls) ||
             Map.class.isAssignableFrom(cls) ||
             Map.Entry.class.isAssignableFrom(cls);
+    }
+
+    /**
+     * @param arr Array.
+     * @param off Offset.
+     * @param uid UUID.
+     * @return Offset.
+     */
+    public static long writeGridUuid(byte[] arr, long off, @Nullable GridUuid uid) {
+        UNSAFE.putBoolean(arr, off++, uid != null);
+
+        if (uid != null) {
+            UNSAFE.putLong(arr, off, uid.globalId().getMostSignificantBits());
+
+            off += 8;
+
+            UNSAFE.putLong(arr, off, uid.globalId().getLeastSignificantBits());
+
+            off += 8;
+
+            UNSAFE.putLong(arr, off, uid.localId());
+
+            off += 8;
+        }
+
+        return off;
+    }
+
+    /**
+     * @param arr Array.
+     * @param off Offset.
+     * @return UUID.
+     */
+    @Nullable public static GridUuid readGridUuid(byte[] arr, long off) {
+        if (UNSAFE.getBoolean(arr, off++)) {
+            long most = UNSAFE.getLong(arr, off);
+
+            off += 8;
+
+            long least = UNSAFE.getLong(arr, off);
+
+            off += 8;
+
+            UUID globalId = new UUID(most, least);
+
+            long locId = UNSAFE.getLong(arr, off);
+
+            return new GridUuid(globalId, locId);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param ptr Offheap address.
+     * @return UUID.
+     */
+    @Nullable public static GridUuid readGridUuid(long ptr) {
+        if (UNSAFE.getBoolean(null, ptr++)) {
+            long most = UNSAFE.getLong(ptr);
+
+            ptr += 8;
+
+            long least = UNSAFE.getLong(ptr);
+
+            ptr += 8;
+
+            UUID globalId = new UUID(most, least);
+
+            long locId = UNSAFE.getLong(ptr);
+
+            return new GridUuid(globalId, locId);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param arr Array.
+     * @param off Offset.
+     * @param ver Version.
+     * @return Offset.
+     */
+    public static long writeVersion(byte[] arr, long off, GridCacheVersion ver) {
+        boolean verEx = ver instanceof GridCacheVersionEx;
+
+        UNSAFE.putBoolean(arr, off++, verEx);
+
+        if (verEx) {
+            GridCacheVersion drVer = ver.drVersion();
+
+            assert drVer != null;
+
+            UNSAFE.putInt(arr, off, drVer.topologyVersion());
+
+            off += 4;
+
+            UNSAFE.putInt(arr, off, drVer.nodeOrderAndDrIdRaw());
+
+            off += 4;
+
+            UNSAFE.putLong(arr, off, drVer.globalTime());
+
+            off += 8;
+
+            UNSAFE.putLong(arr, off, drVer.order());
+
+            off += 8;
+        }
+
+        UNSAFE.putInt(arr, off, ver.topologyVersion());
+
+        off += 4;
+
+        UNSAFE.putInt(arr, off, ver.nodeOrderAndDrIdRaw());
+
+        off += 4;
+
+        UNSAFE.putLong(arr, off, ver.globalTime());
+
+        off += 8;
+
+        UNSAFE.putLong(arr, off, ver.order());
+
+        off += 8;
+
+        return off;
+    }
+
+    /**
+     * @param ptr Offheap address.
+     * @param verEx If {@code true} reads {@link GridCacheVersionEx} instance.
+     * @return Version.
+     */
+    public static GridCacheVersion readVersion(long ptr, boolean verEx) {
+        GridCacheVersion ver = new GridCacheVersion(UNSAFE.getInt(ptr),
+            UNSAFE.getInt(ptr + 4),
+            UNSAFE.getLong(ptr + 8),
+            UNSAFE.getLong(ptr + 16));
+
+        if (verEx) {
+            ptr += 24;
+
+            ver = new GridCacheVersionEx(UNSAFE.getInt(ptr),
+                UNSAFE.getInt(ptr + 4),
+                UNSAFE.getLong(ptr + 8),
+                UNSAFE.getLong(ptr + 16),
+                ver);
+        }
+
+        return ver;
+    }
+
+    /**
+     * @param arr Array.
+     * @param off Offset.
+     * @param verEx If {@code true} reads {@link GridCacheVersionEx} instance.
+     * @return Version.
+     */
+    public static GridCacheVersion readVersion(byte[] arr, long off, boolean verEx) {
+        int topVer = UNSAFE.getInt(arr, off);
+
+        off += 4;
+
+        int nodeOrderDrId = UNSAFE.getInt(arr, off);
+
+        off += 4;
+
+        long globalTime = UNSAFE.getLong(arr, off);
+
+        off += 8;
+
+        long order = UNSAFE.getLong(arr, off);
+
+        off += 8;
+
+        GridCacheVersion ver = new GridCacheVersion(topVer, nodeOrderDrId, globalTime, order);
+
+        if (verEx) {
+            topVer = UNSAFE.getInt(arr, off);
+
+            off += 4;
+
+            nodeOrderDrId = UNSAFE.getInt(arr, off);
+
+            off += 4;
+
+            globalTime = UNSAFE.getLong(arr, off);
+
+            off += 8;
+
+            order = UNSAFE.getLong(arr, off);
+
+            ver = new GridCacheVersionEx(topVer, nodeOrderDrId, globalTime, order, ver);
+        }
+
+        return ver;
+    }
+
+    /**
+     * @param ptr Address.
+     * @param size Size.
+     * @return Bytes.
+     */
+    public static byte[] copyMemory(long ptr, int size) {
+        byte[] res = new byte[size];
+
+        UNSAFE.copyMemory(null, ptr, res, BYTE_ARRAY_DATA_OFFSET, size);
+
+        return res;
+    }
+
+    /**
+     * Returns a capacity that is sufficient to keep the map from being resized as
+     * long as it grows no larger than expSize and the load factor is >= its
+     * default (0.75).
+     *
+     * Copy pasted from guava. See com.google.common.collect.Maps#capacity(int)
+     *
+     * @param expSize Expected size of created map.
+     * @return Capacity.
+     */
+    public static int capacity(int expSize) {
+        if (expSize < 3)
+            return expSize + 1;
+
+        if (expSize < (1 << 30))
+            return expSize + expSize / 3;
+
+        return Integer.MAX_VALUE; // any large value
+    }
+
+    /**
+     * Creates new {@link HashMap} with expected size.
+     *
+     * @param expSize Expected size of created map.
+     * @param <K> Type of map keys.
+     * @param <V> Type of map values.
+     * @return New map.
+     */
+    public static <K, V> HashMap<K, V> newHashMap(int expSize) {
+        return new HashMap<>(capacity(expSize));
+    }
+
+    /**
+     * Creates new {@link LinkedHashMap} with expected size.
+     *
+     * @param expSize Expected size of created map.
+     * @param <K> Type of map keys.
+     * @param <V> Type of map values.
+     * @return New map.
+     */
+    public static <K, V> LinkedHashMap<K, V> newLinkedHashMap(int expSize) {
+        return new LinkedHashMap<>(capacity(expSize));
+    }
+
+    /**
+     * Creates new {@link HashSet} with expected size.
+     *
+     * @param expSize Expected size of created map.
+     * @param <T> Type of elements.
+     * @return New set.
+     */
+    public static <T> HashSet<T> newHashSet(int expSize) {
+        return new HashSet<>(capacity(expSize));
+    }
+
+    /**
+     * Creates new {@link LinkedHashSet} with expected size.
+     *
+     * @param expSize Expected size of created map.
+     * @param <T> Type of elements.
+     * @return New set.
+     */
+    public static <T> LinkedHashSet<T> newLinkedHashSet(int expSize) {
+        return new LinkedHashSet<>(capacity(expSize));
+    }
+
+    /**
+     * Returns comparator that sorts remote node addresses. If remote node resides on the same host, then put
+     * loopback addresses first, last otherwise.
+     *
+     * @param sameHost {@code True} if remote node resides on the same host, {@code false} otherwise.
+     * @return Comparator.
+     */
+    public static Comparator<InetSocketAddress> inetAddressesComparator(final boolean sameHost) {
+        return new Comparator<InetSocketAddress>() {
+            @Override public int compare(InetSocketAddress addr1, InetSocketAddress addr2) {
+                if (addr1.isUnresolved() && addr2.isUnresolved())
+                    return 0;
+
+                if (addr1.isUnresolved() || addr2.isUnresolved())
+                    return addr1.isUnresolved() ? 1 : -1;
+
+                boolean addr1Loopback = addr1.getAddress().isLoopbackAddress();
+
+                // No need to reorder.
+                if (addr1Loopback == addr2.getAddress().isLoopbackAddress())
+                    return 0;
+
+                if (sameHost)
+                    return addr1Loopback ? -1 : 1;
+                else
+                    return addr1Loopback ? 1 : -1;
+            }
+        };
+    }
+
+    /**
+     * Finds a method in the class and it parents.
+     *
+     * Method.getMethod() does not return non-public method,
+     * Method.getDeclaratedMethod() does not look at parent classes.
+     *
+     * @param cls The class to search,
+     * @param name Name of the method.
+     * @param paramTypes Method parameters.
+     * @return Method or {@code null}
+     */
+    @Nullable public static Method findNonPublicMethod(Class<?> cls, String name, Class<?>... paramTypes) {
+        while (cls != null) {
+            try {
+                Method mtd = cls.getDeclaredMethod(name, paramTypes);
+
+                if (mtd.getReturnType() != void.class) {
+                    mtd.setAccessible(true);
+
+                    return mtd;
+                }
+            }
+            catch (NoSuchMethodException ignored) {
+                // No-op.
+            }
+
+            cls = cls.getSuperclass();
+        }
+
+        return null;
     }
 }
