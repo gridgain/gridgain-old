@@ -9,9 +9,14 @@
 
 package org.gridgain.grid.kernal.visor.cmd;
 
+import org.gridgain.grid.*;
+import org.gridgain.grid.compute.*;
+import org.gridgain.grid.logger.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
+import java.text.*;
 import java.util.*;
 
 import static java.lang.System.*;
@@ -22,6 +27,9 @@ import static java.lang.System.*;
 public class VisorTaskUtils {
     /** Default substitute for {@code null} names. */
     private static final String DFLT_EMPTY_NAME = "<default>";
+
+    /** Debug date format. */
+    private static final SimpleDateFormat DEBUG_DATE_FMT = new SimpleDateFormat("HH:mm:ss,SSS");
 
     /**
      * @param name Grid-style nullable name.
@@ -190,5 +198,48 @@ public class VisorTaskUtils {
         String sysProp = getProperty(propName);
 
         return (sysProp != null && !sysProp.isEmpty()) ? Boolean.getBoolean(sysProp) : dflt;
+    }
+
+    private static void log0(@Nullable GridLogger log, long time, String msg) {
+        msg = String.format("<%s> %s", Thread.currentThread().getName(), msg);
+
+        if (log != null) {
+            if (log.isDebugEnabled())
+                log.debug(msg);
+            else
+                log.warning(msg);
+        }
+
+        X.println("[" + DEBUG_DATE_FMT.format(time) + "]" + msg);
+    }
+
+    public static long logStartTask(@Nullable GridLogger log, GridComputeTask task) {
+        long time = U.currentTimeMillis();
+
+        log0(log, time, "Visor STARTED task:" + U.compact(task.getClass().getName()));
+
+        return time;
+    }
+
+    public static long logTaskMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, Collection<GridNode> nodes) {
+        long time = U.currentTimeMillis();
+
+        log0(log, time, "Visor MAPPED task: " + U.compact(clazz.getName()) + ", " + U.toShortString(nodes));
+
+        return time;
+    }
+
+    public static void logStartReduceTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
+        long end = U.currentTimeMillis();
+
+        log0(log, end,
+            String.format("Visor START REDUCE task: %s, duration:%d ms", U.compact(clazz.getName()), (end - start)));
+    }
+
+    public static void logFinishTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
+        long end = U.currentTimeMillis();
+
+        log0(log, end,
+            String.format("Visor FINISHED task: %s, duration:%d ms", U.compact(clazz.getName()), (end - start)));
     }
 }
