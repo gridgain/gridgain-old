@@ -829,6 +829,8 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
                         for (ListIterator<GridDhtCacheEntry<K, V>> it = dhtMapping.listIterator(); it.hasNext();) {
                             GridDhtCacheEntry<K, V> e = it.next();
 
+                            e.unswap(true, false);
+
                             boolean invalidateRdr = e.readerId(n.id()) != null;
 
                             req.addDhtKey(

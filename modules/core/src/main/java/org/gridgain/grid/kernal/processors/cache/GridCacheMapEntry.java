@@ -275,6 +275,14 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
         if (!isOffHeapValuesOnly()) {
             if (valBytes != null)
                 return GridCacheValueBytes.marshaled(valBytes);
+
+            try {
+                if (valPtr != 0 && cctx.offheapTiered())
+                    return offheapValueBytes();
+            }
+            catch (GridException e) {
+                throw new GridRuntimeException(e);
+            }
         }
         else {
             if (valPtr != 0) {

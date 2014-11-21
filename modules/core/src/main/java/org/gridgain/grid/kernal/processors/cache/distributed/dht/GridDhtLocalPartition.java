@@ -528,15 +528,17 @@ public class GridDhtLocalPartition<K, V> implements Comparable<GridDhtLocalParti
         try {
             GridCloseableIterator<Map.Entry<byte[], GridCacheSwapEntry<V>>> it = cctx.swap().iterator(id, false);
 
-            // We can safely remove these values because no entries will be created for evicted partition.
-            while (it.hasNext()) {
-                Map.Entry<byte[], GridCacheSwapEntry<V>> entry = it.next();
+            if (it != null) {
+                // We can safely remove these values because no entries will be created for evicted partition.
+                while (it.hasNext()) {
+                    Map.Entry<byte[], GridCacheSwapEntry<V>> entry = it.next();
 
-                byte[] keyBytes = entry.getKey();
+                    byte[] keyBytes = entry.getKey();
 
-                K key = cctx.marshaller().unmarshal(keyBytes, cctx.deploy().globalLoader());
+                    K key = cctx.marshaller().unmarshal(keyBytes, cctx.deploy().globalLoader());
 
-                cctx.swap().remove(key, keyBytes);
+                    cctx.swap().remove(key, keyBytes);
+                }
             }
         }
         catch (GridException e) {
