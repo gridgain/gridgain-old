@@ -515,8 +515,6 @@ public class GridDhtLocalPartition<K, V> implements Comparable<GridDhtLocalParti
                 U.error(log, "Failed to clear cache entry for evicted partition: " + cached, e);
             }
         }
-
-        clearSwap();
     }
 
     /**
