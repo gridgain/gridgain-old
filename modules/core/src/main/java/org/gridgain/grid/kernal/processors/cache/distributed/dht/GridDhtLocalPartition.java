@@ -15,6 +15,7 @@ import org.gridgain.grid.kernal.processors.cache.distributed.dht.preloader.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.future.*;
+import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.tostring.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -418,6 +419,8 @@ public class GridDhtLocalPartition<K, V> implements Comparable<GridDhtLocalParti
 
             cctx.dataStructures().onPartitionEvicted(id);
 
+            clearSwap();
+
             rent.onDone();
 
             ((GridDhtPreloader<K, V>)cctx.preloader()).onPartitionEvicted(this, updateSeq);
@@ -446,6 +449,8 @@ public class GridDhtLocalPartition<K, V> implements Comparable<GridDhtLocalParti
         if (map.isEmpty() && state.compareAndSet(RENTING, EVICTED, 0, 0)) {
             if (log.isDebugEnabled())
                 log.debug("Evicted partition: " + this);
+
+            clearSwap();
 
             if (cctx.isDrEnabled())
                 cctx.dr().partitionEvicted(id);
@@ -509,6 +514,33 @@ public class GridDhtLocalPartition<K, V> implements Comparable<GridDhtLocalParti
             catch (GridException e) {
                 U.error(log, "Failed to clear cache entry for evicted partition: " + cached, e);
             }
+        }
+
+        clearSwap();
+    }
+
+    /**
+     * Clears swap entries for evicted partition.
+     */
+    private void clearSwap() {
+        assert state() == EVICTED;
+
+        try {
+            GridCloseableIterator<Map.Entry<byte[], GridCacheSwapEntry<V>>> it = cctx.swap().iterator(id, false);
+
+            // We can safely remove these values because no entries will be created for evicted partition.
+            while (it.hasNext()) {
+                Map.Entry<byte[], GridCacheSwapEntry<V>> entry = it.next();
+
+                byte[] keyBytes = entry.getKey();
+
+                K key = cctx.marshaller().unmarshal(keyBytes, cctx.deploy().globalLoader());
+
+                cctx.swap().remove(key, keyBytes);
+            }
+        }
+        catch (GridException e) {
+            U.error(log, "Failed to clear swap for evicted partition: " + this, e);
         }
     }
 

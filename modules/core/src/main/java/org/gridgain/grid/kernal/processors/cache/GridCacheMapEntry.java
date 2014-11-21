@@ -207,6 +207,8 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
         if (!isOffHeapValuesOnly()) {
             this.val = val;
             this.valBytes = isStoreValueBytes() ? valBytes : null;
+
+            valPtr = 0;
         }
         else {
             try {
@@ -511,6 +513,10 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                         // Set unswapped value.
                         update(val, e.valueBytes(), e.expireTime(), e.ttl(), e.version());
 
+                        // Must update valPtr again since update() will reset it.
+                        if (cctx.offheapTiered() && e.offheapPointer() > 0)
+                            valPtr = e.offheapPointer();
+
                         return val;
                     }
                     else
@@ -526,7 +532,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
      * @throws GridException If failed.
      */
     private void swap() throws GridException {
-        if (cctx.isSwapOrOffheapEnabled() && !deletedUnlocked() && hasValueUnlocked()) {
+        if (cctx.isSwapOrOffheapEnabled() && !deletedUnlocked() && hasValueUnlocked() && !detached()) {
             assert Thread.holdsLock(this);
 
             long expireTime = expireTimeExtras();
