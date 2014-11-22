@@ -546,10 +546,9 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
             long expireTime = expireTimeExtras();
 
             if (expireTime > 0 && U.currentTimeMillis() >= expireTime) { // Don't swap entry if it's expired.
-                if (cctx.offheapTiered() && valPtr > 0) {
-                    boolean rmv = cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
-
-                    assert rmv;
+                // Entry might have been updated.
+                if (cctx.offheapTiered()) {
+                    cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     valPtr = 0;
                 }
@@ -1321,14 +1320,14 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                 // can be updated without actually holding entry lock.
                 clearIndex(old);
 
+                boolean hasValPtr = valPtr != 0;
+
                 update(null, null, 0, 0, newVer);
 
-                if (cctx.offheapTiered() && valPtr > 0) {
+                if (cctx.offheapTiered() && hasValPtr) {
                     boolean rmv = cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     assert rmv;
-
-                    valPtr = 0;
                 }
 
                 if (cctx.deferredDelete() && !detached() && !isInternal()) {
@@ -1986,15 +1985,15 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
                 enqueueVer = newVer;
 
+                boolean hasValPtr = valPtr != 0;
+
                 // Clear value on backup. Entry will be removed from cache when it got evicted from queue.
                 update(null, null, 0, 0, newVer);
 
-                if (cctx.offheapTiered() && valPtr != 0) {
+                if (cctx.offheapTiered() && hasValPtr) {
                     boolean rmv = cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     assert rmv;
-
-                    valPtr = 0;
                 }
 
                 clearReaders();
