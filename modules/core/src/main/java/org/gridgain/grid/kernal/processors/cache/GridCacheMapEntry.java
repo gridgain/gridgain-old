@@ -954,8 +954,13 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                         // Update indexes before actual write to entry.
                         updateIndex(ret, null, expTime, nextVer, prevVal);
 
+                    boolean hadValPtr = valPtr != 0;
+
                     // Don't change version for read-through.
                     update(ret, null, expTime, ttl, nextVer);
+
+                    if (hadValPtr && cctx.offheapTiered())
+                        cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     if (cctx.deferredDelete() && deletedUnlocked() && !isInternal() && !detached())
                         deletedUnlocked(false);
@@ -4188,6 +4193,6 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
     /** {@inheritDoc} */
     @Override public synchronized String toString() {
-        return S.toString(GridCacheMapEntry.class, this);
+        return S.toString(GridCacheMapEntry.class, this, "hc", System.identityHashCode(this));
     }
 }
