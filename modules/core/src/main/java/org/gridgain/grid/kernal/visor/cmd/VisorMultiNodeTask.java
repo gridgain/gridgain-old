@@ -48,7 +48,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         assert arg != null;
         assert arg.get1() != null;
 
-        start = logStartTask(g.log(), this);
+        start = logStartTask(g.log(), getClass());
 
         Set<UUID> nodeIds = arg.get1();
         taskArg = arg.get2();

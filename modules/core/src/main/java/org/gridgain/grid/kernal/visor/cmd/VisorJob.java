@@ -18,15 +18,14 @@ import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
+import static org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
+
 /**
  * Base class for Visor jobs.
  */
 public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @GridInstanceResource
     protected GridEx g;
-
-    @GridLoggerResource
-    protected GridLogger log;
 
     /**
      * Create job with specified argument.
@@ -41,14 +40,11 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @Nullable @Override public Object execute() throws GridException {
         A arg = argument(0);
 
-        long start = U.currentTimeMillis();
+        long start = logStartJob(g.log(), getClass());
 
         R result = run(arg);
 
-        long end = U.currentTimeMillis();
-
-        if (g.log().isDebugEnabled())
-            g.log().debug("Visor job=" + U.compact(getClass().getName()) + ", duration=" + (end - start));
+        logFinishJob(g.log(), getClass(), start);
 
         return result;
     }

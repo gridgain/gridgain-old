@@ -48,15 +48,17 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         assert arg != null;
         assert arg.get1() != null;
 
+        start = logStartTask(g.log(), getClass());
+
         taskArg = arg.get2();
 
         Map<GridComputeJob, GridNode> map = new HashMap<>();
 
-        start = U.currentTimeMillis();
-
         // Collect data from ALL nodes.
         for (GridNode node : g.nodes())
             map.put(job(taskArg), node);
+
+        logTaskMapped(g.log(), getClass(), map.values());
 
         return map;
     }
