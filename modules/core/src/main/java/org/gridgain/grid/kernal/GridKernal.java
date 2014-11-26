@@ -986,6 +986,22 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                             sysPoolQSize = exec.getQueue().size();
                         }
 
+                        int mgmtPoolActiveThreads = 0;
+                        int mgmtPoolIdleThreads = 0;
+                        int mgmtPoolQSize = 0;
+
+                        ExecutorService mgmtExec = cfg.getManagementExecutorService();
+
+                        if (mgmtExec instanceof ThreadPoolExecutor) {
+                            ThreadPoolExecutor exec = (ThreadPoolExecutor)sysExec;
+
+                            int poolSize = exec.getPoolSize();
+
+                            mgmtPoolActiveThreads = Math.min(poolSize, exec.getActiveCount());
+                            mgmtPoolIdleThreads = poolSize - mgmtPoolActiveThreads;
+                            mgmtPoolQSize = exec.getQueue().size();
+                        }
+
                         String msg = NL +
                             "Metrics for local node (to disable set 'metricsLogFrequency' to 0)" + NL +
                             "    ^-- H/N/C [hosts=" + hosts + ", nodes=" + nodes + ", CPUs=" + cpus + "]" + NL +
@@ -997,6 +1013,8 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                                 pubPoolIdleThreads + ", qSize=" + pubPoolQSize + "]" + NL +
                             "    ^-- System thread pool [active=" + sysPoolActiveThreads + ", idle=" +
                                 sysPoolIdleThreads + ", qSize=" + sysPoolQSize + "]" + NL +
+                            "    ^-- Management thread pool [active=" + mgmtPoolActiveThreads + ", idle=" +
+                                mgmtPoolIdleThreads + ", qSize=" + mgmtPoolQSize + "]" + NL +
                             "    ^-- Outbound messages queue [size=" + m.getOutboundMessagesQueueSize() + "]";
 
                         log.info(msg);

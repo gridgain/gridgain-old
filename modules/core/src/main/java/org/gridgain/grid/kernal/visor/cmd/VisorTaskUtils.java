@@ -228,12 +228,8 @@ public class VisorTaskUtils {
             String.format("FINISHED: %s, duration:%d ms", clazz.getSimpleName(), (end - start)));
     }
 
-    public static long logStartTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz) {
-        long time = U.currentTimeMillis();
-
-        log0(log, time, "STARTED : " + clazz.getSimpleName());
-
-        return time;
+    public static void logStartTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
+        log0(log, start, "STARTED : " + clazz.getSimpleName());
     }
 
     public static long logTaskMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, Collection<GridNode> nodes) {

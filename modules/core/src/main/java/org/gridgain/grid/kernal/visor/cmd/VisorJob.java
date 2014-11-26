@@ -12,10 +12,7 @@ package org.gridgain.grid.kernal.visor.cmd;
 import org.gridgain.grid.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
-import org.gridgain.grid.logger.*;
 import org.gridgain.grid.resources.*;
-import org.gridgain.grid.util.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import static org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;

@@ -48,7 +48,13 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         assert arg != null;
         assert arg.get1() != null;
 
-        start = logStartTask(g.log(), getClass());
+        start = U.currentTimeMillis();
+
+        debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
+            atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, false);
+
+        if (debug.get())
+            logStartTask(g.log(), getClass(), start);
 
         taskArg = arg.get2();
 
@@ -58,7 +64,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         for (GridNode node : g.nodes())
             map.put(job(taskArg), node);
 
-        logTaskMapped(g.log(), getClass(), map.values());
+        if (debug.get())
+            logTaskMapped(g.log(), getClass(), map.values());
 
         return map;
     }

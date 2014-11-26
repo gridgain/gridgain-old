@@ -10,11 +10,14 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.kernal.visor.gui.tasks.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.resources.*;
 import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import static org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
@@ -34,6 +37,9 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
+    /** Task debug. */
+    protected GridCacheAtomicReference<Boolean> debug;
+
     protected long start;
 
     /**
@@ -48,7 +54,13 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         assert arg != null;
         assert arg.get1() != null;
 
-        start = logStartTask(g.log(), getClass());
+        debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
+            atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, false);
+
+        start = U.currentTimeMillis();
+
+        if (debug.get())
+            logStartTask(g.log(), getClass(), start);
 
         Set<UUID> nodeIds = arg.get1();
         taskArg = arg.get2();
@@ -59,7 +71,8 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
             if (nodeIds.contains(node.id()))
                 map.put(job(taskArg), node);
 
-        logTaskMapped(g.log(), getClass(), map.values());
+        if (debug.get())
+            logTaskMapped(g.log(), getClass(), map.values());
 
         return map;
     }
@@ -76,11 +89,13 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /** {@inheritDoc} */
     @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
-        logStartReduceTask(g.log(), getClass(), start);
+        if (debug.get())
+            logStartReduceTask(g.log(), getClass(), start);
 
         R result = reduce0(results);
 
-        logFinishTask(g.log(), getClass(), start);
+        if (debug.get())
+            logFinishTask(g.log(), getClass(), start);
 
         return result;
     }
