@@ -37,6 +37,8 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
+    protected boolean nonDaemon;
+
     /** Task debug. */
     protected GridCacheAtomicReference<Boolean> debug;
 
@@ -54,13 +56,17 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         assert arg != null;
         assert arg.get1() != null;
 
-        debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
-            atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, false);
+        nonDaemon = !g.localNode().isDaemon();
 
-        start = U.currentTimeMillis();
+        if (nonDaemon) {
+            start = U.currentTimeMillis();
 
-        if (debug.get())
-            logStartTask(g.log(), getClass(), start);
+            debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
+                atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
+
+            if (debug.get())
+                logStartTask(g.log(), getClass(), start);
+        }
 
         Set<UUID> nodeIds = arg.get1();
         taskArg = arg.get2();
@@ -71,7 +77,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
             if (nodeIds.contains(node.id()))
                 map.put(job(taskArg), node);
 
-        if (debug.get())
+        if (nonDaemon && debug.get())
             logTaskMapped(g.log(), getClass(), map.values());
 
         return map;
@@ -89,12 +95,12 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /** {@inheritDoc} */
     @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
-        if (debug.get())
+        if (nonDaemon && debug.get())
             logStartReduceTask(g.log(), getClass(), start);
 
         R result = reduce0(results);
 
-        if (debug.get())
+        if (nonDaemon && debug.get())
             logFinishTask(g.log(), getClass(), start);
 
         return result;

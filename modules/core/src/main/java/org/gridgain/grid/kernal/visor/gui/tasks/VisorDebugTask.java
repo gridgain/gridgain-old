@@ -45,7 +45,7 @@ public class VisorDebugTask extends VisorOneNodeTask<Boolean, Boolean> {
         /** {@inheritDoc} */
         @Override protected Boolean run(@Nullable Boolean newVal) throws GridException {
             GridCacheAtomicReference<Boolean> debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
-                atomicReference(VISOR_DEBUG_KEY, false, false);
+                atomicReference(VISOR_DEBUG_KEY, false, true);
 
             boolean expVal = !newVal;
 
