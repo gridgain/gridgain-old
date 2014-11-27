@@ -27,6 +27,10 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @GridInstanceResource
     protected GridEx g;
 
+    protected long start;
+
+    protected boolean debug;
+
     /**
      * Create job with specified argument.
      *
@@ -40,17 +44,17 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @Nullable @Override public Object execute() throws GridException {
         A arg = argument(0);
 
-        GridCacheAtomicReference<Boolean> debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
-            atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
+        debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
+            atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true).get();
 
-        long start = U.currentTimeMillis();
+        start = U.currentTimeMillis();
 
-        if (debug.get())
+        if (debug)
             logStartJob(g.log(), getClass(), start);
 
         R result = run(arg);
 
-        if (debug.get())
+        if (debug)
             logFinishJob(g.log(), getClass(), start);
 
         return result;

@@ -540,6 +540,9 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
             try {
                 for (GridCache cache : g.cachesx()) {
                     res.caches.add(VisorCache.from(g, cache, arg.sample));
+
+                    if (debug)
+                        log(g.log(), "Collected cache: " + cache.name(), getClass(), start);
                 }
             }
             catch(Throwable cachesEx) {
@@ -563,6 +566,9 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                     }
 
                     res.ggfss.add(VisorGgfs.from(ggfs));
+
+                    if (debug)
+                        log(g.log(), "Collected ggfs: " + ggfs.name(), getClass(), start);
                 }
             }
             catch(Throwable ggfssEx) {
@@ -578,6 +584,9 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                 if (cfgs != null) {
                     for (GridStreamerConfiguration cfg : cfgs) {
                         res.streamers.add(VisorStreamer.from(g.streamer(cfg.getName())));
+
+                        if (debug)
+                            log(g.log(), "Collected streamer: " + cfg.getName(), getClass(), start);
                     }
                 }
             }
@@ -619,15 +628,33 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
             events(res, arg);
 
+            if (debug)
+                log(g.log(), "Collected events", getClass(), start);
+
             license(res);
+
+            if (debug)
+                log(g.log(), "Collected license", getClass(), start);
 
             caches(res, arg);
 
+            if (debug)
+                log(g.log(), "Collected caches", getClass(), start);
+
             ggfs(res);
+
+            if (debug)
+                log(g.log(), "Collected ggfs", getClass(), start);
 
             streamers(res);
 
+            if (debug)
+                log(g.log(), "Collected streamers", getClass(), start);
+
             dr(res);
+
+            if (debug)
+                log(g.log(), "Collected dr", getClass(), start);
 
             // TODO: gg-mongo mongo(res);
 

@@ -144,6 +144,12 @@ public class VisorTaskUtils {
         return U.compact(obj.getClass().getName());
     }
 
+    /**
+     * Compact class names.
+     *
+     * @param obj Object for compact.
+     * @return Compacted string.
+     */
     @Nullable public static String compactClass(Object obj) {
         if (obj == null)
             return null;
@@ -239,6 +245,12 @@ public class VisorTaskUtils {
         return sb.toString().trim();
     }
 
+    /**
+     *
+     * @param log Logger.
+     * @param time Time.
+     * @param msg Message.
+     */
     private static void log0(@Nullable GridLogger log, long time, String msg) {
         msg = String.format("%0$30s %s", "<" + Thread.currentThread().getName() + ">", msg);
 
@@ -252,10 +264,24 @@ public class VisorTaskUtils {
             X.println("[" + DEBUG_DATE_FMT.format(time) + "]" + msg);
     }
 
+    /**
+     * Log start job.
+     *
+     * @param log Logger.
+     * @param clazz Job class.
+     * @param start Job start time.
+     */
     public static void logStartJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz, long start) {
         log0(log, start, "STARTED : " + clazz.getSimpleName());
     }
 
+    /**
+     * Log finish job.
+     *
+     * @param log Logger.
+     * @param clazz Job class.
+     * @param start Job start time.
+     */
     public static void logFinishJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz, long start) {
         long end = System.currentTimeMillis();
 
@@ -263,18 +289,36 @@ public class VisorTaskUtils {
             String.format("FINISHED: %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
     }
 
+    /**
+     * Log task started.
+     *
+     * @param log Logger.
+     * @param clazz Task class.
+     * @param start Task start time.
+     */
     public static void logStartTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
         log0(log, start, "STARTED : " + clazz.getSimpleName());
     }
 
-    public static long logTaskMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, Collection<GridNode> nodes) {
-        long time = System.currentTimeMillis();
-
-        log0(log, time, "MAPPED  : " + clazz.getSimpleName() + ", " + U.toShortString(nodes));
-
-        return time;
+    /**
+     * Log task mapped.
+     *
+     * @param log Logger.
+     * @param clazz Task class.
+     * @param nodes Mapped nodes.
+     */
+    public static void logTaskMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz,
+        Collection<GridNode> nodes) {
+        log0(log, System.currentTimeMillis(), "MAPPED  : " + clazz.getSimpleName() + ", " + U.toShortString(nodes));
     }
 
+    /**
+     * Log start reduce task.
+     *
+     * @param log Logger.
+     * @param clazz Task class.
+     * @param start Task start time.
+     */
     public static void logStartReduceTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
         long end = System.currentTimeMillis();
 
@@ -282,10 +326,31 @@ public class VisorTaskUtils {
             String.format("REDUCE  : %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
     }
 
+    /**
+     * Log task finished.
+     *
+     * @param log Logger.
+     * @param clazz Task class.
+     * @param start Task start time.
+     */
     public static void logFinishTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
         long end = System.currentTimeMillis();
 
         log0(log, end,
             String.format("FINISHED: %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
+    }
+
+    /**
+     * Log message.
+     *
+     * @param log Logger.
+     * @param clazz class.
+     * @param start start time.
+     */
+    public static void log(@Nullable GridLogger log, String msg, Class<?> clazz, long start) {
+        long end = System.currentTimeMillis();
+
+        log0(log, end,
+            String.format("%s: %s, duration: %s", msg, clazz.getSimpleName(), formatDuration(end - start)));
     }
 }
