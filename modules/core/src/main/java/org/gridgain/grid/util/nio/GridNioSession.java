@@ -146,4 +146,12 @@ public interface GridNioSession {
      * @return {@code True} if reads are paused.
      */
     public boolean readsPaused();
+
+    public void recoveryReceive(GridRecoveryReceiveData recoveryRcv);
+
+    @Nullable public GridRecoveryReceiveData recoveryReceive();
+
+    public void recoverySend(GridRecoverySendData recoverySnd);
+
+    @Nullable public GridRecoverySendData recoverySend();
 }

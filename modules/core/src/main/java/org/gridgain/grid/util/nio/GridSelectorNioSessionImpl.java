@@ -49,6 +49,12 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     /** Read buffer. */
     private ByteBuffer readBuf;
 
+    /** */
+    private GridRecoverySendData recoverySnd;
+
+    /** */
+    private GridRecoveryReceiveData recoveryRcv;
+
     /**
      * Creates session instance.
      *
@@ -171,9 +177,22 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
 
             if (sem != null && !last.messageThread())
                 sem.release();
+
+            if (recoverySnd != null)
+                recoverySnd.add(last);
         }
 
         return last;
+    }
+
+    /**
+     * @param fut Future.
+     * @return {@code True} if future was removed from queue.
+     */
+    boolean removeFuture(GridNioFuture<?> fut) {
+        assert closed();
+
+        return queue.removeLastOccurrence(fut);
     }
 
     /**
@@ -183,6 +202,22 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
      */
     int writeQueueSize() {
         return queueSize.get();
+    }
+
+    @Override public void recoverySend(GridRecoverySendData recoverySnd) {
+        this.recoverySnd = recoverySnd;
+    }
+
+    @Nullable @Override public GridRecoverySendData recoverySend() {
+        return recoverySnd;
+    }
+
+    @Override public void recoveryReceive(GridRecoveryReceiveData recoveryRcv) {
+        this.recoveryRcv = recoveryRcv;
+    }
+
+    @Nullable @Override public GridRecoveryReceiveData recoveryReceive() {
+        return recoveryRcv;
     }
 
     /** {@inheritDoc} */

@@ -339,6 +339,8 @@ public class GridNioServer<T> {
      * @return Future for operation.
      */
     GridNioFuture<?> send(GridNioSession ses, GridTcpCommunicationMessageAdapter msg) {
+        log.info("Send message: " + msg);
+
         assert ses instanceof GridSelectorNioSessionImpl;
 
         GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
@@ -361,15 +363,35 @@ public class GridNioServer<T> {
         int msgCnt = ses.offerFuture(fut);
 
         if (ses.closed()) {
-            NioOperationFuture<?> fut0;
-
-            // Cleanup as session.close() may have been already finished.
-            while ((fut0 = (NioOperationFuture<?>)ses.pollFuture()) != null)
-                fut0.connectionClosed();
+            if (ses.removeFuture(fut))
+                fut.connectionClosed();
         }
         else if (msgCnt == 1)
             // Change from 0 to 1 means that worker thread should be waken up.
             clientWorkers.get(ses.selectorIndex()).offer(fut);
+    }
+
+    public void resend(GridNioSession ses) {
+        assert ses instanceof GridSelectorNioSessionImpl;
+
+        GridSelectorNioSessionImpl ses0 = (GridSelectorNioSessionImpl)ses;
+
+        GridRecoverySendData recoverySnd = ses0.recoverySend();
+
+        boolean wakeup = false;
+
+        if (recoverySnd != null) {
+            wakeup = !recoverySnd.messages().isEmpty();
+
+            for (GridNioFuture<?> fut : recoverySnd.messages()) {
+                log.info("Recovery resend: " + ((NioOperationFuture)fut).directMessage());
+
+                ses0.offerFuture(fut);
+            }
+        }
+
+        if (wakeup)
+            clientWorkers.get(ses0.selectorIndex()).offer(new NioOperationFuture<>(ses0, NioOperation.REQUIRE_WRITE));
     }
 
     /**
@@ -405,7 +427,7 @@ public class GridNioServer<T> {
         try {
             ch.configureBlocking(false);
 
-            NioOperationFuture<GridNioSession> req = new NioOperationFuture<>(ch, NioOperation.REGISTER, false, meta);
+            NioOperationFuture<GridNioSession> req = new NioOperationFuture<>(ch, false, meta);
 
             offerBalanced(req);
 
@@ -1312,9 +1334,14 @@ public class GridNioServer<T> {
                     readBuf.order(order);
                 }
 
-                final GridSelectorNioSessionImpl ses = new GridSelectorNioSessionImpl(idx, filterChain,
-                    (InetSocketAddress)sockCh.getLocalAddress(), (InetSocketAddress)sockCh.getRemoteAddress(),
-                    req.accepted(), sndQueueLimit, writeBuf, readBuf);
+                final GridSelectorNioSessionImpl ses = new GridSelectorNioSessionImpl(idx,
+                    filterChain,
+                    (InetSocketAddress)sockCh.getLocalAddress(),
+                    (InetSocketAddress)sockCh.getRemoteAddress(),
+                    req.accepted(),
+                    sndQueueLimit,
+                    writeBuf,
+                    readBuf);
 
                 Map<Integer, ?> meta = req.meta();
 
@@ -1417,11 +1444,27 @@ public class GridNioServer<T> {
                 // Since ses is in closed state, no write requests will be added.
                 NioOperationFuture<?> fut = ses.removeMeta(NIO_OPERATION.ordinal());
 
-                if (fut != null)
-                    fut.connectionClosed();
+                GridRecoverySendData sndRecoveryData = ses.recoverySend();
 
-                while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null)
-                    fut.connectionClosed();
+                if (sndRecoveryData != null) {
+                    while (ses.pollFuture() != null) {  // Poll updates recovery data.
+                        // No-op.
+                    }
+
+                    sndRecoveryData.release();
+                }
+                else {
+                    if (fut != null)
+                        fut.connectionClosed();
+
+                    while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null)
+                        fut.connectionClosed();
+                }
+
+                GridRecoveryReceiveData rcvRecoveryData = ses.recoveryReceive();
+
+                if (rcvRecoveryData != null)
+                    rcvRecoveryData.release();
 
                 return true;
             }
@@ -1668,19 +1711,20 @@ public class GridNioServer<T> {
          * @param sockCh Socket channel to register on selector.
          */
         NioOperationFuture(SocketChannel sockCh) {
-            this(sockCh, NioOperation.REGISTER, true, null);
+            this(sockCh, true, null);
         }
 
         /**
          * @param sockCh Socket channel.
-         * @param op Operation.
          * @param accepted {@code True} if socket has been accepted.
          * @param meta Optional meta.
          */
-        NioOperationFuture(SocketChannel sockCh, NioOperation op, boolean accepted,
+        NioOperationFuture(SocketChannel sockCh,
+            boolean accepted,
             @Nullable Map<Integer, ?> meta) {
+            op = NioOperation.REGISTER;
+
             this.sockCh = sockCh;
-            this.op = op;
             this.accepted = accepted;
             this.meta = meta;
         }
