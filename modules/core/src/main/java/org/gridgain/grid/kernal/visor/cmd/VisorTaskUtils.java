@@ -209,16 +209,12 @@ public class VisorTaskUtils {
             else
                 log.warning(msg);
         }
-
-        X.println("[" + DEBUG_DATE_FMT.format(time) + "]" + msg);
+        else
+            X.println("[" + DEBUG_DATE_FMT.format(time) + "]" + msg);
     }
 
-    public static long logStartJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz) {
-        long time = U.currentTimeMillis();
-
-        log0(log, time, "STARTED : " + clazz.getSimpleName());
-
-        return time;
+    public static void logStartJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz, long start) {
+        log0(log, start, "STARTED : " + clazz.getSimpleName());
     }
 
     public static void logFinishJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz, long start) {

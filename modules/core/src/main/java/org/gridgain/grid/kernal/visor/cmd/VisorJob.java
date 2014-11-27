@@ -10,9 +10,12 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.kernal.visor.gui.tasks.*;
 import org.gridgain.grid.resources.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import static org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
@@ -37,11 +40,18 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @Nullable @Override public Object execute() throws GridException {
         A arg = argument(0);
 
-        long start = logStartJob(g.log(), getClass());
+        GridCacheAtomicReference<Boolean> debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
+            atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
+
+        long start = U.currentTimeMillis();
+
+        if (debug.get())
+            logStartJob(g.log(), getClass(), start);
 
         R result = run(arg);
 
-        logFinishJob(g.log(), getClass(), start);
+        if (debug.get())
+            logFinishJob(g.log(), getClass(), start);
 
         return result;
     }

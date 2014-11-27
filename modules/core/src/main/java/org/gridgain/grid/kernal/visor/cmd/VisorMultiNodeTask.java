@@ -37,7 +37,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
-    protected boolean nonDaemon;
+    protected Boolean nonDaemon;
 
     /** Task debug. */
     protected GridCacheAtomicReference<Boolean> debug;
@@ -50,23 +50,36 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
      */
     protected abstract VisorJob<A, J> job(A arg);
 
+    /**
+     *
+     * @return
+     * @throws GridException
+     */
+    protected boolean isDebug() throws GridException {
+        if (nonDaemon == null)
+            nonDaemon = !g.localNode().isDaemon();
+
+        if (nonDaemon) {
+            if (debug == null)
+                debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
+                    atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
+
+            return debug.get();
+        }
+
+        return g.<String, Boolean>nodeLocalMap().get(VisorDebugTask.VISOR_DEBUG_KEY);
+    }
+
     /** {@inheritDoc} */
     @Nullable @Override public Map<? extends GridComputeJob, GridNode> map(List<GridNode> subgrid,
         @Nullable GridBiTuple<Set<UUID>, A> arg) throws GridException {
         assert arg != null;
         assert arg.get1() != null;
 
-        nonDaemon = !g.localNode().isDaemon();
+        start = U.currentTimeMillis();
 
-        if (nonDaemon) {
-            start = U.currentTimeMillis();
-
-            debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
-                atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
-
-            if (debug.get())
-                logStartTask(g.log(), getClass(), start);
-        }
+        if (isDebug())
+            logStartTask(g.log(), getClass(), start);
 
         Set<UUID> nodeIds = arg.get1();
         taskArg = arg.get2();
@@ -77,7 +90,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
             if (nodeIds.contains(node.id()))
                 map.put(job(taskArg), node);
 
-        if (nonDaemon && debug.get())
+        if (isDebug())
             logTaskMapped(g.log(), getClass(), map.values());
 
         return map;
@@ -95,12 +108,12 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /** {@inheritDoc} */
     @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
-        if (nonDaemon && debug.get())
+        if (isDebug())
             logStartReduceTask(g.log(), getClass(), start);
 
         R result = reduce0(results);
 
-        if (nonDaemon && debug.get())
+        if (isDebug())
             logFinishTask(g.log(), getClass(), start);
 
         return result;
