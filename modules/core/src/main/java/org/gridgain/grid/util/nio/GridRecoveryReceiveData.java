@@ -11,6 +11,7 @@ package org.gridgain.grid.util.nio;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
+import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.nio.*;
 
 import java.util.*;
@@ -28,6 +29,9 @@ public class GridRecoveryReceiveData {
     /** */
     private final GridLogger log;
 
+    /** */
+    private GridFutureAdapter<GridCommunicationClient> fut;
+
     public GridRecoveryReceiveData(GridLogger log) {
         this.log = log;
     }
@@ -38,7 +42,7 @@ public class GridRecoveryReceiveData {
     public long messageReceived() {
         rcvCntr++;
 
-        log.info("Recovery received: " + rcvCntr);
+        log.info("Recovery received total: " + rcvCntr);
 
         return rcvCntr;
     }
@@ -47,12 +51,25 @@ public class GridRecoveryReceiveData {
         return rcvCntr;
     }
 
-    public void reserve() throws InterruptedException {
+    public void setFuture(GridFutureAdapter<GridCommunicationClient> fut) throws InterruptedException {
         synchronized (this) {
             while (reserved)
                 wait();
 
+            assert this.fut == null;
+
+            this.fut = fut;
+        }
+    }
+
+    public GridFutureAdapter<GridCommunicationClient> reserve() throws InterruptedException {
+        synchronized (this) {
+            while (fut == null && reserved)
+                wait();
+
             reserved = true;
+
+            return fut;
         }
     }
 
@@ -65,9 +82,9 @@ public class GridRecoveryReceiveData {
 
     public void release() {
         synchronized (this) {
-            assert reserved;
-
             reserved = false;
+
+            fut = null;
 
             notifyAll();
         }

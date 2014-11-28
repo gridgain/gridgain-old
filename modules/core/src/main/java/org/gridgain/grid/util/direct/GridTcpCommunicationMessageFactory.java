@@ -295,8 +295,10 @@ public class GridTcpCommunicationMessageFactory {
     public static GridTcpCommunicationMessageAdapter create(byte type) {
         if (type == GridTcpCommunicationSpi.NODE_ID_MSG_TYPE)
             return new GridTcpCommunicationSpi.NodeIdMessage();
-        else if (type == GridTcpCommunicationSpi.HANDSHAKE_MSG_TYPE)
+        else if (type == GridTcpCommunicationSpi.RECOVERY_LAST_ID_MSG_TYPE)
             return new GridTcpCommunicationSpi.RecoveryLastReceivedMessage();
+        else if (type == GridTcpCommunicationSpi.HANDSHAKE_MSG_TYPE)
+            return new GridTcpCommunicationSpi.HandshakeMessage();
         else
             return create0(type);
     }

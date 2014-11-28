@@ -48,6 +48,9 @@ public class GridTestNode extends GridMetadataAwareAdapter implements GridNode {
     private GridNodeMetrics metrics;
 
     /** */
+    private long order;
+
+    /** */
     public GridTestNode() {
         // No-op.
 
@@ -177,7 +180,14 @@ public class GridTestNode extends GridMetadataAwareAdapter implements GridNode {
 
     /** {@inheritDoc} */
     @Override public long order() {
-        return metrics == null ? -1 : metrics.getStartTime();
+        return order != 0 ? order : (metrics == null ? -1 : metrics.getStartTime());
+    }
+
+    /**
+     * @param order Order.
+     */
+    public void order(long order) {
+        this.order = order;
     }
 
     /** {@inheritDoc} */

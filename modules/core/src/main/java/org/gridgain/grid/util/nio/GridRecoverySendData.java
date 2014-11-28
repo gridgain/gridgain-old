@@ -10,6 +10,7 @@
 package org.gridgain.grid.util.nio;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.logger.*;
 
 import java.util.*;
 
@@ -29,6 +30,16 @@ public class GridRecoverySendData {
     /** */
     private int resend;
 
+    /** */
+    private final GridLogger log;
+
+    /**
+     * @param log Logger.
+     */
+    public GridRecoverySendData(GridLogger log) {
+        this.log = log;
+    }
+
     /**
      * @param fut NIO future.
      */
@@ -43,6 +54,8 @@ public class GridRecoverySendData {
      * @param last ID.
      */
     public void ackReceived(long last) {
+        log.info("Handle ack, cur=" + lastAcked + ", rcvd=" + last + ", msgs=" + msgs.size());
+
         while (lastAcked < last) {
             GridNioFuture<?> fut = msgs.removeFirst();
 
@@ -52,6 +65,8 @@ public class GridRecoverySendData {
 
             lastAcked++;
         }
+
+        log.info("After Handle ack: " + msgs.size());
     }
 
     public void onNodeLeft() {

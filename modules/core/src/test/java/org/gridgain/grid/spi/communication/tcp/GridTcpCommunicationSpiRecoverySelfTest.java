@@ -37,7 +37,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     private static final Map<UUID, Set<UUID>> msgDestMap = new HashMap<>();
 
     /** */
-    protected static final Map<UUID, GridCommunicationSpi<GridTcpCommunicationMessageAdapter>> spis = new LinkedHashMap<>();
+    protected static final List<GridCommunicationSpi<GridTcpCommunicationMessageAdapter>> spis = new ArrayList<>();
 
     /** */
     protected static final List<GridNode> nodes = new ArrayList<>();
@@ -70,8 +70,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
         /** {@inheritDoc} */
         @Override public void onMessage(UUID nodeId, GridTcpCommunicationMessageAdapter msg, GridRunnable msgC) {
-            info("Received test message [locNodeId=" + locNodeId + ", nodeId=" + nodeId +
-                ", msg=" + msg + ']');
+            info("-----------------Received: " + msg);
 
             msgC.run();
 
@@ -118,13 +117,24 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     public void test() throws Exception {
         info(">>> Starting send to one node test. <<<");
 
-        GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi0 = spis.values().iterator().next();
+        GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi0 = spis.get(0);
+        GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi1 = spis.get(1);
 
         GridNode node0 = nodes.get(0);
 
         GridNode node1 = nodes.get(1);
 
-        spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId++, 0));
+        log.info("Send 0 -> 1");
+
+        for (int i = 0; i < 1; i++)
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId++, 0));
+
+        Thread.sleep(1000);
+
+        log.info("Send 1 -> 0");
+
+        for (int i = 0; i < 1; i++)
+            spi1.sendMessage(node0, new GridTestMessage(node1.id(), msgId++, 0));
 
         Thread.sleep(Long.MAX_VALUE);
         /*
@@ -174,6 +184,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(60_000);
         spi.setTcpNoDelay(true);
+        spi.setDualSocketConnection(false);
 
         return spi;
     }
@@ -201,6 +212,8 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         for (int i = 0; i < getSpiCount(); i++) {
             GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi = getSpi(i);
 
+            GridTestUtils.setFieldValue(spi, "gridName", "grid-" + i);
+
             GridTestResources rsrcs = new GridTestResources();
 
             GridTestNode node = new GridTestNode(rsrcs.getNodeId());
@@ -223,7 +236,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
             spi.spiStart(getTestGridName() + (i + 1));
 
-            spis.put(rsrcs.getNodeId(), spi);
+            spis.add(spi);
 
             spi.onContextInitialized(ctx);
 
@@ -241,7 +254,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
     /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
-        for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis.values()) {
+        for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis) {
             spi.setListener(null);
 
             spi.spiStop();
