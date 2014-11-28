@@ -2113,6 +2113,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                         assert written;
 
+                        buf.flip();
+
                         ch.write(buf);
                     }
                     else
