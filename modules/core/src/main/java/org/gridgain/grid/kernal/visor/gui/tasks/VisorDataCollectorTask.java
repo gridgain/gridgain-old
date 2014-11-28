@@ -51,7 +51,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         start = U.currentTimeMillis();
 
         if (isTaskDebug())
-            logStartTask(g.log(), getClass(), start);
+            logStart(g.log(), getClass(), start);
 
         taskArg = arg.get2();
 
@@ -62,7 +62,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
             map.put(job(taskArg), node);
 
         if (isTaskDebug())
-            logTaskMapped(g.log(), getClass(), map.values());
+            start = logMapped(g.log(), getClass(), map.values());
 
         return map;
     }
@@ -538,11 +538,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         /** Collect caches. */
         private void caches(VisorDataCollectorJobResult res, VisorDataCollectorTaskArg arg) {
             try {
-                long start0 = 0;
-
                 for (GridCache cache : g.cachesx()) {
-                    if (debug)
-                        start0 = U.currentTimeMillis();
+                    long start0 = U.currentTimeMillis();
 
                     res.caches.add(VisorCache.from(g, cache, arg.sample));
 
@@ -561,6 +558,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                 GridGgfsProcessorAdapter ggfsProc = ((GridKernal)g).context().ggfs();
 
                 for (GridGgfs ggfs : ggfsProc.ggfss()) {
+                    long start0 = U.currentTimeMillis();
+
                     Collection<GridIpcServerEndpoint> endPoints = ggfsProc.endpoints(ggfs.name());
 
                     if (endPoints != null) {
@@ -573,7 +572,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                     res.ggfss.add(VisorGgfs.from(ggfs));
 
                     if (debug)
-                        log(g.log(), "Collected ggfs: " + ggfs.name(), getClass(), start);
+                        log(g.log(), "Collected ggfs: " + ggfs.name(), getClass(), start0);
                 }
             }
             catch(Throwable ggfssEx) {
@@ -588,10 +587,12 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
                 if (cfgs != null) {
                     for (GridStreamerConfiguration cfg : cfgs) {
+                        long start0 = U.currentTimeMillis();
+
                         res.streamers.add(VisorStreamer.from(g.streamer(cfg.getName())));
 
                         if (debug)
-                            log(g.log(), "Collected streamer: " + cfg.getName(), getClass(), start);
+                            log(g.log(), "Collected streamer: " + cfg.getName(), getClass(), start0);
                     }
                 }
             }
@@ -631,35 +632,37 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
             res.topologyVersion = g.topologyVersion();
 
+            long start0 = U.currentTimeMillis();
+
             events(res, arg);
 
             if (debug)
-                log(g.log(), "Collected events", getClass(), start);
+                start0 = log(g.log(), "Collected events", getClass(), start0);
 
             license(res);
 
             if (debug)
-                log(g.log(), "Collected license", getClass(), start);
+                start0 = log(g.log(), "Collected license", getClass(), start0);
 
             caches(res, arg);
 
             if (debug)
-                log(g.log(), "Collected caches", getClass(), start);
+                start0 = log(g.log(), "Collected caches", getClass(), start0);
 
             ggfs(res);
 
             if (debug)
-                log(g.log(), "Collected ggfs", getClass(), start);
+                start0 = log(g.log(), "Collected ggfs", getClass(), start0);
 
             streamers(res);
 
             if (debug)
-                log(g.log(), "Collected streamers", getClass(), start);
+                start0 = log(g.log(), "Collected streamers", getClass(), start0);
 
             dr(res);
 
             if (debug)
-                log(g.log(), "Collected dr", getClass(), start);
+                start0 = log(g.log(), "Collected dr", getClass(), start0);
 
             // TODO: gg-mongo mongo(res);
 

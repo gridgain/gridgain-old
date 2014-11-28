@@ -265,39 +265,27 @@ public class VisorTaskUtils {
     }
 
     /**
-     * Log start job.
+     * Log start.
      *
      * @param log Logger.
-     * @param clazz Job class.
-     * @param start Job start time.
+     * @param clazz Class.
+     * @param start Start time.
      */
-    public static void logStartJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz, long start) {
+    public static void logStart(@Nullable GridLogger log, Class<?> clazz, long start) {
         log0(log, start, "STARTED : " + clazz.getSimpleName());
     }
 
     /**
-     * Log finish job.
+     * Log finished.
      *
      * @param log Logger.
-     * @param clazz Job class.
-     * @param start Job start time.
+     * @param clazz Class.
+     * @param start Start time.
      */
-    public static void logFinishJob(@Nullable GridLogger log, Class<? extends VisorJob> clazz, long start) {
-        long end = System.currentTimeMillis();
+    public static void logFinish(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
+        final long end = U.currentTimeMillis();
 
-        log0(log, end,
-            String.format("FINISHED: %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
-    }
-
-    /**
-     * Log task started.
-     *
-     * @param log Logger.
-     * @param clazz Task class.
-     * @param start Task start time.
-     */
-    public static void logStartTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
-        log0(log, start, "STARTED : " + clazz.getSimpleName());
+        log0(log, end, String.format("FINISHED: %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
     }
 
     /**
@@ -307,9 +295,13 @@ public class VisorTaskUtils {
      * @param clazz Task class.
      * @param nodes Mapped nodes.
      */
-    public static void logTaskMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz,
+    public static long logMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz,
         Collection<GridNode> nodes) {
-        log0(log, System.currentTimeMillis(), "MAPPED  : " + clazz.getSimpleName() + ", " + U.toShortString(nodes));
+        final long end = U.currentTimeMillis();
+
+        log0(log, U.currentTimeMillis(), "MAPPED  : " + clazz.getSimpleName() + ", " + U.toShortString(nodes));
+
+        return end;
     }
 
     /**
@@ -319,25 +311,12 @@ public class VisorTaskUtils {
      * @param clazz Task class.
      * @param start Task start time.
      */
-    public static void logStartReduceTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
-        long end = System.currentTimeMillis();
+    public static long logStartReduce(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
+        final long end = U.currentTimeMillis();
 
-        log0(log, end,
-            String.format("REDUCE  : %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
-    }
+        log0(log, end, String.format("REDUCE  : %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
 
-    /**
-     * Log task finished.
-     *
-     * @param log Logger.
-     * @param clazz Task class.
-     * @param start Task start time.
-     */
-    public static void logFinishTask(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
-        long end = System.currentTimeMillis();
-
-        log0(log, end,
-            String.format("FINISHED: %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
+        return end;
     }
 
     /**
@@ -347,10 +326,11 @@ public class VisorTaskUtils {
      * @param clazz class.
      * @param start start time.
      */
-    public static void log(@Nullable GridLogger log, String msg, Class<?> clazz, long start) {
-        long end = System.currentTimeMillis();
+    public static long log(@Nullable GridLogger log, String msg, Class<?> clazz, long start) {
+        final long end = U.currentTimeMillis();
 
-        log0(log, end,
-            String.format("%s: %s, duration: %s", msg, clazz.getSimpleName(), formatDuration(end - start)));
+        log0(log, end, String.format("%s: %s, duration: %s", msg, clazz.getSimpleName(), formatDuration(end - start)));
+
+        return end;
     }
 }

@@ -49,12 +49,12 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
         start = U.currentTimeMillis();
 
         if (debug)
-            logStartJob(g.log(), getClass(), start);
+            logStart(g.log(), getClass(), start);
 
         R result = run(arg);
 
         if (debug)
-            logFinishJob(g.log(), getClass(), start);
+            logFinish(g.log(), getClass(), start);
 
         return result;
     }
