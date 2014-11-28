@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.visor.gui.tasks.*;

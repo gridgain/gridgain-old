@@ -105,7 +105,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     }
 
     /** {@inheritDoc} */
-    @Nullable public abstract R reduce0(List<GridComputeJobResult> results) throws GridException;
+    @Nullable protected abstract R reduce0(List<GridComputeJobResult> results) throws GridException;
 
     /** {@inheritDoc} */
     @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {

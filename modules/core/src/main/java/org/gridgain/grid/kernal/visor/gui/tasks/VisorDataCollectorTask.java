@@ -538,11 +538,16 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         /** Collect caches. */
         private void caches(VisorDataCollectorJobResult res, VisorDataCollectorTaskArg arg) {
             try {
+                long start0 = 0;
+
                 for (GridCache cache : g.cachesx()) {
+                    if (debug)
+                        start0 = U.currentTimeMillis();
+
                     res.caches.add(VisorCache.from(g, cache, arg.sample));
 
                     if (debug)
-                        log(g.log(), "Collected cache: " + cache.name(), getClass(), start);
+                        log(g.log(), "Collected cache: " + cache.name(), getClass(), start0);
                 }
             }
             catch(Throwable cachesEx) {
