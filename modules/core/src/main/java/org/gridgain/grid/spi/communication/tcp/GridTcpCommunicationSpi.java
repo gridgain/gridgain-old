@@ -239,9 +239,15 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private final GridNioServerListener<GridTcpCommunicationMessageAdapter> srvLsnr =
         new GridNioServerListenerAdapter<GridTcpCommunicationMessageAdapter>() {
             @Override public void onSessionWriteTimeout(GridNioSession ses) {
-                //log.info("Session write timeout " + ses);
+                LT.warn(log, null, "Communication SPI Session write timed out (consider increasing " +
+                    "'socketWriteTimeout' " + "configuration property) [remoteAddr=" + ses.remoteAddress() +
+                    ", writeTimeout=" + sockWriteTimeout + ']');
 
-                super.onSessionWriteTimeout(ses);
+                if (log.isDebugEnabled())
+                    log.debug("Closing communication SPI session on write timeout [remoteAddr=" + ses.remoteAddress() +
+                        ", writeTimeout=" + sockWriteTimeout + ']');
+
+                ses.close();
             }
 
             @Override public void onSessionIdleTimeout(GridNioSession ses) {
@@ -598,6 +604,12 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
     /** */
     private int recoveryAckCnt = DFLT_RECOVERY_ACK_CNT;
+
+    /** Default socket write timeout. */
+    public static final long DFLT_SOCKET_WRITE_TIMEOUT = 30 * 1000L;
+
+    /** */
+    private long sockWriteTimeout = DFLT_SOCKET_WRITE_TIMEOUT;
 
     /** Shared memory accept worker. */
     private ShmemAcceptWorker shmemAcceptWorker;
@@ -1431,6 +1443,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         .metricsListener(metricsLsnr)
                         .messageWriter(msgWriter)
                         .idleTimeout(idleConnTimeout)
+                        .writeTimeout(sockWriteTimeout)
                         .filters(new GridNioCodecFilter(new GridDirectParser(msgReader), log, true),
                             new GridConnectionBytesVerifyFilter(log))
                         .build();
@@ -1682,6 +1695,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                         if (e instanceof Error)
                             throw (Error)e;
+                        else if (e instanceof GridException)
+                            throw (GridException)e;
                     }
                     finally {
                         clientFuts.remove(nodeId, fut);

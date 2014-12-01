@@ -1903,9 +1903,9 @@ public class GridNioServer<T> {
         /** {@inheritDoc} */
         @Override public GridNioFuture<?> onSessionWrite(GridNioSession ses, Object msg) {
             if (directMode) {
-                boolean sslSystem = sslFilter != null && msg instanceof ByteBuffer;
+                boolean sslSys = sslFilter != null && msg instanceof ByteBuffer;
 
-                if (sslSystem) {
+                if (sslSys) {
                     ConcurrentLinkedDeque8<ByteBuffer> queue = ses.meta(BUF_SSL_SYSTEM_META_KEY);
 
                     queue.offer((ByteBuffer)msg);
