@@ -33,7 +33,7 @@ public class VisorComputeToggleMonitoringTask extends
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
-    @Nullable @Override public Boolean reduce0(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override protected Boolean reduce0(List<GridComputeJobResult> results) throws GridException {
         Collection<Boolean> toggles = new HashSet<>();
 
         for (GridComputeJobResult res: results)

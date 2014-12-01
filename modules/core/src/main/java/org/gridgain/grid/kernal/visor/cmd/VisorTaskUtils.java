@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.compute.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -252,8 +251,6 @@ public class VisorTaskUtils {
      * @param msg Message.
      */
     private static void log0(@Nullable GridLogger log, long time, String msg) {
-        msg = String.format("%0$30s %s", "<" + Thread.currentThread().getName() + ">", msg);
-
         if (log != null) {
             if (log.isDebugEnabled())
                 log.debug(msg);
@@ -261,7 +258,8 @@ public class VisorTaskUtils {
                 log.warning(msg);
         }
         else
-            X.println("[" + DEBUG_DATE_FMT.format(time) + "]" + msg);
+            X.println("[" + DEBUG_DATE_FMT.format(time) + "]" +
+                String.format("%30s %s", "<" + Thread.currentThread().getName() + ">", msg));
     }
 
     /**
@@ -272,7 +270,7 @@ public class VisorTaskUtils {
      * @param start Start time.
      */
     public static void logStart(@Nullable GridLogger log, Class<?> clazz, long start) {
-        log0(log, start, "STARTED : " + clazz.getSimpleName());
+        log0(log, start, "[" + clazz.getSimpleName() + "]: STARTED");
     }
 
     /**
@@ -282,10 +280,10 @@ public class VisorTaskUtils {
      * @param clazz Class.
      * @param start Start time.
      */
-    public static void logFinish(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
+    public static void logFinish(@Nullable GridLogger log, Class<?> clazz, long start) {
         final long end = U.currentTimeMillis();
 
-        log0(log, end, String.format("FINISHED: %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
+        log0(log, end, String.format("[%s]: FINISHED, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
     }
 
     /**
@@ -295,28 +293,9 @@ public class VisorTaskUtils {
      * @param clazz Task class.
      * @param nodes Mapped nodes.
      */
-    public static long logMapped(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz,
-        Collection<GridNode> nodes) {
-        final long end = U.currentTimeMillis();
-
-        log0(log, U.currentTimeMillis(), "MAPPED  : " + clazz.getSimpleName() + ", " + U.toShortString(nodes));
-
-        return end;
-    }
-
-    /**
-     * Log start reduce task.
-     *
-     * @param log Logger.
-     * @param clazz Task class.
-     * @param start Task start time.
-     */
-    public static long logStartReduce(@Nullable GridLogger log, Class<? extends GridComputeTask> clazz, long start) {
-        final long end = U.currentTimeMillis();
-
-        log0(log, end, String.format("REDUCE  : %s, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
-
-        return end;
+    public static void logMapped(@Nullable GridLogger log, Class<?> clazz, Collection<GridNode> nodes) {
+        log0(log, U.currentTimeMillis(),
+            String.format("[%s]: MAPPED: %s", clazz.getSimpleName(), U.toShortString(nodes)));
     }
 
     /**
@@ -329,7 +308,7 @@ public class VisorTaskUtils {
     public static long log(@Nullable GridLogger log, String msg, Class<?> clazz, long start) {
         final long end = U.currentTimeMillis();
 
-        log0(log, end, String.format("%s: %s, duration: %s", msg, clazz.getSimpleName(), formatDuration(end - start)));
+        log0(log, end, String.format("[%s]: %s, duration: %s", clazz.getSimpleName(), msg, formatDuration(end - start)));
 
         return end;
     }

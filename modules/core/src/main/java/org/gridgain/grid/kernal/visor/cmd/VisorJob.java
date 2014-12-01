@@ -26,8 +26,10 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @GridInstanceResource
     protected GridEx g;
 
+    /** Job start time. */
     protected long start;
 
+    /** Debug flag. */
     protected boolean debug;
 
     /**

@@ -50,7 +50,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
         start = U.currentTimeMillis();
 
-        if (isTaskDebug())
+        if (debug())
             logStart(g.log(), getClass(), start);
 
         taskArg = arg.get2();
@@ -61,8 +61,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         for (GridNode node : g.nodes())
             map.put(job(taskArg), node);
 
-        if (isTaskDebug())
-            start = logMapped(g.log(), getClass(), map.values());
+        if (debug())
+            logMapped(g.log(), getClass(), map.values());
 
         return map;
     }
@@ -73,7 +73,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public VisorDataCollectorTaskResult reduce0(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override protected VisorDataCollectorTaskResult reduce0(List<GridComputeJobResult> results) throws GridException {
         VisorDataCollectorTaskResult data = new VisorDataCollectorTaskResult();
 
         for (GridComputeJobResult res : results) {

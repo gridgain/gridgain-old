@@ -37,8 +37,6 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
-    protected Boolean nonDaemon;
-
     /** Task debug. */
     protected GridCacheAtomicReference<Boolean> debug;
 
@@ -51,15 +49,11 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     protected abstract VisorJob<A, J> job(A arg);
 
     /**
-     *
-     * @return
+     * @return {@code true} if debug mode enabled.
      * @throws GridException
      */
-    protected boolean isTaskDebug() throws GridException {
-        if (nonDaemon == null)
-            nonDaemon = !g.localNode().isDaemon();
-
-        if (nonDaemon) {
+    protected boolean debug() throws GridException {
+        if (!g.localNode().isDaemon()) {
             if (debug == null)
                 debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
                     atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
@@ -79,7 +73,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
         start = U.currentTimeMillis();
 
-        if (isTaskDebug())
+        if (debug())
             logStart(g.log(), getClass(), start);
 
         Set<UUID> nodeIds = arg.get1();
@@ -91,8 +85,8 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
             if (nodeIds.contains(node.id()))
                 map.put(job(taskArg), node);
 
-        if (isTaskDebug())
-            start = logMapped(g.log(), getClass(), map.values());
+        if (debug())
+            logMapped(g.log(), getClass(), map.values());
 
         return map;
     }
@@ -109,12 +103,9 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /** {@inheritDoc} */
     @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
-        if (isTaskDebug())
-            start = logStartReduce(g.log(), getClass(), start);
-
         R result = reduce0(results);
 
-        if (isTaskDebug())
+        if (debug())
             logFinish(g.log(), getClass(), start);
 
         return result;
