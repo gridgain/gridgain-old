@@ -307,6 +307,11 @@ public class GridNioFutureImpl<R> extends AbstractQueuedSynchronizer implements 
     }
 
     /** {@inheritDoc} */
+    @Override public boolean skipRecovery() {
+        return false;
+    }
+
+    /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(GridNioFutureImpl.class, this);
     }

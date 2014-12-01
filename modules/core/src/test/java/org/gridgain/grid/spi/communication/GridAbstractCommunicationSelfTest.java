@@ -50,6 +50,9 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
     /** */
     private static final ObjectName mBeanName;
 
+    /**
+     *
+     */
     static {
         GridTcpCommunicationMessageFactory.registerCustom(new GridTcpCommunicationMessageProducer() {
             @Override public GridTcpCommunicationMessageAdapter create(byte type) {
@@ -246,9 +249,13 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
         for (int i = 0; i < getSpiCount(); i++) {
             GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi = getSpi(i);
 
+            GridTestUtils.setFieldValue(spi, "gridName", "grid-" + i);
+
             GridTestResources rsrcs = new GridTestResources(getMBeanServer(i));
 
             GridTestNode node = new GridTestNode(rsrcs.getNodeId());
+
+            node.order(i);
 
             GridSpiTestContext ctx = initSpiContext();
 

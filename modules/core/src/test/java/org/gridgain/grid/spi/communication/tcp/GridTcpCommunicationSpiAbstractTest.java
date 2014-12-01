@@ -10,6 +10,7 @@
 package org.gridgain.grid.spi.communication.tcp;
 
 import org.gridgain.grid.spi.communication.*;
+import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.nio.*;
@@ -29,9 +30,6 @@ abstract class GridTcpCommunicationSpiAbstractTest extends GridAbstractCommunica
     public static final int IDLE_CONN_TIMEOUT = 2000;
 
     /** */
-    private boolean tcpNoDelay;
-
-    /** */
     private final boolean useShmem;
 
     /**
@@ -42,7 +40,7 @@ abstract class GridTcpCommunicationSpiAbstractTest extends GridAbstractCommunica
     }
 
     /** {@inheritDoc} */
-    @Override protected GridCommunicationSpi getSpi(int idx) {
+    @Override protected GridCommunicationSpi<GridTcpCommunicationMessageAdapter> getSpi(int idx) {
         GridTcpCommunicationSpi spi = new GridTcpCommunicationSpi();
 
         if (!useShmem)
@@ -50,9 +48,16 @@ abstract class GridTcpCommunicationSpiAbstractTest extends GridAbstractCommunica
 
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(IDLE_CONN_TIMEOUT);
-        spi.setTcpNoDelay(tcpNoDelay);
+        spi.setTcpNoDelay(tcpNoDelay());
 
         return spi;
+    }
+
+    /**
+     * @return Value of property '{@link GridTcpCommunicationSpi#isTcpNoDelay()}'.
+     */
+    protected boolean tcpNoDelay() {
+        return true;
     }
 
     /** {@inheritDoc} */
@@ -72,15 +77,6 @@ abstract class GridTcpCommunicationSpiAbstractTest extends GridAbstractCommunica
 
             clients.put(UUID.randomUUID(), F.first(clients.values()));
         }
-    }
-
-    /**
-     * @throws Exception If failed.
-     */
-    public void testTcpNoDelay() throws Exception {
-        tcpNoDelay = true;
-
-        super.testSendToManyNodes();
     }
 
     /** {@inheritDoc} */

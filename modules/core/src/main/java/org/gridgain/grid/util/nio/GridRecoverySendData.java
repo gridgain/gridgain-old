@@ -11,6 +11,7 @@ package org.gridgain.grid.util.nio;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
+import org.gridgain.grid.util.typedef.internal.*;
 
 import java.util.*;
 
@@ -44,20 +45,25 @@ public class GridRecoverySendData {
      * @param fut NIO future.
      */
     public void add(GridNioFuture<?> fut) {
-        if (resend == 0)
-            msgs.addLast(fut);
-        else
-            resend--;
+        if (!fut.skipRecovery()) {
+            if (resend == 0)
+                msgs.addLast(fut);
+            else {
+                //log.info("Add skip: " + resend + " " + fut);
+
+                resend--;
+            }
+        }
     }
 
     /**
      * @param last ID.
      */
     public void ackReceived(long last) {
-        log.info("Handle ack, cur=" + lastAcked + ", rcvd=" + last + ", msgs=" + msgs.size());
+        //log.info("Handle ack, cur=" + lastAcked + ", rcvd=" + last + ", msgs=" + msgs.size());
 
         while (lastAcked < last) {
-            GridNioFuture<?> fut = msgs.removeFirst();
+            GridNioFuture<?> fut = msgs.pollFirst();
 
             assert fut != null;
 
@@ -66,12 +72,12 @@ public class GridRecoverySendData {
             lastAcked++;
         }
 
-        log.info("After Handle ack: " + msgs.size());
-    }
+        //log.info("After Handle ack: " + msgs.size());
 
-    public void onNodeLeft() {
-        for (GridNioFuture<?> fut : msgs)
-            ((GridNioFutureImpl)fut).onDone(new GridException("Node left."));
+        /*
+        for (GridNioFuture fut : msgs)
+            log.info("Msg: " + fut);
+            */
     }
 
     /**
@@ -81,7 +87,13 @@ public class GridRecoverySendData {
         return msgs;
     }
 
+    /**
+     * @param last
+     * @throws InterruptedException If interrupted.
+     */
     public void reserve(long last) throws InterruptedException {
+        //log.info("Reserve send data: " + last);
+
         synchronized (this) {
             while (reserved)
                 wait();
@@ -94,6 +106,9 @@ public class GridRecoverySendData {
         resend = msgs.size();
     }
 
+    /**
+     *
+     */
     public void release() {
         synchronized (this) {
             assert reserved;
@@ -102,5 +117,10 @@ public class GridRecoverySendData {
 
             notifyAll();
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return S.toString(GridRecoverySendData.class, this);
     }
 }

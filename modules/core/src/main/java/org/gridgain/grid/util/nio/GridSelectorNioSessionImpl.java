@@ -204,20 +204,40 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
         return queueSize.get();
     }
 
+    /** {@inheritDoc} */
     @Override public void recoverySend(GridRecoverySendData recoverySnd) {
         this.recoverySnd = recoverySnd;
     }
 
+    /** {@inheritDoc} */
     @Nullable @Override public GridRecoverySendData recoverySend() {
         return recoverySnd;
     }
 
+    /** {@inheritDoc} */
     @Override public void recoveryReceive(GridRecoveryReceiveData recoveryRcv) {
         this.recoveryRcv = recoveryRcv;
     }
 
+    /** {@inheritDoc} */
     @Nullable @Override public GridRecoveryReceiveData recoveryReceive() {
         return recoveryRcv;
+    }
+
+    /** {@inheritDoc} */
+    @Override public <T> T addMeta(int key, @Nullable T val) {
+        if (val instanceof GridRecoveryReceiveData) {
+            recoveryRcv = (GridRecoveryReceiveData) val;
+
+            return null;
+        }
+        else if (val instanceof GridRecoverySendData) {
+            recoverySnd = (GridRecoverySendData) val;
+
+            return null;
+        }
+        else
+            return super.addMeta(key, val);
     }
 
     /** {@inheritDoc} */

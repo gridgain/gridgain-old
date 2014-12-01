@@ -167,8 +167,7 @@ public abstract class GridTcpCommunicationSpiMultithreadedSelfTest extends GridS
 
         assertEquals("Invalid listener count", getSpiCount(), lsnrs.size());
 
-        final ConcurrentMap<UUID, ConcurrentLinkedDeque8<GridTestMessage>> msgs =
-            new ConcurrentHashMap<>();
+        final ConcurrentMap<UUID, ConcurrentLinkedDeque8<GridTestMessage>> msgs = new ConcurrentHashMap<>();
 
         final int iterationCnt = 5000;
 
@@ -424,9 +423,13 @@ public abstract class GridTcpCommunicationSpiMultithreadedSelfTest extends GridS
         for (int i = 0; i < getSpiCount(); i++) {
             GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi = newCommunicationSpi();
 
+            GridTestUtils.setFieldValue(spi, "gridName", "grid-" + i);
+
             GridTestResources rsrcs = new GridTestResources(getMBeanServer(i));
 
             GridTestNode node = new GridTestNode(rsrcs.getNodeId());
+
+            node.order(i);
 
             GridSpiTestContext ctx = initSpiContext();
 

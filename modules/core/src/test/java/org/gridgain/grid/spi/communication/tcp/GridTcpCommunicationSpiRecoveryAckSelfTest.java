@@ -15,6 +15,8 @@ import org.gridgain.grid.spi.*;
 import org.gridgain.grid.spi.communication.*;
 import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.lang.*;
+import org.gridgain.grid.util.nio.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
@@ -27,7 +29,7 @@ import java.util.concurrent.atomic.*;
  *
  */
 @GridSpiTest(spi = GridTcpCommunicationSpi.class, group = "Communication SPI")
-public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunicationSpi> extends GridSpiAbstractTest<T> {
+public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicationSpi> extends GridSpiAbstractTest<T> {
     /** */
     private static final Collection<GridTestResources> spiRsrcs = new ArrayList<>();
 
@@ -55,12 +57,6 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     @SuppressWarnings({"deprecation"})
     private class TestListener implements GridCommunicationListener<GridTcpCommunicationMessageAdapter> {
         /** */
-        private boolean block;
-
-        /** */
-        private CountDownLatch blockLatch;
-
-        /** */
         private Set<Long> msgIds = new HashSet<>();
 
         /** */
@@ -79,52 +75,6 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
             rcvCnt.incrementAndGet();
 
             msgC.run();
-
-            try {
-                synchronized (this) {
-                    while (block) {
-                        info("Test listener blocks.");
-
-                        assert blockLatch != null;
-
-                        blockLatch.countDown();
-
-                        wait();
-
-                        if (block)
-                            continue;
-
-                        info("Test listener throws exception.");
-
-                        throw new RuntimeException("Test exception.");
-                    }
-                }
-            }
-            catch (InterruptedException e) {
-                fail("Unexpected error: " + e);
-            }
-        }
-
-        /**
-         *
-         */
-        void block() {
-            synchronized (this) {
-                block = true;
-
-                blockLatch = new CountDownLatch(1);
-            }
-        }
-
-        /**
-         *
-         */
-        void unblock() {
-            synchronized (this) {
-                block = false;
-
-                notifyAll();
-            }
         }
 
         /** {@inheritDoc} */
@@ -143,111 +93,117 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     /**
      * @throws Exception If failed.
      */
-    public void test() throws Exception {
-        // Test listener throws exception and stops selector thread, so must restart SPI.
-        for (int i = 0; i < 10; i++) {
-            log.info("Creating SPIs: " + i);
-
-            createSpis();
-
-            try {
-                checkResend();
-            }
-            finally {
-                stopSpis();
-            }
-        }
+    public void _testAckOnIdle() throws Exception {
+        checkAck(10, 2000, 9);
     }
 
     /**
      * @throws Exception If failed.
      */
-    @SuppressWarnings("BusyWait")
-    private void checkResend() throws Exception {
-        GridTcpCommunicationSpi spi0 = spis.get(0);
-        GridTcpCommunicationSpi spi1 = spis.get(1);
+    public void testAckOnCount() throws Exception {
+        checkAck(10, 60_000, 10);
+    }
 
-        final TestListener lsnr1 = (TestListener)spi1.getListener();
+    /**
+     * @param ackCnt Recovery acknowledgement count.
+     * @param idleTimeout Idle connection timeout.
+     * @param msgPerIter Messages per iteration.
+     * @throws Exception If failed.
+     */
+    private void checkAck(int ackCnt, int idleTimeout, int msgPerIter) throws Exception {
+        createSpis(ackCnt, idleTimeout);
 
-        GridNode node0 = nodes.get(0);
+        try {
+            GridTcpCommunicationSpi spi0 = spis.get(0);
+            GridTcpCommunicationSpi spi1 = spis.get(1);
 
-        GridNode node1 = nodes.get(1);
+            GridNode node0 = nodes.get(0);
 
-        int msgId = 0;
+            GridNode node1 = nodes.get(1);
 
-        for (int i = 0; i < 5; i++) {
-            log.info("Iteration: " + i);
+            int msgId = 0;
 
-            lsnr1.block();
+            int expMsgs = 0;
 
-            for (int j = 0; j < 10; j++)
-                spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+            for (int i = 0; i < 5; i++) {
+                info("Iteration: " + i);
 
-            lsnr1.blockLatch.await();
+                for (int j = 0; j < msgPerIter; j++) {
+                    spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
 
-            lsnr1.unblock();
-
-            Thread.sleep(500);
-
-            int errCnt = 0;
-
-            int msgs = 0;
-
-            while (true) {
-                try {
-                    int id = msgId + 1;
-
-                    spi0.sendMessage(node1, new GridTestMessage(node0.id(), id, 0));
-
-                    msgId++;
-
-                    msgs++;
-
-                    if (msgs == 10)
-                        break;
+                    spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
                 }
-                catch (GridSpiException e) {
-                    errCnt++;
 
-                    if (errCnt > 10)
-                        fail("Failed to send message: " + e);
+                expMsgs += msgPerIter;
+
+                for (GridTcpCommunicationSpi spi : spis) {
+                    GridNioServer srv = U.field(spi, "nioSrvr");
+
+                    Collection<GridNioSession> sessions = U.field(srv, "sessions");
+
+                    assertFalse(sessions.isEmpty());
+
+                    boolean found = false;
+
+                    for (GridNioSession ses : sessions) {
+                        final GridRecoverySendData snd = ses.recoverySend();
+
+                        if (snd != null) {
+                            found = true;
+
+                            GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                                @Override public boolean apply() {
+                                    log.info("Check: " + snd.messages().size());
+
+                                    return snd.messages().isEmpty();
+                                }
+                            }, 10_000);
+
+                            assertEquals("Unexpected messages: " + snd.messages(), 0, snd.messages().size());
+
+                            break;
+                        }
+                    }
+
+                    assertTrue(found);
+                }
+
+                for (GridTcpCommunicationSpi spi : spis) {
+                    TestListener lsnr = (TestListener)spi.getListener();
+
+                    assertEquals(expMsgs, lsnr.rcvCnt.get());
                 }
             }
-
-            final int expMsgs = (i + 1) * 20;
-
-            GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                @Override public boolean apply() {
-                    return lsnr1.rcvCnt.get() >= expMsgs;
-                }
-            }, 5000);
-
-            assertEquals(expMsgs, lsnr1.rcvCnt.get());
+        }
+        finally {
+            stopSpis();
         }
     }
 
     /**
-     * @param idx SPI index.
+     * @param ackCnt Recovery acknowledgement count.
+     * @param idleTimeout Idle connection timeout.
      * @return SPI instance.
      */
-    protected GridTcpCommunicationSpi getSpi(int idx) {
+    protected GridTcpCommunicationSpi getSpi(int ackCnt, int idleTimeout) {
         GridTcpCommunicationSpi spi = new GridTcpCommunicationSpi();
 
         spi.setSharedMemoryPort(-1);
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
-        spi.setIdleConnectionTimeout(10_000);
+        spi.setIdleConnectionTimeout(idleTimeout);
         spi.setTcpNoDelay(true);
         spi.setDualSocketConnection(dualSocket());
-        spi.setRecoveryAcknowledgementCount(5);
-        spi.setSelectorsCount(10);
+        spi.setRecoveryAcknowledgementCount(ackCnt);
 
         return spi;
     }
 
     /**
+     * @param ackCnt Recovery acknowledgement count.
+     * @param idleTimeout Idle connection timeout.
      * @throws Exception If failed.
      */
-    private void createSpis() throws Exception {
+    private void createSpis(int ackCnt, int idleTimeout) throws Exception {
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -255,7 +211,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         Map<GridNode, GridSpiTestContext> ctxs = new HashMap<>();
 
         for (int i = 0; i < SPI_CNT; i++) {
-            GridTcpCommunicationSpi spi = getSpi(i);
+            GridTcpCommunicationSpi spi = getSpi(ackCnt, idleTimeout);
 
             GridTestUtils.setFieldValue(spi, "gridName", "grid-" + i);
 

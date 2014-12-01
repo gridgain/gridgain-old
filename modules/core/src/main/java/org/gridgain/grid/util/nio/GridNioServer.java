@@ -339,7 +339,7 @@ public class GridNioServer<T> {
      * @return Future for operation.
      */
     GridNioFuture<?> send(GridNioSession ses, GridTcpCommunicationMessageAdapter msg) {
-        log.info("Send message: " + msg);
+        //log.info("Send message: " + msg);
 
         assert ses instanceof GridSelectorNioSessionImpl;
 
@@ -371,6 +371,9 @@ public class GridNioServer<T> {
             clientWorkers.get(ses.selectorIndex()).offer(fut);
     }
 
+    /**
+     * @param ses Session.
+     */
     public void resend(GridNioSession ses) {
         assert ses instanceof GridSelectorNioSessionImpl;
 
@@ -384,6 +387,8 @@ public class GridNioServer<T> {
             wakeup = !recoverySnd.messages().isEmpty();
 
             for (GridNioFuture<?> fut : recoverySnd.messages()) {
+                ((NioOperationFuture) fut).resetMessage();
+
                 log.info("Recovery resend: " + ((NioOperationFuture)fut).directMessage());
 
                 ses0.offerFuture(fut);
@@ -1383,6 +1388,7 @@ public class GridNioServer<T> {
          * @param e Exception to be passed to the listener, if any.
          * @return {@code True} if this call closed the ses.
          */
+        @SuppressWarnings("StatementWithEmptyBody")
         protected boolean close(final GridSelectorNioSessionImpl ses, @Nullable final GridException e) {
             if (e != null) {
                 // Print stack trace only if has runtime exception in it's cause.
@@ -1447,7 +1453,7 @@ public class GridNioServer<T> {
                 GridRecoverySendData sndRecoveryData = ses.recoverySend();
 
                 if (sndRecoveryData != null) {
-                    while (ses.pollFuture() != null) {  // Poll updates recovery data.
+                    while (ses.pollFuture() != null) {  // Poll will update recovery data.
                         // No-op.
                     }
 
@@ -1804,6 +1810,15 @@ public class GridNioServer<T> {
         }
 
         /**
+         *
+         */
+        private void resetMessage() {
+            assert commMsg != null;
+
+            commMsg = commMsg.clone();
+        }
+
+        /**
          * @return Socket channel for register request.
          */
         private SocketChannel socketChannel() {
@@ -1842,8 +1857,17 @@ public class GridNioServer<T> {
         }
 
         /** {@inheritDoc} */
+        @Override public boolean skipRecovery() {
+            return commMsg != null && commMsg.skipRecovery();
+        }
+
+        /** {@inheritDoc} */
         @Override public String toString() {
-            return S.toString(NioOperationFuture.class, this);
+            // TODO 8822.
+            if (commMsg != null)
+                return "NioOperationFuture [msg=" + commMsg + ']';
+            else
+                return S.toString(NioOperationFuture.class, this);
         }
     }
 

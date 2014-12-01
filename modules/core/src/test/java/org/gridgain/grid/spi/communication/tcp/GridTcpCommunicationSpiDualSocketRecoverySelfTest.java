@@ -12,8 +12,7 @@ package org.gridgain.grid.spi.communication.tcp;
 /**
  *
  */
-public class GridTcpCommunicationSpiDualSocketConcurrentConnectSelfTest
-    extends GridTcpCommunicationSpiConcurrentConnectSelfTest {
+public class GridTcpCommunicationSpiDualSocketRecoverySelfTest extends GridTcpCommunicationSpiRecoverySelfTest {
     /** {@inheritDoc} */
     @Override protected boolean dualSocket() {
         return true;

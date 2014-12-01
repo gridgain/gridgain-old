@@ -9,6 +9,7 @@
 
 package org.gridgain.grid.spi.communication.tcp;
 
+import org.eclipse.jetty.util.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.communication.*;
@@ -27,7 +28,8 @@ import java.util.concurrent.atomic.*;
  *
  */
 @GridSpiTest(spi = GridTcpCommunicationSpi.class, group = "Communication SPI")
-public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridCommunicationSpi> extends GridSpiAbstractTest<T> {
+public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridCommunicationSpi>
+    extends GridSpiAbstractTest<T> {
     /** */
     private static final int SPI_CNT = 2;
 
@@ -58,6 +60,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
         /** */
         private final CountDownLatch latch;
 
+        /** */
+        private final ConcurrentHashSet<Long> msgIds = new ConcurrentHashSet<>();
+
         /**
          * @param latch Latch.
          */
@@ -70,7 +75,11 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
             msgC.run();
 
             if (msg instanceof GridTestMessage) {
-                assertEquals(nodeId, ((GridTestMessage)msg).getSourceNodeId());
+                GridTestMessage msg0 = (GridTestMessage)msg;
+
+                assertEquals(nodeId, msg0.getSourceNodeId());
+
+                assertTrue(msgIds.add(msg0.getMsgId()));
 
                 latch.countDown();
             }
@@ -124,6 +133,8 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
         for (int i = 0; i < iters; i++) {
             log.info("Iteration: " + i);
 
+            final AtomicInteger msgId = new AtomicInteger();
+
             CountDownLatch latch = new CountDownLatch(threads * msgPerThread);
 
             MessageListener lsnr = new MessageListener(latch);
@@ -153,7 +164,7 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
                         }
 
                         for (int i = 0; i < msgPerThread; i++)
-                            spi.sendMessage(dstNode, new GridTestMessage(srcNode.id(), 0, 0));
+                            spi.sendMessage(dstNode, new GridTestMessage(srcNode.id(), msgId.incrementAndGet(), 0));
 
                         return null;
                     }

@@ -9,12 +9,9 @@
 
 package org.gridgain.grid.util.nio;
 
-import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.future.*;
-import org.gridgain.grid.util.nio.*;
-
-import java.util.*;
+import org.gridgain.grid.util.typedef.internal.*;
 
 /**
  *
@@ -32,25 +29,52 @@ public class GridRecoveryReceiveData {
     /** */
     private GridFutureAdapter<GridCommunicationClient> fut;
 
+    /** */
+    private volatile long lastSent;
+
+    /**
+     * @param log Logger.
+     */
     public GridRecoveryReceiveData(GridLogger log) {
         this.log = log;
     }
 
     /**
-     *
+     * @return Number of received messages.
      */
     public long messageReceived() {
         rcvCntr++;
 
-        log.info("Recovery received total: " + rcvCntr);
+        //log.info("Recovery received total: " + rcvCntr);
 
         return rcvCntr;
     }
 
-    public long lastReceived() {
+    /**
+     * @param lastSent Last ID sent on idle timeout.
+     */
+    public void lastSent(long lastSent) {
+        this.lastSent = lastSent;
+    }
+
+    /**
+     * @return
+     */
+    public long lastSent() {
+        return lastSent;
+    }
+
+    /**
+     * @return Received messages cout.
+     */
+    public long receivedCount() {
         return rcvCntr;
     }
 
+    /**
+     * @param fut
+     * @throws InterruptedException If interrupted.
+     */
     public void setFuture(GridFutureAdapter<GridCommunicationClient> fut) throws InterruptedException {
         synchronized (this) {
             while (reserved)
@@ -62,6 +86,11 @@ public class GridRecoveryReceiveData {
         }
     }
 
+    /**
+     *
+     * @return
+     * @throws InterruptedException If interrupted.
+     */
     public GridFutureAdapter<GridCommunicationClient> reserve() throws InterruptedException {
         synchronized (this) {
             while (fut == null && reserved)
@@ -73,13 +102,9 @@ public class GridRecoveryReceiveData {
         }
     }
 
-    public void await() throws InterruptedException {
-        synchronized (this) {
-            while (reserved)
-                wait();
-        }
-    }
-
+    /**
+     *
+     */
     public void release() {
         synchronized (this) {
             reserved = false;
@@ -88,5 +113,10 @@ public class GridRecoveryReceiveData {
 
             notifyAll();
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return S.toString(GridRecoveryReceiveData.class, this);
     }
 }
