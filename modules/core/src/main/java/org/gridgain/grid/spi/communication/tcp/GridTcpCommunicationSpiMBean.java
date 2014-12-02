@@ -260,4 +260,15 @@ public interface GridTcpCommunicationSpiMBean extends GridSpiManagementMBean {
      */
     @GridMBeanDescription("Buffer size ratio.")
     public double getBufferSizeRatio();
+
+    /**
+     * @return Socket write timeout for TCP connections.
+     */
+    @GridMBeanDescription("Socket write timeout.")
+    public long getSocketWriteTimeout();
+
+    /**
+     * @return
+     */
+    public int getRecoveryAcknowledgementCount();
 }

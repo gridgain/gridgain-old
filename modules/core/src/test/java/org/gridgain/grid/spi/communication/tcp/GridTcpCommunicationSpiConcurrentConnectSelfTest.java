@@ -201,7 +201,6 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
         spi.setSharedMemoryPort(-1);
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(60_000);
-        spi.setTcpNoDelay(true);
         spi.setDualSocketConnection(dualSocket());
 
         return spi;

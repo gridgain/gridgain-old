@@ -13,32 +13,47 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.internal.*;
 
+import java.io.*;
 import java.util.*;
 
 /**
- *
+ * Recovery information for sent messages.
  */
 public class GridRecoverySendData {
-    /** */
-    private long lastAcked;
+    /** Number of acknowledged messages. */
+    private long acked;
 
-    /** */
-    private ArrayDeque<GridNioFuture<?>> msgs = new ArrayDeque<>(1024);
+    /** Unacknowledged message futures. */
+    private ArrayDeque<GridNioFuture<?>> msgFuts = new ArrayDeque<>(1024);
 
-    /** */
+    /** Reserved flag. */
     private boolean reserved;
 
-    /** */
-    private int resend;
+    /** Number of messages to resend. */
+    private int resendCnt;
 
-    /** */
+    /** Target node. */
+    private final GridNode node;
+
+    /** Logger. */
     private final GridLogger log;
 
     /**
+     * @param node Node.
      * @param log Logger.
      */
-    public GridRecoverySendData(GridLogger log) {
+    public GridRecoverySendData(GridNode node, GridLogger log) {
+        assert !node.isLocal() : node;
+
+        this.node = node;
         this.log = log;
+    }
+
+    /**
+     * @return Node.
+     */
+    public GridNode node() {
+        return node;
     }
 
     /**
@@ -46,54 +61,60 @@ public class GridRecoverySendData {
      */
     public void add(GridNioFuture<?> fut) {
         if (!fut.skipRecovery()) {
-            if (resend == 0)
-                msgs.addLast(fut);
-            else {
-                //log.info("Add skip: " + resend + " " + fut);
-
-                resend--;
-            }
+            if (resendCnt == 0)
+                msgFuts.addLast(fut);
+            else
+                resendCnt--;
         }
     }
 
     /**
-     * @param last ID.
+     * @param rcvCnt Number of messages received by remote node.
      */
-    public void ackReceived(long last) {
-        //log.info("Handle ack, cur=" + lastAcked + ", rcvd=" + last + ", msgs=" + msgs.size());
+    public void ackReceived(long rcvCnt) {
+        if (log.isDebugEnabled())
+            log.debug("Handle acknowledgment, acked=" + acked + ", rcvCnt=" + rcvCnt +
+                ", msgFuts=" + msgFuts.size() + ']');
 
-        while (lastAcked < last) {
-            GridNioFuture<?> fut = msgs.pollFirst();
+        while (acked < rcvCnt) {
+            GridNioFuture<?> fut = msgFuts.pollFirst();
 
             assert fut != null;
 
             ((GridNioFutureImpl)fut).onDone();
 
-            lastAcked++;
+            acked++;
         }
-
-        //log.info("After Handle ack: " + msgs.size());
-
-        /*
-        for (GridNioFuture fut : msgs)
-            log.info("Msg: " + fut);
-            */
     }
 
     /**
-     * @return Messages.
-     */
-    public Deque<GridNioFuture<?>> messages() {
-        return msgs;
-    }
-
-    /**
-     * @param last
+     * Completes with error all futures when node fails.
      * @throws InterruptedException If interrupted.
      */
-    public void reserve(long last) throws InterruptedException {
-        //log.info("Reserve send data: " + last);
+    public void onNodeLeft() throws InterruptedException {
+        reserve(-1);
 
+        try {
+            for (GridNioFuture<?> msg : msgFuts)
+                ((GridNioFutureImpl)msg).onDone(new IOException("Failed to send message, node has left: " + node.id()));
+        }
+        finally {
+            release();
+        }
+    }
+
+    /**
+     * @return Message futures for unacknowledged messages.
+     */
+    public Deque<GridNioFuture<?>> messagesFutures() {
+        return msgFuts;
+    }
+
+    /**
+     * @param rcvCnt Number of messages received by remote node.
+     * @throws InterruptedException If interrupted.
+     */
+    public void reserve(long rcvCnt) throws InterruptedException {
         synchronized (this) {
             while (reserved)
                 wait();
@@ -101,9 +122,9 @@ public class GridRecoverySendData {
             reserved = true;
         }
 
-        ackReceived(last);
+        ackReceived(rcvCnt);
 
-        resend = msgs.size();
+        resendCnt = msgFuts.size();
     }
 
     /**
@@ -111,8 +132,6 @@ public class GridRecoverySendData {
      */
     public void release() {
         synchronized (this) {
-            assert reserved;
-
             reserved = false;
 
             notifyAll();

@@ -339,8 +339,6 @@ public class GridNioServer<T> {
      * @return Future for operation.
      */
     GridNioFuture<?> send(GridNioSession ses, GridTcpCommunicationMessageAdapter msg) {
-        //log.info("Send message: " + msg);
-
         assert ses instanceof GridSelectorNioSessionImpl;
 
         GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
@@ -372,31 +370,32 @@ public class GridNioServer<T> {
     }
 
     /**
+     * Resends messages if session provides {@link GridRecoverySendData}.
+     *
      * @param ses Session.
+     * @param msgFuts Message futures to resend.
+     * @param node Node.
      */
-    public void resend(GridNioSession ses) {
+    public void resend(GridNioSession ses, Collection<GridNioFuture<?>> msgFuts, GridNode node) {
         assert ses instanceof GridSelectorNioSessionImpl;
+        assert !F.isEmpty(msgFuts) : msgFuts;
+
+        if (log.isDebugEnabled())
+            log.debug("Resend messages [rmtNode=" + node.id() + ", msgCnt=" + msgFuts.size() + ']');
 
         GridSelectorNioSessionImpl ses0 = (GridSelectorNioSessionImpl)ses;
 
-        GridRecoverySendData recoverySnd = ses0.recoverySend();
+        for (GridNioFuture<?> fut : msgFuts) {
+            if (ses0.closed())
+                break;
 
-        boolean wakeup = false;
+            ((NioOperationFuture)fut).resetMessage(ses0);
 
-        if (recoverySnd != null) {
-            wakeup = !recoverySnd.messages().isEmpty();
+            int msgCnt = ses0.offerFuture(fut);
 
-            for (GridNioFuture<?> fut : recoverySnd.messages()) {
-                ((NioOperationFuture) fut).resetMessage();
-
-                log.info("Recovery resend: " + ((NioOperationFuture)fut).directMessage());
-
-                ses0.offerFuture(fut);
-            }
+            if (msgCnt == 1)
+                clientWorkers.get(ses0.selectorIndex()).offer(((NioOperationFuture)fut));
         }
-
-        if (wakeup)
-            clientWorkers.get(ses0.selectorIndex()).offer(new NioOperationFuture<>(ses0, NioOperation.REQUIRE_WRITE));
     }
 
     /**
@@ -534,6 +533,13 @@ public class GridNioServer<T> {
 
         if (balanceIdx == clientWorkers.size())
             balanceIdx = 0;
+    }
+
+    /**
+     * @return Sessions.
+     */
+    public Collection<? extends GridNioSession> sessions() {
+        return sessions;
     }
 
     /** {@inheritDoc} */
@@ -1450,14 +1456,22 @@ public class GridNioServer<T> {
                 // Since ses is in closed state, no write requests will be added.
                 NioOperationFuture<?> fut = ses.removeMeta(NIO_OPERATION.ordinal());
 
+                GridRecoveryReceiveData rcvRecoveryData = ses.recoveryReceive();
+
+                if (rcvRecoveryData != null)
+                    rcvRecoveryData.release();
+
                 GridRecoverySendData sndRecoveryData = ses.recoverySend();
 
                 if (sndRecoveryData != null) {
-                    while (ses.pollFuture() != null) {  // Poll will update recovery data.
-                        // No-op.
+                    try {
+                        while (ses.pollFuture() != null) {  // Poll will update recovery data.
+                            // No-op.
+                        }
                     }
-
-                    sndRecoveryData.release();
+                    finally {
+                        sndRecoveryData.release();
+                    }
                 }
                 else {
                     if (fut != null)
@@ -1466,11 +1480,6 @@ public class GridNioServer<T> {
                     while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null)
                         fut.connectionClosed();
                 }
-
-                GridRecoveryReceiveData rcvRecoveryData = ses.recoveryReceive();
-
-                if (rcvRecoveryData != null)
-                    rcvRecoveryData.release();
 
                 return true;
             }
@@ -1810,12 +1819,14 @@ public class GridNioServer<T> {
         }
 
         /**
-         *
+         * @param ses New session instance.
          */
-        private void resetMessage() {
+        private void resetMessage(GridSelectorNioSessionImpl ses) {
             assert commMsg != null;
 
             commMsg = commMsg.clone();
+
+            this.ses = ses;
         }
 
         /**
@@ -1863,11 +1874,7 @@ public class GridNioServer<T> {
 
         /** {@inheritDoc} */
         @Override public String toString() {
-            // TODO 8822.
-            if (commMsg != null)
-                return "NioOperationFuture [msg=" + commMsg + ']';
-            else
-                return S.toString(NioOperationFuture.class, this);
+            return S.toString(NioOperationFuture.class, this);
         }
     }
 

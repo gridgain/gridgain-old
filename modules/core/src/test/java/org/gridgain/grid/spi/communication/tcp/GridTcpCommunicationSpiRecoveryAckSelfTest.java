@@ -11,7 +11,6 @@ package org.gridgain.grid.spi.communication.tcp;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
-import org.gridgain.grid.spi.*;
 import org.gridgain.grid.spi.communication.*;
 import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.lang.*;
@@ -22,7 +21,6 @@ import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 /**
@@ -93,7 +91,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
     /**
      * @throws Exception If failed.
      */
-    public void _testAckOnIdle() throws Exception {
+    public void testAckOnIdle() throws Exception {
         checkAck(10, 2000, 9);
     }
 
@@ -139,7 +137,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
                 for (GridTcpCommunicationSpi spi : spis) {
                     GridNioServer srv = U.field(spi, "nioSrvr");
 
-                    Collection<GridNioSession> sessions = U.field(srv, "sessions");
+                    Collection<? extends GridNioSession> sessions = srv.sessions();
 
                     assertFalse(sessions.isEmpty());
 
@@ -153,13 +151,12 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
 
                             GridTestUtils.waitForCondition(new GridAbsPredicate() {
                                 @Override public boolean apply() {
-                                    log.info("Check: " + snd.messages().size());
-
-                                    return snd.messages().isEmpty();
+                                    return snd.messagesFutures().isEmpty();
                                 }
                             }, 10_000);
 
-                            assertEquals("Unexpected messages: " + snd.messages(), 0, snd.messages().size());
+                            assertEquals("Unexpected messages: " + snd.messagesFutures(), 0,
+                                snd.messagesFutures().size());
 
                             break;
                         }

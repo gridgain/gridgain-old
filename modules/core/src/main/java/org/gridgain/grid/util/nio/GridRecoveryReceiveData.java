@@ -9,66 +9,89 @@
 
 package org.gridgain.grid.util.nio;
 
+import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.typedef.internal.*;
+import org.jetbrains.annotations.*;
 
 /**
- *
+ * Recovery information for received messages.
  */
 public class GridRecoveryReceiveData {
-    /** */
-    private long rcvCntr;
+    /** Number of received messages. */
+    private long rcvCnt;
 
-    /** */
+    /** Reserved flag. */
     private boolean reserved;
 
-    /** */
+    /** Last value sent on idle timeout. */
+    private volatile long lastAck;
+
+    /** Target node. */
+    private final GridNode node;
+
+    /** Logger. */
     private final GridLogger log;
 
     /** */
     private GridFutureAdapter<GridCommunicationClient> fut;
 
-    /** */
-    private volatile long lastSent;
-
     /**
+     * @param node Node.
      * @param log Logger.
      */
-    public GridRecoveryReceiveData(GridLogger log) {
+    public GridRecoveryReceiveData(GridNode node, GridLogger log) {
+        assert !node.isLocal() : node;
+
+        this.node = node;
         this.log = log;
+    }
+
+    /**
+     * @return Node.
+     */
+    public GridNode node() {
+        return node;
+    }
+
+    /**
+     * Increments received messages counter.
+     *
+     * @return Number of received messages.
+     */
+    public long onReceived() {
+        rcvCnt++;
+
+        return rcvCnt;
     }
 
     /**
      * @return Number of received messages.
      */
-    public long messageReceived() {
-        rcvCntr++;
-
-        //log.info("Recovery received total: " + rcvCntr);
-
-        return rcvCntr;
+    public long received() {
+        return rcvCnt;
     }
 
     /**
-     * @param lastSent Last ID sent on idle timeout.
+     * @param lastAck Last sent.
      */
-    public void lastSent(long lastSent) {
-        this.lastSent = lastSent;
+    public void lastAcknowledged(long lastAck) {
+        this.lastAck = lastAck;
     }
 
     /**
      * @return
      */
-    public long lastSent() {
-        return lastSent;
+    public long lastAcknowledged() {
+        return lastAck;
     }
 
     /**
      * @return Received messages cout.
      */
     public long receivedCount() {
-        return rcvCntr;
+        return rcvCnt;
     }
 
     /**
@@ -91,7 +114,7 @@ public class GridRecoveryReceiveData {
      * @return
      * @throws InterruptedException If interrupted.
      */
-    public GridFutureAdapter<GridCommunicationClient> reserve() throws InterruptedException {
+    @Nullable public GridFutureAdapter<GridCommunicationClient> reserve() throws InterruptedException {
         synchronized (this) {
             while (fut == null && reserved)
                 wait();
@@ -103,7 +126,7 @@ public class GridRecoveryReceiveData {
     }
 
     /**
-     *
+     * Releases receive data.
      */
     public void release() {
         synchronized (this) {

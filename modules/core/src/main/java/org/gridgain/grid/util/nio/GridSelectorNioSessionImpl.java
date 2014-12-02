@@ -49,10 +49,10 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     /** Read buffer. */
     private ByteBuffer readBuf;
 
-    /** */
+    /** Recovery send data. */
     private GridRecoverySendData recoverySnd;
 
-    /** */
+    /** Recovery receive data. */
     private GridRecoveryReceiveData recoveryRcv;
 
     /**
@@ -206,6 +206,8 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
 
     /** {@inheritDoc} */
     @Override public void recoverySend(GridRecoverySendData recoverySnd) {
+        assert recoverySnd != null;
+
         this.recoverySnd = recoverySnd;
     }
 
@@ -216,6 +218,8 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
 
     /** {@inheritDoc} */
     @Override public void recoveryReceive(GridRecoveryReceiveData recoveryRcv) {
+        assert recoveryRcv != null;
+
         this.recoveryRcv = recoveryRcv;
     }
 
@@ -227,12 +231,12 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     /** {@inheritDoc} */
     @Override public <T> T addMeta(int key, @Nullable T val) {
         if (val instanceof GridRecoveryReceiveData) {
-            recoveryRcv = (GridRecoveryReceiveData) val;
+            recoveryRcv = (GridRecoveryReceiveData)val;
 
             return null;
         }
         else if (val instanceof GridRecoverySendData) {
-            recoverySnd = (GridRecoverySendData) val;
+            recoverySnd = (GridRecoverySendData)val;
 
             return null;
         }
