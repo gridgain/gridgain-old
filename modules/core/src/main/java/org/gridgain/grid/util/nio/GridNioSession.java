@@ -148,22 +148,12 @@ public interface GridNioSession {
     public boolean readsPaused();
 
     /**
-     * @param recoveryRcv Recovery receive data.
+     * @param recoveryData Recovery data.
      */
-    public void recoveryReceive(GridRecoveryReceiveData recoveryRcv);
+    public void recoveryData(GridNioRecoveryData recoveryData);
 
     /**
-     * @return Recovery receive data if recovery is supported, {@code null otherwise.}
+     * @return Recovery data if recovery is supported, {@code null otherwise.}
      */
-    @Nullable public GridRecoveryReceiveData recoveryReceive();
-
-    /**
-     * @param recoverySnd Recovery send data.
-     */
-    public void recoverySend(GridRecoverySendData recoverySnd);
-
-    /**
-     * @return Recovery send data if recovery is supported, {@code null otherwise.}
-     */
-    @Nullable public GridRecoverySendData recoverySend();
+    @Nullable public GridNioRecoveryData recoveryData();
 }

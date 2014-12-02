@@ -370,22 +370,12 @@ public class GridNioFilterChainSelfTest extends GridCommonAbstractTest {
         }
 
         /** {@inheritDoc} */
-        @Override public void recoveryReceive(GridRecoveryReceiveData recoveryRcv) {
+        @Override public void recoveryData(GridNioRecoveryData recoveryData) {
             // No-op.
         }
 
         /** {@inheritDoc} */
-        @Nullable @Override public GridRecoveryReceiveData recoveryReceive() {
-            return null;
-        }
-
-        /** {@inheritDoc} */
-        @Override public void recoverySend(GridRecoverySendData recoverySnd) {
-            // No-op.
-        }
-
-        /** {@inheritDoc} */
-        @Nullable @Override public GridRecoverySendData recoverySend() {
+        @Nullable @Override public GridNioRecoveryData recoveryData() {
             return null;
         }
     }

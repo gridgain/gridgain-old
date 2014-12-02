@@ -288,22 +288,12 @@ public class GridNioSessionImpl implements GridNioSession {
     }
 
     /** {@inheritDoc} */
-    @Override public void recoveryReceive(GridRecoveryReceiveData recoveryRcv) {
+    @Override public void recoveryData(GridNioRecoveryData recoveryData) {
         throw new UnsupportedOperationException();
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public GridRecoveryReceiveData recoveryReceive() {
-        return null;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void recoverySend(GridRecoverySendData recoverySnd) {
-        throw new UnsupportedOperationException();
-    }
-
-    /** {@inheritDoc} */
-    @Nullable @Override public GridRecoverySendData recoverySend() {
+    @Nullable @Override public GridNioRecoveryData recoveryData() {
         return null;
     }
 

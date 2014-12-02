@@ -190,9 +190,6 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /** Default message queue limit per connection (for incoming and outgoing . */
     public static final int DFLT_MSG_QUEUE_LIMIT = GridNioServer.DFLT_SEND_QUEUE_LIMIT;
 
-    /** Default value for dualSocketConnection flag. */
-    public static final boolean DFLT_DUAL_SOCKET_CONNECTION = false;
-
     /**
      * Default count of selectors for TCP server equals to
      * {@code "Math.min(4, Runtime.getRuntime().availableProcessors())"}.
@@ -265,10 +262,10 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         clients.remove(id, rmv)) {
                         rmv.forceClose();
 
-                        GridRecoverySendData sndRecoveryData = ses.recoverySend();
+                        GridNioRecoveryData recoveryData = ses.recoveryData();
 
-                        if (sndRecoveryData != null && !sndRecoveryData.messagesFutures().isEmpty())
-                            recoveryWorker.addReconnectRequest(sndRecoveryData);
+                        if (recoveryData != null && !recoveryData.messagesFutures().isEmpty())
+                            recoveryWorker.addReconnectRequest(recoveryData);
                     }
 
                     GridCommunicationListener<GridTcpCommunicationMessageAdapter> lsnr0 = lsnr;
@@ -321,104 +318,83 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     boolean recovery = rmtVer.compareTo(RECOVERY_SINCE_VER) >= 0;
 
-                    if (!dualSockConn) {
-                        GridFutureAdapter<GridCommunicationClient> fut = new GridFutureAdapter<>();
+                    GridFutureAdapterEx<GridCommunicationClient> fut = new GridFutureAdapterEx<>();
 
-                        GridFutureAdapter<GridCommunicationClient> connFut = clientFuts.putIfAbsent(sndId, fut);
+                    GridFutureAdapterEx<GridCommunicationClient> connFut = clientFuts.putIfAbsent(sndId, fut);
 
-                        try {
-                            if (connFut != null) {
-                                if (recovery) {
-                                    assert msg instanceof HandshakeMessage : msg;
-                                    assert locNode.order() != rmtNode.order() : locNode.order();
+                    try {
+                        if (connFut != null) {
+                            if (recovery) {
+                                assert msg instanceof HandshakeMessage : msg;
+                                assert locNode.order() != rmtNode.order() : locNode.order();
 
-                                    if (locNode.order() < rmtNode.order()) {
-                                        if (log.isDebugEnabled()) {
-                                            log.debug("Received incoming connection from remote node while " +
-                                                "connecting to this node, rejecting [locNode=" + locNode.id() +
-                                                ", locNodeOrder=" + locNode.order() + ", rmtNode=" + rmtNode.id() +
-                                                ", rmtNodeOrder=" + rmtNode.order() + ']');
-                                        }
-
-                                        ses.send(new RecoveryLastReceivedMessage(-1));
+                                if (locNode.order() < rmtNode.order()) {
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Received incoming connection from remote node while " +
+                                            "connecting to this node, rejecting [locNode=" + locNode.id() +
+                                            ", locNodeOrder=" + locNode.order() + ", rmtNode=" + rmtNode.id() +
+                                            ", rmtNodeOrder=" + rmtNode.order() + ']');
                                     }
-                                    else {
-                                        if (log.isDebugEnabled()) {
-                                            log.debug("Received incoming connection from remote node while " +
-                                                "connecting to this node, accepting [locNode=" + locNode.id() +
-                                                ", locNodeOrder=" + locNode.order() + ", rmtNode=" + rmtNode.id() +
-                                                ", rmtNodeOrder=" + rmtNode.order() + ']');
-                                        }
 
-                                        GridRecoveryReceiveData recoveryRcv = recoveryReceive(rmtNode);
-
-                                        recoveryRcv.setFuture(fut);
-
-                                        GridCommunicationClient client =
-                                            createClient(ses, rmtNode, ((HandshakeMessage)msg).received());
-
-                                        GridCommunicationClient oldClient = clients.putIfAbsent(sndId, client);
-
-                                        assert oldClient == null;
-
-                                        fut.onDone(client);
+                                    ses.send(new RecoveryLastReceivedMessage(-1));
+                                }
+                                else {
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Received incoming connection from remote node while " +
+                                            "connecting to this node, accepting [locNode=" + locNode.id() +
+                                            ", locNodeOrder=" + locNode.order() + ", rmtNode=" + rmtNode.id() +
+                                            ", rmtNodeOrder=" + rmtNode.order() + ']');
                                     }
+
+                                    GridNioRecoveryData recoveryRcv = recoveryData(rmtNode);
+
+                                    //recoveryRcv.setFuture(fut);
+
+                                    GridCommunicationClient client =
+                                        createClient(ses, rmtNode, ((HandshakeMessage)msg).received());
+
+                                    GridCommunicationClient oldClient = clients.putIfAbsent(sndId, client);
+
+                                    assert oldClient == null;
+
+                                    fut.onDone(client);
                                 }
                             }
-                            else {
-                                GridCommunicationClient client;
+                        }
+                        else {
+                            GridCommunicationClient client;
 
-                                if (recovery) {
-                                    assert msg instanceof HandshakeMessage : msg;
+                            if (recovery) {
+                                assert msg instanceof HandshakeMessage : msg;
 
-                                    client = createClient(ses, rmtNode, ((HandshakeMessage)msg).received());
-                                }
-                                else
-                                    client = new GridTcpNioCommunicationClient();
-
-                                GridCommunicationClient oldClient = clients.putIfAbsent(sndId, client);
-
-                                assert oldClient == null;
-
-                                fut.onDone(client);
+                                client = createClient(ses, rmtNode, ((HandshakeMessage)msg).received());
                             }
-                        }
-                        catch (InterruptedException e) {
-                            fut.onDone((GridCommunicationClient)null);
+                            else
+                                client = new GridTcpNioCommunicationClient();
 
-                            if (log.isDebugEnabled())
-                                log.debug("Failed to initialize TCP communicaton client, node is stopping: " + e);
-                        }
-                        finally {
-                            clientFuts.remove(sndId, fut);
+                            GridCommunicationClient oldClient = clients.putIfAbsent(sndId, client);
+
+                            assert oldClient == null;
+
+                            fut.onDone(client);
                         }
                     }
-                    else {
-                        GridRecoveryReceiveData recoveryRcv = recoveryReceive(rmtNode);
+                    catch (InterruptedException e) {
+                        fut.onDone((GridCommunicationClient)null);
 
-                        try {
-                            recoveryRcv.reserve();
-                        }
-                        catch (InterruptedException e) {
-                            if (log.isDebugEnabled())
-                                log.debug("Failed to reserve recovery receive data, node is stopping: " + e);
-
-                            return;
-                        }
-
-                        ses.recoveryReceive(recoveryRcv);
-
-                        ses.send(new RecoveryLastReceivedMessage(recoveryRcv.receivedCount()));
+                        if (log.isDebugEnabled())
+                            log.debug("Failed to initialize TCP communicaton client, node is stopping: " + e);
+                    }
+                    finally {
+                        clientFuts.remove(sndId, fut);
                     }
                 }
                 else {
                     rcvdMsgsCnt.increment();
 
-                    GridRecoveryReceiveData recoveryRcv = ses.recoveryReceive();
+                    GridNioRecoveryData recovery = ses.recoveryData();
 
-                    GridRecoverySendData recoverySnd = ses.recoverySend();
-
-                    if (recoveryRcv != null || recoverySnd != null) {
+                    if (recovery != null) {
                         if (msg instanceof RecoveryLastReceivedMessage) {
                             RecoveryLastReceivedMessage msg0 = (RecoveryLastReceivedMessage)msg;
 
@@ -426,25 +402,22 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                 log.debug("Received recovery acknowledgement [rmtNode=" + sndId +
                                     ", rcvCnt=" + msg0.received() + ']');
 
-                            assert recoverySnd != null;
-
-                            recoverySnd.ackReceived(msg0.received());
+                            recovery.ackReceived(msg0.received());
 
                             return;
                         }
                         else {
-                            assert recoveryRcv != null;
-
-                            long rcvCnt = recoveryRcv.onReceived();
+                            long rcvCnt = recovery.onReceived();
 
                             if (rcvCnt % recoveryAckCnt == 0) {
                                 if (log.isDebugEnabled())
                                     log.debug("Send recovery acknowledgement [rmtNode=" + sndId +
                                         ", rcvCnt=" + rcvCnt + ']');
 
+                                // TODO 8822: send as 'system' message.
                                 recoveryWorker.addMessageRequest(ses, new RecoveryLastReceivedMessage(rcvCnt));
 
-                                recoveryRcv.lastAcknowledged(rcvCnt);
+                                recovery.lastAcknowledged(rcvCnt);
                             }
                         }
                     }
@@ -481,28 +454,17 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
              */
             private GridTcpNioCommunicationClient createClient(GridNioSession ses, GridNode node, long rcvCnt)
                 throws InterruptedException {
-                GridRecoveryReceiveData recoveryRcv = recoveryReceive(node);
+                GridNioRecoveryData recovery = recoveryData(node);
 
-                recoveryRcv.reserve();
+                recovery.reserve();
 
-                ses.recoveryReceive(recoveryRcv);
+                recovery.onHandshake(rcvCnt);
 
-                ses.send(new RecoveryLastReceivedMessage(recoveryRcv.receivedCount()));
+                ses.recoveryData(recovery);
 
-                GridRecoverySendData recoverySnd = recoverySend(node);
+                ses.send(new RecoveryLastReceivedMessage(recovery.receivedCount()));
 
-                try {
-                    recoverySnd.reserve(rcvCnt);
-                }
-                catch (InterruptedException e) {
-                    recoveryRcv.release();
-
-                    throw e;
-                }
-
-                ses.recoverySend(recoverySnd);
-
-                Deque<GridNioFuture<?>> msgFuts = recoverySnd.messagesFutures();
+                Deque<GridNioFuture<?>> msgFuts = recovery.messagesFutures();
 
                 if (!msgFuts.isEmpty()) {
                     GridNioBackPressureControl.threadProcessingMessage(true);
@@ -592,7 +554,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private double bufSizeRatio = GridSystemProperties.getDouble(GG_COMMUNICATION_BUF_RESIZE_RATIO, 0.8);
 
     /** Dual socket connection flag. */
-    private boolean dualSockConn = DFLT_DUAL_SOCKET_CONNECTION;
+    private boolean dualSockConn;
 
     /** NIO server. */
     private GridNioServer<GridTcpCommunicationMessageAdapter> nioSrvr;
@@ -603,14 +565,17 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /** {@code TCP_NODELAY} option value for created sockets. */
     private boolean tcpNoDelay = DFLT_TCP_NODELAY;
 
+    /** Use async client flag. */
+    private boolean asyncSnd = true;
+
     /** */
     public static final int DFLT_RECOVERY_ACK_CNT = 100;
 
+    /** Default socket write timeout. */
+    public static final long DFLT_SOCKET_WRITE_TIMEOUT = 5 * 1000L;
+
     /** */
     private int recoveryAckCnt = DFLT_RECOVERY_ACK_CNT;
-
-    /** Default socket write timeout. */
-    public static final long DFLT_SOCKET_WRITE_TIMEOUT = 30 * 1000L;
 
     /** Socket write timeout. */
     private long sockWriteTimeout = DFLT_SOCKET_WRITE_TIMEOUT;
@@ -681,14 +646,11 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     };
 
     /** Client connect futures. */
-    private final ConcurrentMap<UUID, GridFutureAdapter<GridCommunicationClient>> clientFuts =
+    private final ConcurrentMap<UUID, GridFutureAdapterEx<GridCommunicationClient>> clientFuts =
         GridConcurrentFactory.newMap();
 
     /** */
-    private final ConcurrentMap<NodeID, GridRecoverySendData> recoverySndData = GridConcurrentFactory.newMap();
-
-    /** */
-    private final ConcurrentMap<NodeID, GridRecoveryReceiveData> recoveryRcvData = GridConcurrentFactory.newMap();
+    private final ConcurrentMap<ClientKey, GridNioRecoveryData> recoveryData = GridConcurrentFactory.newMap();
 
     /** Discovery listener. */
     private final GridLocalEventListener discoLsnr = new GridLocalEventListener() {
@@ -1100,9 +1062,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     @GridSpiConfiguration(optional = true)
     @Deprecated
     public void setAsyncSend(boolean asyncSnd) {
-        if (!asyncSnd)
-            throw new UnsupportedOperationException("Synchronous IO is unsupported, " +
-                "method 'setAsyncSend' will be removed in the next major release.");
+        this.asyncSnd = asyncSnd;
     }
 
     /**
@@ -1175,15 +1135,23 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
      * If not provided, default is {@code false}.
      *
      * @param dualSockConn Whether dual-socket connection should be enforced.
+     * @deprecated Dual-socket connection mode is unsupported in current version of GridGain and
+     *      this method will be removed in the next major release.
      */
     @GridSpiConfiguration(optional = true)
+    @Deprecated
     public void setDualSocketConnection(boolean dualSockConn) {
         this.dualSockConn = dualSockConn;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     * @deprecated Dual-socket connection mode is unsupported in current version of GridGain and
+     *      this method will be removed in the next major release.
+     */
+    @Deprecated
     @Override public boolean isDualSocketConnection() {
-        return dualSockConn;
+        return false;
     }
 
     /**
@@ -1314,6 +1282,14 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         assertParameter(sockWriteTimeout >= 0, "sockWriteTimeout >= 0");
         assertParameter(recoveryAckCnt > 0, "recoveryAckCnt > 0");
 
+        if (!asyncSnd)
+            U.warn(log, "Synchronous IO in GridTcpCommunicationSpi is not supported anymore " +
+                    "(will automatically switch to asynchronous IO)");
+
+        if (dualSockConn)
+            U.warn(log, "Dual-socket connection in GridTcpCommunicationSpi is not supported anymore " +
+                    "(will automatically switch to signle socket connection mode)");
+
         try {
             locHost = U.resolveLocalHost(locAddr);
         }
@@ -1379,12 +1355,13 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             log.debug(configInfo("sockRcvBuf", sockRcvBuf));
             log.debug(configInfo("shmemPort", shmemPort));
             log.debug(configInfo("msgQueueLimit", msgQueueLimit));
-            log.debug(configInfo("dualSockConn", dualSockConn));
             log.debug(configInfo("minBufferedMsgCnt", minBufferedMsgCnt));
             log.debug(configInfo("bufSizeRatio", bufSizeRatio));
             log.debug(configInfo("connTimeout", connTimeout));
             log.debug(configInfo("maxConnTimeout", maxConnTimeout));
             log.debug(configInfo("reconCnt", reconCnt));
+            log.debug(configInfo("sockWriteTimeout", sockWriteTimeout));
+            log.debug(configInfo("recoveryAckCnt", recoveryAckCnt));
         }
 
         if (connBufSize > 8192)
@@ -1665,8 +1642,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private void checkAttributePresence(GridNode node, String attrName) {
         if (node.attribute(attrName) == null)
             U.warn(log, "Remote node has inconsistent configuration (required attribute was not found) " +
-                "[attrName=" + attrName + ", nodeId=" + node.id() +
-                "spiCls=" + U.getSimpleName(GridTcpCommunicationSpi.class) + ']');
+                    "[attrName=" + attrName + ", nodeId=" + node.id() +
+                    "spiCls=" + U.getSimpleName(GridTcpCommunicationSpi.class) + ']');
     }
 
     /** {@inheritDoc} */
@@ -1725,9 +1702,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
             if (client == null) {
                 // Do not allow concurrent connects.
-                GridFutureAdapter<GridCommunicationClient> fut = new GridFutureAdapter<>();
+                GridFutureAdapterEx<GridCommunicationClient> fut = new GridFutureAdapterEx<>();
 
-                GridFutureAdapter<GridCommunicationClient> oldFut = clientFuts.putIfAbsent(nodeId, fut);
+                GridFutureAdapterEx<GridCommunicationClient> oldFut = clientFuts.putIfAbsent(nodeId, fut);
 
                 if (oldFut == null) {
                     try {
@@ -1845,7 +1822,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             }
 
             try {
-                safeHandshake(client, false, null, node.id(), connTimeout0);
+                safeHandshake(client, null, node.id(), connTimeout0);
             }
             catch (HandshakeTimeoutException e) {
                 if (log.isDebugEnabled())
@@ -1951,43 +1928,30 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     if (sockSndBuf > 0)
                         ch.socket().setSendBufferSize(sockSndBuf);
 
-                    GridRecoverySendData recoverySnd = null;
-                    GridRecoveryReceiveData recoveryRcv = null;
+                    GridNioRecoveryData recoveryData = null;
 
                     long recoveryLastRcv = -1;
 
                     try {
                         if (recovery) {
-                            recoverySnd = recoverySend(node);
+                            recoveryData = recoveryData(node);
 
-                            if (!dualSockConn) {
-                                recoveryRcv = recoveryReceive(node);
-
-                                GridFutureAdapter<GridCommunicationClient> fut = recoveryRcv.reserve();
-
-                                if (fut != null) {
-                                    recoveryRcv.release();
-
-                                    fut.get();
-
-                                    return null;
-                                }
-                            }
+                            recoveryData.reserve();
                         }
 
                         ch.socket().connect(addr, (int)connTimeout0);
 
-                        recoveryLastRcv = safeHandshake(ch, recovery, recoveryRcv, node.id(), connTimeout0);
+                        recoveryLastRcv = safeHandshake(ch, recoveryData, node.id(), connTimeout0);
 
                         if (recoveryLastRcv == -1) {
-                            assert recovery && !dualSockConn;
+                            assert recovery;
 
                             return null;
                         }
                     }
                     finally {
                         if (recoveryLastRcv == -1)
-                            recoveryRcv.release();
+                            recoveryData.release();
                     }
 
                     UUID diffVerNodeId = null;
@@ -1998,8 +1962,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     if (!locVer.equals(rmtVer))
                         diffVerNodeId = node.id();
 
-                    if (recoverySnd != null)
-                        recoverySnd.reserve(recoveryLastRcv);
+                    if (recoveryData != null)
+                        recoveryData.onHandshake(recoveryLastRcv);
 
                     try {
                         Map<Integer, Object> meta = new HashMap<>();
@@ -2009,18 +1973,15 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                         Collection<GridNioFuture<?>> resend = null;
 
-                        if (recoverySnd != null) {
-                            Deque<GridNioFuture<?>> msgFuts = recoverySnd.messagesFutures();
+                        if (recoveryData != null) {
+                            Deque<GridNioFuture<?>> msgFuts = recoveryData.messagesFutures();
 
                             // Create copy since can concurrently receive acknowledge while resending.
                             if (!msgFuts.isEmpty())
                                 resend = new ArrayList<>(msgFuts);
 
-                            meta.put(-1, recoverySnd);
+                            meta.put(-1, recoveryData);
                         }
-
-                        if (recoveryRcv != null && !dualSockConn)
-                            meta.put(-2, recoveryRcv);
 
                         GridNioSession ses = nioSrvr.createSession(ch, meta).get();
 
@@ -2033,11 +1994,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     }
                     finally {
                         if (!conn) {
-                            if (recoverySnd != null)
-                                recoverySnd.release();
-
-                            if (recoveryRcv != null)
-                                recoveryRcv.release();
+                            if (recoveryData != null)
+                                recoveryData.release();
                         }
                     }
                 }
@@ -2138,8 +2096,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
      * Performs handshake in timeout-safe way.
      *
      * @param client Client.
-     * @param recovery {@code True} if use recovery protocol.
-     * @param recoveryRcv Recovery receive data.
+     * @param recovery Recovery data if use recovery handshake, otherwise {@code null}.
      * @param rmtNodeId Remote node.
      * @param timeout Timeout for handshake.
      * @throws GridException If handshake failed or wasn't completed withing timeout.
@@ -2147,8 +2104,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     @SuppressWarnings("ThrowFromFinallyBlock")
     private <T> long safeHandshake(
         T client,
-        boolean recovery,
-        @Nullable GridRecoveryReceiveData recoveryRcv,
+        @Nullable GridNioRecoveryData recovery,
         UUID rmtNodeId,
         long timeout
     ) throws GridException {
@@ -2188,10 +2144,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     ch.write(ByteBuffer.wrap(U.GG_HEADER));
 
-                    if (recovery && !dualSockConn) {
-                        assert recoveryRcv != null;
-
-                        HandshakeMessage msg = new HandshakeMessage(locNodeId, recoveryRcv.receivedCount());
+                    if (recovery != null) {
+                        HandshakeMessage msg = new HandshakeMessage(locNodeId, recovery.receivedCount());
 
                         if (log.isDebugEnabled())
                             log.debug("Write handshake message [rmtNode=" + rmtNodeId + ", msg=" + msg + ']');
@@ -2211,7 +2165,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     else
                         ch.write(ByteBuffer.wrap(nodeIdMsg.nodeIdBytesWithType));
 
-                    if (recovery) {
+                    if (recovery != null) {
                         if (log.isDebugEnabled())
                             log.debug("Waiting for handshake [rmtNode=" + rmtNodeId + ']');
 
@@ -2235,8 +2189,6 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             log.debug("Received handshake message [rmtNode=" + rmtNodeId + ", rcvCnt=" + rcvCnt + ']');
 
                         if (rcvCnt == -1) {
-                            assert !dualSockConn;
-
                             if (log.isDebugEnabled())
                                 log.debug("Connection rejected, will retry client creation [rmtNode=" + rmtNodeId + ']');
 
@@ -2291,42 +2243,22 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
     /**
      * @param node Node.
-     * @return Recovery send data for given node.
-     */
-    private GridRecoverySendData recoverySend(GridNode node) {
-        NodeID id = new NodeID(node.id(), node.order());
-
-        GridRecoverySendData recoverySnd = recoverySndData.get(id);
-
-        if (recoverySnd == null) {
-            GridRecoverySendData old = recoverySndData.put(id,
-                recoverySnd = new GridRecoverySendData(node, log));
-
-            if (old != null)
-                recoverySnd = old;
-        }
-
-        return recoverySnd;
-    }
-
-    /**
-     * @param node Node.
      * @return Recovery receive data for given node.
      */
-    private GridRecoveryReceiveData recoveryReceive(GridNode node) {
-        NodeID id = new NodeID(node.id(), node.order());
+    private GridNioRecoveryData recoveryData(GridNode node) {
+        ClientKey id = new ClientKey(node.id(), node.order());
 
-        GridRecoveryReceiveData recoveryRcv = recoveryRcvData.get(id);
+        GridNioRecoveryData recovery = recoveryData.get(id);
 
-        if (recoveryRcv == null) {
-            GridRecoveryReceiveData old =
-                recoveryRcvData.put(id, recoveryRcv = new GridRecoveryReceiveData(node, log));
+        if (recovery == null) {
+            GridNioRecoveryData old =
+                recoveryData.put(id, recovery = new GridNioRecoveryData(node, log));
 
             if (old != null)
-                recoveryRcv = old;
+                recovery = old;
         }
 
-        return recoveryRcv;
+        return recovery;
     }
 
     /** {@inheritDoc} */
@@ -2337,7 +2269,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /**
      *
      */
-    private static class NodeID {
+    private static class ClientKey {
         /** */
         private UUID nodeId;
 
@@ -2348,7 +2280,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
          * @param nodeId Node ID.
          * @param order Node order.
          */
-        private NodeID(UUID nodeId, long order) {
+        private ClientKey(UUID nodeId, long order) {
             this.nodeId = nodeId;
             this.order = order;
         }
@@ -2361,7 +2293,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             if (obj == null || getClass() != obj.getClass())
                 return false;
 
-            NodeID other = (NodeID)obj;
+            ClientKey other = (ClientKey)obj;
 
             return order == other.order && nodeId.equals(other.nodeId);
 
@@ -2378,7 +2310,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
         /** {@inheritDoc} */
         @Override public String toString() {
-            return S.toString(NodeID.class, this);
+            return S.toString(ClientKey.class, this);
         }
     }
 
@@ -2529,6 +2461,32 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         continue;
                     }
 
+                    if (client instanceof GridTcpNioCommunicationClient) {
+                        GridNioRecoveryData recovery =
+                                ((GridTcpNioCommunicationClient)client).session().recoveryData();
+
+                        if (recovery != null && recovery.lastAcknowledged() != recovery.received()) {
+                            RecoveryLastReceivedMessage msg = new RecoveryLastReceivedMessage(recovery.received());
+
+                            if (log.isDebugEnabled())
+                                log.debug("Send recovery acknowledgement on idle timeout [rmtNode=" + nodeId +
+                                    ", rcvCnt=" + msg.received() + ']');
+
+                            try {
+                                client.sendMessage(null, msg);
+
+                                recovery.lastAcknowledged(msg.received());
+
+                                continue;
+                            }
+                            catch (GridException err) {
+                                if (log.isDebugEnabled())
+                                    log.debug("Failed to send recovery acknowledgement on idle timeout " + nodeId +
+                                        ", rcvCnt=" + msg.received() + ", err=" + err + ']');
+                            }
+                        }
+                    }
+
                     long idleTime = client.getIdleTime();
 
                     if (idleTime >= idleConnTimeout) {
@@ -2542,31 +2500,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                 cleanupRecovery();
 
-                acknowledgeRecovery();
-
                 Thread.sleep(idleConnTimeout);
-            }
-        }
-
-        /**
-         *
-         */
-        private void acknowledgeRecovery() {
-            // Check all sessions since in dualSocket mode can not use for acknowledge session from client.
-            for (GridNioSession ses : nioSrvr.sessions()) {
-                GridRecoveryReceiveData recoveryRcv = ses.recoveryReceive();
-
-                if (recoveryRcv != null && recoveryRcv.lastAcknowledged() != recoveryRcv.received()) {
-                    RecoveryLastReceivedMessage msg = new RecoveryLastReceivedMessage(recoveryRcv.received());
-
-                    if (log.isDebugEnabled())
-                        log.debug("Send recovery acknowledgement on idle timeout [rmtNode=" + ses.meta(NODE_ID_META) +
-                            ", rcvCnt=" + msg.received() + ']');
-
-                    recoveryWorker.addMessageRequest(ses, msg);
-
-                    recoveryRcv.lastAcknowledged(msg.received());
-                }
             }
         }
 
@@ -2574,13 +2508,13 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
          * @throws InterruptedException If failed.
          */
         private void cleanupRecovery() throws InterruptedException {
-            Set<NodeID> left = null;
+            Set<ClientKey> left = null;
 
-            for (Map.Entry<NodeID, GridRecoverySendData> e : recoverySndData.entrySet()) {
+            for (Map.Entry<ClientKey, GridNioRecoveryData> e : recoveryData.entrySet()) {
                 if (left != null && left.contains(e.getKey()))
                     continue;
 
-                GridRecoverySendData recoverySnd = e.getValue();
+                GridNioRecoveryData recoverySnd = e.getValue();
 
                 GridNode node = getSpiContext().node(recoverySnd.node().id());
 
@@ -2592,32 +2526,14 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                 }
             }
 
-            for (Map.Entry<NodeID, GridRecoveryReceiveData> e : recoveryRcvData.entrySet()) {
-                if (left != null && left.contains(e.getKey()))
-                    continue;
-
-                GridRecoveryReceiveData recoveryRcv = e.getValue();
-
-                GridNode node = getSpiContext().node(recoveryRcv.node().id());
-
-                if (node == null || node.order() != recoveryRcv.node().order()) {
-                    if (left == null)
-                        left = new HashSet<>();
-
-                    left.add(e.getKey());
-                }
-            }
-
             if (left != null) {
                 assert !left.isEmpty();
 
-                for (NodeID id : left) {
-                    GridRecoverySendData recoverySnd = recoverySndData.remove(id);
+                for (ClientKey id : left) {
+                    GridNioRecoveryData recoverySnd = recoveryData.remove(id);
 
                     if (recoverySnd != null)
                         recoverySnd.onNodeLeft();
-
-                    recoveryRcvData.remove(id);
                 }
             }
         }
@@ -2802,9 +2718,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         ses.send(sndMsg.msg);
                 }
                 else {
-                    assert req instanceof GridRecoverySendData;
+                    assert req instanceof GridNioRecoveryData;
 
-                    GridNode node = ((GridRecoverySendData)req).node();
+                    GridNode node = ((GridNioRecoveryData)req).node();
 
                     if (clients.containsKey(node.id()))
                         continue;
@@ -2838,7 +2754,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         /**
          * @param recoverySnd Recovery send data.
          */
-        void addReconnectRequest(GridRecoverySendData recoverySnd) {
+        void addReconnectRequest(GridNioRecoveryData recoverySnd) {
             boolean add = q.add(recoverySnd);
 
             assert add;

@@ -478,11 +478,13 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
         GridTestUtils.waitForCondition(new GridAbsPredicate() {
             @Override public boolean apply() {
-                return !srv.sessions().isEmpty();
+                Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
+
+                return !sessions.isEmpty();
             }
         }, 5000);
 
-        Collection<? extends GridNioSession> sessions = srv.sessions();
+        Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
 
         assertFalse(sessions.isEmpty());
 
@@ -513,7 +515,6 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         spi.setSharedMemoryPort(-1);
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(10_000);
-        spi.setDualSocketConnection(dualSocket());
         spi.setRecoveryAcknowledgementCount(5);
         spi.setSelectorsCount(10);
         spi.setSocketWriteTimeout(1000);

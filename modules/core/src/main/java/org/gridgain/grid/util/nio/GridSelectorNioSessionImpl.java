@@ -49,11 +49,8 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     /** Read buffer. */
     private ByteBuffer readBuf;
 
-    /** Recovery send data. */
-    private GridRecoverySendData recoverySnd;
-
-    /** Recovery receive data. */
-    private GridRecoveryReceiveData recoveryRcv;
+    /** Recovery data. */
+    private GridNioRecoveryData recovery;
 
     /**
      * Creates session instance.
@@ -142,6 +139,22 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     }
 
     /**
+     * Adds write future at the front of the queue without semaphore acquire.
+     *
+     * @param writeFut Write request.
+     * @return Updated size of the queue.
+     */
+    int offerSystemMessage(GridNioFuture<?> writeFut) {
+        writeFut.messageThread(true);
+
+        boolean res = queue.offerFirst(writeFut);
+
+        assert res : "Future was not added to queue";
+
+        return queueSize.incrementAndGet();
+    }
+
+    /**
      * Adds write future to the pending list and returns the size of the queue.
      * <p>
      * Note that separate counter for the queue size is needed because in case of concurrent
@@ -178,8 +191,8 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
             if (sem != null && !last.messageThread())
                 sem.release();
 
-            if (recoverySnd != null)
-                recoverySnd.add(last);
+            if (recovery != null)
+                recovery.add(last);
         }
 
         return last;
@@ -205,38 +218,21 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     }
 
     /** {@inheritDoc} */
-    @Override public void recoverySend(GridRecoverySendData recoverySnd) {
-        assert recoverySnd != null;
+    @Override public void recoveryData(GridNioRecoveryData recoveryData) {
+        assert recoveryData != null;
 
-        this.recoverySnd = recoverySnd;
+        recovery = recoveryData;
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public GridRecoverySendData recoverySend() {
-        return recoverySnd;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void recoveryReceive(GridRecoveryReceiveData recoveryRcv) {
-        assert recoveryRcv != null;
-
-        this.recoveryRcv = recoveryRcv;
-    }
-
-    /** {@inheritDoc} */
-    @Nullable @Override public GridRecoveryReceiveData recoveryReceive() {
-        return recoveryRcv;
+    @Nullable @Override public GridNioRecoveryData recoveryData() {
+        return recovery;
     }
 
     /** {@inheritDoc} */
     @Override public <T> T addMeta(int key, @Nullable T val) {
-        if (val instanceof GridRecoveryReceiveData) {
-            recoveryRcv = (GridRecoveryReceiveData)val;
-
-            return null;
-        }
-        else if (val instanceof GridRecoverySendData) {
-            recoverySnd = (GridRecoverySendData)val;
+        if (val instanceof GridNioRecoveryData) {
+            recovery = (GridNioRecoveryData)val;
 
             return null;
         }

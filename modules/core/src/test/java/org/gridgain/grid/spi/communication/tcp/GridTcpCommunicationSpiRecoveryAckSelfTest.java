@@ -137,14 +137,14 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
                 for (GridTcpCommunicationSpi spi : spis) {
                     GridNioServer srv = U.field(spi, "nioSrvr");
 
-                    Collection<? extends GridNioSession> sessions = srv.sessions();
+                    Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
 
                     assertFalse(sessions.isEmpty());
 
                     boolean found = false;
 
                     for (GridNioSession ses : sessions) {
-                        final GridRecoverySendData snd = ses.recoverySend();
+                        final GridNioRecoveryData snd = ses.recoveryData();
 
                         if (snd != null) {
                             found = true;
@@ -189,7 +189,6 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(idleTimeout);
         spi.setTcpNoDelay(true);
-        spi.setDualSocketConnection(dualSocket());
         spi.setRecoveryAcknowledgementCount(ackCnt);
 
         return spi;

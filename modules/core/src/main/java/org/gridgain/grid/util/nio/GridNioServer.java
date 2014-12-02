@@ -370,7 +370,7 @@ public class GridNioServer<T> {
     }
 
     /**
-     * Resends messages if session provides {@link GridRecoverySendData}.
+     * Resends messages if session provides {@link GridNioRecoveryData}.
      *
      * @param ses Session.
      * @param msgFuts Message futures to resend.
@@ -533,13 +533,6 @@ public class GridNioServer<T> {
 
         if (balanceIdx == clientWorkers.size())
             balanceIdx = 0;
-    }
-
-    /**
-     * @return Sessions.
-     */
-    public Collection<? extends GridNioSession> sessions() {
-        return sessions;
     }
 
     /** {@inheritDoc} */
@@ -1456,21 +1449,16 @@ public class GridNioServer<T> {
                 // Since ses is in closed state, no write requests will be added.
                 NioOperationFuture<?> fut = ses.removeMeta(NIO_OPERATION.ordinal());
 
-                GridRecoveryReceiveData rcvRecoveryData = ses.recoveryReceive();
+                GridNioRecoveryData recovery = ses.recoveryData();
 
-                if (rcvRecoveryData != null)
-                    rcvRecoveryData.release();
-
-                GridRecoverySendData sndRecoveryData = ses.recoverySend();
-
-                if (sndRecoveryData != null) {
+                if (recovery != null) {
                     try {
                         while (ses.pollFuture() != null) {  // Poll will update recovery data.
                             // No-op.
                         }
                     }
                     finally {
-                        sndRecoveryData.release();
+                        recovery.release();
                     }
                 }
                 else {

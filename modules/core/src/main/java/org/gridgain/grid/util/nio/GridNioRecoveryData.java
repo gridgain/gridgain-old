@@ -11,14 +11,24 @@ package org.gridgain.grid.util.nio;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
-import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.typedef.internal.*;
-import org.jetbrains.annotations.*;
+
+import java.io.*;
+import java.util.*;
 
 /**
- * Recovery information for received messages.
+ * Recovery information for node.
  */
-public class GridRecoveryReceiveData {
+public class GridNioRecoveryData {
+    /** Number of acknowledged messages. */
+    private long acked;
+
+    /** Unacknowledged message futures. */
+    private ArrayDeque<GridNioFuture<?>> msgFuts = new ArrayDeque<>(1024);
+
+    /** Number of messages to resend. */
+    private int resendCnt;
+
     /** Number of received messages. */
     private long rcvCnt;
 
@@ -34,14 +44,11 @@ public class GridRecoveryReceiveData {
     /** Logger. */
     private final GridLogger log;
 
-    /** */
-    private GridFutureAdapter<GridCommunicationClient> fut;
-
     /**
      * @param node Node.
      * @param log Logger.
      */
-    public GridRecoveryReceiveData(GridNode node, GridLogger log) {
+    public GridNioRecoveryData(GridNode node, GridLogger log) {
         assert !node.isLocal() : node;
 
         this.node = node;
@@ -95,44 +102,86 @@ public class GridRecoveryReceiveData {
     }
 
     /**
-     * @param fut
+     * @param fut NIO future.
+     */
+    public void add(GridNioFuture<?> fut) {
+        if (!fut.skipRecovery()) {
+            if (resendCnt == 0)
+                msgFuts.addLast(fut);
+            else
+                resendCnt--;
+        }
+    }
+
+    /**
+     * @param rcvCnt Number of messages received by remote node.
+     */
+    public void ackReceived(long rcvCnt) {
+        if (log.isDebugEnabled())
+            log.debug("Handle acknowledgment, acked=" + acked + ", rcvCnt=" + rcvCnt +
+                ", msgFuts=" + msgFuts.size() + ']');
+
+        while (acked < rcvCnt) {
+            GridNioFuture<?> fut = msgFuts.pollFirst();
+
+            assert fut != null;
+
+            ((GridNioFutureImpl)fut).onDone();
+
+            acked++;
+        }
+    }
+
+    /**
+     * Completes with error all futures when node fails.
      * @throws InterruptedException If interrupted.
      */
-    public void setFuture(GridFutureAdapter<GridCommunicationClient> fut) throws InterruptedException {
+    public void onNodeLeft() throws InterruptedException {
+        reserve();
+
+        try {
+            for (GridNioFuture<?> msg : msgFuts)
+                ((GridNioFutureImpl)msg).onDone(new IOException("Failed to send message, node has left: " + node.id()));
+        }
+        finally {
+            release();
+        }
+    }
+
+    /**
+     * @return Message futures for unacknowledged messages.
+     */
+    public Deque<GridNioFuture<?>> messagesFutures() {
+        return msgFuts;
+    }
+
+    /**
+     * @throws InterruptedException If interrupted.
+     */
+    public void reserve() throws InterruptedException {
         synchronized (this) {
             while (reserved)
                 wait();
 
-            assert this.fut == null;
-
-            this.fut = fut;
+            reserved = true;
         }
+    }
+
+    /**
+     * @param rcvCnt Number of messages received by remote node.
+     */
+    public void onHandshake(long rcvCnt) {
+        ackReceived(rcvCnt);
+
+        resendCnt = msgFuts.size();
     }
 
     /**
      *
-     * @return
-     * @throws InterruptedException If interrupted.
-     */
-    @Nullable public GridFutureAdapter<GridCommunicationClient> reserve() throws InterruptedException {
-        synchronized (this) {
-            while (fut == null && reserved)
-                wait();
-
-            reserved = true;
-
-            return fut;
-        }
-    }
-
-    /**
-     * Releases receive data.
      */
     public void release() {
         synchronized (this) {
             reserved = false;
-
-            fut = null;
 
             notifyAll();
         }
@@ -140,6 +189,6 @@ public class GridRecoveryReceiveData {
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridRecoveryReceiveData.class, this);
+        return S.toString(GridNioRecoveryData.class, this);
     }
 }
