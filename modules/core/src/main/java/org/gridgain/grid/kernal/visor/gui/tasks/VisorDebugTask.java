@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.visor.gui.tasks;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.kernal.processors.task.*;
 import org.gridgain.grid.kernal.visor.cmd.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -22,19 +21,19 @@ import static  org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
  * Change debug level for Visor tasks, jobs.
  */
 @GridInternal
-public class VisorDebugTask extends VisorOneNodeTask<Boolean, Boolean> {
+public class VisorDebugTask extends VisorOneNodeTask<Boolean, Void> {
     /** */
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
-    @Override protected VisorJob<Boolean, Boolean> job(Boolean arg) {
+    @Override protected VisorJob<Boolean, Void> job(Boolean arg) {
         return new VisorDebugJob(arg);
     }
 
     /**
      * Job that change debug level for Visor tasks, jobs.
      */
-    private static class VisorDebugJob extends VisorJob<Boolean, Boolean> {
+    private static class VisorDebugJob extends VisorJob<Boolean, Void> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -46,13 +45,15 @@ public class VisorDebugTask extends VisorOneNodeTask<Boolean, Boolean> {
         }
 
         /** {@inheritDoc} */
-        @Override protected Boolean run(@Nullable Boolean newVal) throws GridException {
-            GridCacheAtomicReference<Boolean> debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
-                atomicReference(VISOR_DEBUG_KEY, false, true);
+        @Override protected Void run(@Nullable Boolean newVal) throws GridException {
+            try {
+                g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).put(VISOR_DEBUG_KEY, newVal);
+            }
+            catch (GridException ignore) {
+                // no-op
+            }
 
-            boolean expVal = !newVal;
-
-            return debug.compareAndSet(expVal, newVal) ? newVal : expVal;
+            return null;
         }
 
         /** {@inheritDoc} */
