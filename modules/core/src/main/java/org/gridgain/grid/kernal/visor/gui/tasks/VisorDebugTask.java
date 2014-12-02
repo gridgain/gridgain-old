@@ -16,21 +16,24 @@ import org.gridgain.grid.kernal.visor.cmd.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
+import static  org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
+
 /**
- * Change debug level for Visor task.
+ * Change debug level for Visor tasks, jobs.
  */
 @GridInternal
 public class VisorDebugTask extends VisorOneNodeTask<Boolean, Boolean> {
     /** */
     private static final long serialVersionUID = 0L;
 
-    public static final String VISOR_DEBUG_KEY = "VISOR_DEBUG_KEY";
-
     /** {@inheritDoc} */
     @Override protected VisorJob<Boolean, Boolean> job(Boolean arg) {
         return new VisorDebugJob(arg);
     }
 
+    /**
+     * Job that change debug level for Visor tasks, jobs.
+     */
     private static class VisorDebugJob extends VisorJob<Boolean, Boolean> {
         /** */
         private static final long serialVersionUID = 0L;

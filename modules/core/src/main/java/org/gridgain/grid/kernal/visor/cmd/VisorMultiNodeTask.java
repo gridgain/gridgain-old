@@ -10,10 +10,10 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
-import org.gridgain.grid.kernal.visor.gui.tasks.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.resources.*;
 import org.gridgain.grid.util.*;
@@ -37,9 +37,6 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
-    /** Task debug. */
-    protected GridCacheAtomicReference<Boolean> debug;
-
     protected long start;
 
     /**
@@ -53,16 +50,22 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
      * @throws GridException
      */
     protected boolean debug() throws GridException {
-        if (!g.localNode().isDaemon()) {
-            if (debug == null)
-                debug = g.cachex(CU.UTILITY_CACHE_NAME).dataStructures().
-                    atomicReference(VisorDebugTask.VISOR_DEBUG_KEY, false, true);
+        try {
+            if (!g.localNode().isDaemon()) {
+                GridCache<String, Boolean> cache = g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME);
 
-            return debug.get();
+                return cache.containsKey(VISOR_DEBUG_KEY) && cache.get(VISOR_DEBUG_KEY) != null ?
+                    cache.get(VISOR_DEBUG_KEY) : false;
+            }
+
+            GridNodeLocalMap<String, Boolean> nodeLocal = g.<String, Boolean>nodeLocalMap();
+
+            return nodeLocal.containsKey(VISOR_DEBUG_KEY) && nodeLocal.get(VISOR_DEBUG_KEY) != null ?
+                nodeLocal.get(VISOR_DEBUG_KEY) : false;
         }
-
-        return g.<String, Boolean>nodeLocalMap().containsKey(VisorDebugTask.VISOR_DEBUG_KEY) ?
-            g.<String, Boolean>nodeLocalMap().get(VisorDebugTask.VISOR_DEBUG_KEY) : false;
+        catch (GridException ignore) {
+            return false;
+        }
     }
 
     /** {@inheritDoc} */

@@ -30,6 +30,9 @@ public class VisorTaskUtils {
     /** Debug date format. */
     private static final SimpleDateFormat DEBUG_DATE_FMT = new SimpleDateFormat("HH:mm:ss,SSS");
 
+    /** Visor debug task flag */
+    public static final String VISOR_DEBUG_KEY = "VISOR_DEBUG_KEY";
+
     /**
      * @param name Grid-style nullable name.
      * @return Name with {@code null} replaced to &lt;default&gt;.
