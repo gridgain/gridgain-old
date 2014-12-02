@@ -2145,11 +2145,13 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
      * @throws GridException If handshake failed or wasn't completed withing timeout.
      */
     @SuppressWarnings("ThrowFromFinallyBlock")
-    private <T> long safeHandshake(T client,
+    private <T> long safeHandshake(
+        T client,
         boolean recovery,
         @Nullable GridRecoveryReceiveData recoveryRcv,
         UUID rmtNodeId,
-        long timeout) throws GridException {
+        long timeout
+    ) throws GridException {
         HandshakeTimeoutObject<T> obj = new HandshakeTimeoutObject<>(client, U.currentTimeMillis() + timeout);
 
         sockTimeoutWorker.addTimeoutObject(obj);

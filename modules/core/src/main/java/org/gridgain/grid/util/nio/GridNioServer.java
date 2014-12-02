@@ -1734,9 +1734,11 @@ public class GridNioServer<T> {
          * @param accepted {@code True} if socket has been accepted.
          * @param meta Optional meta.
          */
-        NioOperationFuture(SocketChannel sockCh,
+        NioOperationFuture(
+            SocketChannel sockCh,
             boolean accepted,
-            @Nullable Map<Integer, ?> meta) {
+            @Nullable Map<Integer, ?> meta
+        ) {
             op = NioOperation.REGISTER;
 
             this.sockCh = sockCh;
