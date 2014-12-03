@@ -10,6 +10,7 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -30,8 +31,8 @@ public class VisorTaskUtils {
     /** Debug date format. */
     private static final SimpleDateFormat DEBUG_DATE_FMT = new SimpleDateFormat("HH:mm:ss,SSS");
 
-    /** Visor debug task flag */
-    public static final String VISOR_DEBUG_KEY = "VISOR_DEBUG_KEY";
+    /** Visor debug task flag. */
+    private static final String VISOR_DEBUG_KEY = "VISOR_DEBUG_KEY";
 
     /**
      * @param name Grid-style nullable name.
@@ -314,5 +315,40 @@ public class VisorTaskUtils {
         log0(log, end, String.format("[%s]: %s, duration: %s", clazz.getSimpleName(), msg, formatDuration(end - start)));
 
         return end;
+    }
+
+    /**
+     * @param g Grid to check for debug flag.
+     * @return {@code true} if debug enabled.
+     */
+    public static boolean debugState(GridEx g) {
+        try {
+            Boolean debug = g.localNode().isDaemon()
+                ? g.<String, Boolean>nodeLocalMap().get(VISOR_DEBUG_KEY)
+                : g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).get(VISOR_DEBUG_KEY);
+
+            return debug != null ? debug : false;
+        }
+        catch (GridException ignore) {
+            return false;
+        }
+    }
+
+    /**
+     * Set grid debug state.
+     *
+     * @param g Grid to set debug flag.
+     * @param newState New value for debug state.
+     */
+    public static void debugState(GridEx g, Boolean newState) {
+        try {
+            if (g.localNode().isDaemon())
+                g.<String, Boolean>nodeLocalMap().put(VISOR_DEBUG_KEY, newState);
+            else
+                g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).putx(VISOR_DEBUG_KEY, newState);
+        }
+        catch (GridException ignore) {
+            // No-op.
+        }
     }
 }

@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.resources.*;
@@ -45,15 +44,7 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @Nullable @Override public Object execute() throws GridException {
         A arg = argument(0);
 
-        try {
-            GridCache<String, Boolean> cache = g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME);
-
-            if (cache.containsKey(VISOR_DEBUG_KEY) && cache.get(VISOR_DEBUG_KEY) != null)
-                debug = cache.get(VISOR_DEBUG_KEY);
-        }
-        catch (GridException ignore) {
-            // no-op
-        }
+        debug = debugState(g);
 
         start = U.currentTimeMillis();
 

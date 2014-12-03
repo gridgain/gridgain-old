@@ -10,8 +10,6 @@
 package org.gridgain.grid.kernal.visor.cmd;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.lang.*;
@@ -47,25 +45,9 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /**
      * @return {@code true} if debug mode enabled.
-     * @throws GridException
      */
-    protected boolean debug() throws GridException {
-        try {
-            if (!g.localNode().isDaemon()) {
-                GridCache<String, Boolean> cache = g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME);
-
-                return cache.containsKey(VISOR_DEBUG_KEY) && cache.get(VISOR_DEBUG_KEY) != null ?
-                    cache.get(VISOR_DEBUG_KEY) : false;
-            }
-
-            GridNodeLocalMap<String, Boolean> nodeLocal = g.<String, Boolean>nodeLocalMap();
-
-            return nodeLocal.containsKey(VISOR_DEBUG_KEY) && nodeLocal.get(VISOR_DEBUG_KEY) != null ?
-                nodeLocal.get(VISOR_DEBUG_KEY) : false;
-        }
-        catch (GridException ignore) {
-            return false;
-        }
+    protected boolean debug() {
+        return debugState(g);
     }
 
     /** {@inheritDoc} */

@@ -46,12 +46,7 @@ public class VisorDebugTask extends VisorOneNodeTask<Boolean, Void> {
 
         /** {@inheritDoc} */
         @Override protected Void run(@Nullable Boolean newVal) throws GridException {
-            try {
-                g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).put(VISOR_DEBUG_KEY, newVal);
-            }
-            catch (GridException ignore) {
-                // no-op
-            }
+            debugState(g, newVal);
 
             return null;
         }
