@@ -386,6 +386,9 @@ public class GridCacheConfiguration {
     /** */
     private boolean portableEnabled;
 
+    /** */
+    private boolean keepPortableInStore = true;
+
     /** Query configuration. */
     private GridCacheQueryConfiguration qryCfg;
 
@@ -436,6 +439,7 @@ public class GridCacheConfiguration {
         indexingSpiName = cc.getIndexingSpiName();
         interceptor = cc.getInterceptor();
         invalidate = cc.isInvalidate();
+        keepPortableInStore = cc.isKeepPortableInStore();
         offHeapMaxMem = cc.getOffHeapMaxMemory();
         maxConcurrentAsyncOps = cc.getMaxConcurrentAsyncOperations();
         maxQryIterCnt = cc.getMaximumQueryIteratorCount();
@@ -1992,12 +1996,32 @@ public class GridCacheConfiguration {
     }
 
     /**
-     * Gets portable enabled flag value.
+     * Sets portable enabled flag value.
      *
      * @param portableEnabled Portable enabled flag value.
      */
     public void setPortableEnabled(boolean portableEnabled) {
         this.portableEnabled = portableEnabled;
+    }
+
+    /**
+     * Flag indicating that {@link GridCacheStore} implementation
+     * is working with portable objects instead of Java objects
+     * ({@code true} by default).
+     *
+     * @return Keep portables in store flag.
+     */
+    public boolean isKeepPortableInStore() {
+        return keepPortableInStore;
+    }
+
+    /**
+     * Sets keep portables in store flag.
+     *
+     * @param keepPortableInStore Keep portables in store flag.
+     */
+    public void setKeepPortableInStore(boolean keepPortableInStore) {
+        this.keepPortableInStore = keepPortableInStore;
     }
 
     /**

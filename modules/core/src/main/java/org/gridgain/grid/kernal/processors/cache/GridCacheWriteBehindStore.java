@@ -279,6 +279,11 @@ public class GridCacheWriteBehindStore<K, V> implements GridCacheStore<K, V>, Gr
     }
 
     /** {@inheritDoc} */
+    @Override public void configure(Object... params) {
+        // No-op.
+    }
+
+    /** {@inheritDoc} */
     @Override public void initialize(GridKernalContext ctx) throws GridException {
         if (store instanceof GridInteropAware)
             ((GridInteropAware)store).initialize(ctx);

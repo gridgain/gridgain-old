@@ -1871,7 +1871,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                                 if (misses == null)
                                     misses = new GridLeanMap<>();
 
-                                misses.put(key, ver);
+                                misses.put(key0, ver);
                             }
                             else {
                                 val = ctx.cloneOnFlag(val);
