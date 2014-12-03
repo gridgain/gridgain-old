@@ -328,7 +328,7 @@ public class GridNioServer<T> {
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
 
-        send0(impl, fut);
+        send0(impl, fut, false);
 
         return fut;
     }
@@ -345,7 +345,7 @@ public class GridNioServer<T> {
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
 
-        send0(impl, fut);
+        send0(impl, fut, false);
 
         return fut;
     }
@@ -353,12 +353,13 @@ public class GridNioServer<T> {
     /**
      * @param ses Session.
      * @param fut Future.
+     * @param sys System message flag.
      */
-    private void send0(GridSelectorNioSessionImpl ses, NioOperationFuture<?> fut) {
+    private void send0(GridSelectorNioSessionImpl ses, NioOperationFuture<?> fut, boolean sys) {
         assert ses != null;
         assert fut != null;
 
-        int msgCnt = ses.offerFuture(fut);
+        int msgCnt = sys ? ses.offerSystemMessage(fut) : ses.offerFuture(fut);
 
         if (ses.closed()) {
             if (ses.removeFuture(fut))
@@ -370,8 +371,25 @@ public class GridNioServer<T> {
     }
 
     /**
-     * Resends messages if session provides {@link GridNioRecoveryData}.
+     * Adds message at the front of the queue without acquiring back pressure semaphore.
      *
+     * @param ses Session.
+     * @param msg Message.
+     * @return Future.
+     */
+    public GridNioFuture<?> sendSystem(GridNioSession ses, GridTcpCommunicationMessageAdapter msg) {
+        assert ses instanceof GridSelectorNioSessionImpl;
+
+        GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
+
+        NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
+
+        send0(impl, fut, true);
+
+        return fut;
+    }
+
+    /**
      * @param ses Session.
      * @param msgFuts Message futures to resend.
      * @param node Node.
@@ -382,6 +400,8 @@ public class GridNioServer<T> {
 
         if (log.isDebugEnabled())
             log.debug("Resend messages [rmtNode=" + node.id() + ", msgCnt=" + msgFuts.size() + ']');
+
+        log.info("Resend messages [rmtNode=" + node.id() + ", msgCnt=" + msgFuts.size() + ']');
 
         GridSelectorNioSessionImpl ses0 = (GridSelectorNioSessionImpl)ses;
 
@@ -1387,7 +1407,6 @@ public class GridNioServer<T> {
          * @param e Exception to be passed to the listener, if any.
          * @return {@code True} if this call closed the ses.
          */
-        @SuppressWarnings("StatementWithEmptyBody")
         protected boolean close(final GridSelectorNioSessionImpl ses, @Nullable final GridException e) {
             if (e != null) {
                 // Print stack trace only if has runtime exception in it's cause.
@@ -1449,15 +1468,19 @@ public class GridNioServer<T> {
                 // Since ses is in closed state, no write requests will be added.
                 NioOperationFuture<?> fut = ses.removeMeta(NIO_OPERATION.ordinal());
 
-                GridNioRecoveryData recovery = ses.recoveryData();
+                GridNioRecoveryDescriptor recovery = ses.recoveryDescriptor();
 
                 if (recovery != null) {
                     try {
-                        while (ses.pollFuture() != null) {  // Poll will update recovery data.
-                            // No-op.
+                        // Poll will update recovery data.
+                        while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null) {
+                            if (fut.skipRecovery())
+                                fut.connectionClosed();
                         }
                     }
                     finally {
+                        //log.info("Release from close");
+
                         recovery.release();
                     }
                 }

@@ -136,13 +136,6 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     }
 
     /**
-     * @return Value for {@link GridTcpCommunicationSpi#isDualSocketConnection()} property.
-     */
-    protected boolean dualSocket() {
-        return false;
-    }
-
-    /**
      * @throws Exception If failed.
      */
     public void testBlockListener() throws Exception {
@@ -372,15 +365,6 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
                 for (int j = 0; j < 100; j++)
                     spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
 
-                /*
-                if (dualSocket()) {
-                    for (int j = 0; j < 100; j++)
-                        spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
-
-                    expCnt1 += 100;
-                }
-                */
-
                 expCnt0 += 100;
 
                 final int expMsgs0 = expCnt0;
@@ -388,8 +372,6 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
                 GridTestUtils.waitForCondition(new GridAbsPredicate() {
                     @Override public boolean apply() {
-                        log.info("Check cnt " + lsnr1.rcvCnt.get() + " " +lsnr0.rcvCnt.get());
-
                         return lsnr0.rcvCnt.get() >= expMsgs0 && lsnr1.rcvCnt.get() >= expMsgs1;
                     }
                 }, 60_000);
@@ -486,23 +468,9 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
         Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
 
-        assertFalse(sessions.isEmpty());
+        assertEquals(1, sessions.size());
 
-        if (!dualSocket()) {
-            assertEquals(1, sessions.size());
-
-            return sessions.iterator().next();
-        }
-        else {
-            for (GridNioSession ses : sessions) {
-                if (ses.accepted())
-                    return ses;
-            }
-
-            fail("Failed to find session.");
-
-            return null;
-        }
+        return sessions.iterator().next();
     }
 
     /**

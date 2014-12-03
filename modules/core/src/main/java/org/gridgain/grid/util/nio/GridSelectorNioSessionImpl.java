@@ -50,7 +50,7 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     private ByteBuffer readBuf;
 
     /** Recovery data. */
-    private GridNioRecoveryData recovery;
+    private GridNioRecoveryDescriptor recovery;
 
     /**
      * Creates session instance.
@@ -139,7 +139,7 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     }
 
     /**
-     * Adds write future at the front of the queue without semaphore acquire.
+     * Adds write future at the front of the queue without acquiring back pressure semaphore.
      *
      * @param writeFut Write request.
      * @return Updated size of the queue.
@@ -218,21 +218,21 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     }
 
     /** {@inheritDoc} */
-    @Override public void recoveryData(GridNioRecoveryData recoveryData) {
-        assert recoveryData != null;
+    @Override public void recoveryDescriptor(GridNioRecoveryDescriptor recoveryDesc) {
+        assert recoveryDesc != null;
 
-        recovery = recoveryData;
+        recovery = recoveryDesc;
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public GridNioRecoveryData recoveryData() {
+    @Nullable @Override public GridNioRecoveryDescriptor recoveryDescriptor() {
         return recovery;
     }
 
     /** {@inheritDoc} */
     @Override public <T> T addMeta(int key, @Nullable T val) {
-        if (val instanceof GridNioRecoveryData) {
-            recovery = (GridNioRecoveryData)val;
+        if (val instanceof GridNioRecoveryDescriptor) {
+            recovery = (GridNioRecoveryDescriptor)val;
 
             return null;
         }

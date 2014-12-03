@@ -82,13 +82,6 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
     }
 
     /**
-     * @return Value for {@link GridTcpCommunicationSpi#isDualSocketConnection()} property.
-     */
-    protected boolean dualSocket() {
-        return false;
-    }
-
-    /**
      * @throws Exception If failed.
      */
     public void testAckOnIdle() throws Exception {
@@ -144,19 +137,19 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
                     boolean found = false;
 
                     for (GridNioSession ses : sessions) {
-                        final GridNioRecoveryData snd = ses.recoveryData();
+                        final GridNioRecoveryDescriptor recoveryDesc = ses.recoveryDescriptor();
 
-                        if (snd != null) {
+                        if (recoveryDesc != null) {
                             found = true;
 
                             GridTestUtils.waitForCondition(new GridAbsPredicate() {
                                 @Override public boolean apply() {
-                                    return snd.messagesFutures().isEmpty();
+                                    return recoveryDesc.messagesFutures().isEmpty();
                                 }
                             }, 10_000);
 
-                            assertEquals("Unexpected messages: " + snd.messagesFutures(), 0,
-                                snd.messagesFutures().size());
+                            assertEquals("Unexpected messages: " + recoveryDesc.messagesFutures(), 0,
+                                recoveryDesc.messagesFutures().size());
 
                             break;
                         }
@@ -165,8 +158,16 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
                     assertTrue(found);
                 }
 
+                final int expMsgs0 = expMsgs;
+
                 for (GridTcpCommunicationSpi spi : spis) {
-                    TestListener lsnr = (TestListener)spi.getListener();
+                    final TestListener lsnr = (TestListener)spi.getListener();
+
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return lsnr.rcvCnt.get() >= expMsgs0;
+                        }
+                    }, 5000);
 
                     assertEquals(expMsgs, lsnr.rcvCnt.get());
                 }

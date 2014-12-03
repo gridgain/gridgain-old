@@ -14,6 +14,7 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.communication.*;
 import org.gridgain.grid.util.direct.*;
+import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.nio.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
@@ -32,6 +33,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
     extends GridSpiAbstractTest<T> {
     /** */
     private static final int SPI_CNT = 2;
+
+    /** */
+    private static final int ITERS = 50;
 
     /** */
     private static final Collection<GridTestResources> spiRsrcs = new ArrayList<>();
@@ -95,23 +99,32 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
      * @throws Exception If failed.
      */
     public void testTwoThreads() throws Exception {
-        concurrentConnect(2, 10, 100, false);
+        concurrentConnect(2, 10, ITERS, false, false);
     }
 
     /**
      * @throws Exception If failed.
      */
-    public void testManyThreads() throws Exception {
+    public void testMultithreaded() throws Exception {
         int threads = Runtime.getRuntime().availableProcessors() * 5;
 
-        concurrentConnect(threads, 10, 100, false);
+        concurrentConnect(threads, 10, ITERS, false, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testWithLoad() throws Exception {
+        int threads = Runtime.getRuntime().availableProcessors() * 5;
+
+        concurrentConnect(threads, 10, ITERS / 2, false, true);
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testRandomSleep() throws Exception {
-        concurrentConnect(4, 1, 100, true);
+        concurrentConnect(4, 1, ITERS, true, false);
     }
 
     /**
@@ -119,76 +132,127 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
      * @param msgPerThread Messages per thread.
      * @param iters Number of iterations.
      * @param sleep If {@code true} sleeps random time before starts send messages.
+     * @param load Run load threads flag.
      * @throws Exception If failed.
      */
     private void concurrentConnect(final int threads,
         final int msgPerThread,
         final int iters,
-        final boolean sleep) throws Exception {
+        final boolean sleep,
+        boolean load) throws Exception {
         log.info("Concurrent connect [threads=" + threads +
             ", msgPerThread=" + msgPerThread +
             ", iters=" + iters +
+            ", load=" + load +
             ", sleep=" + sleep + ']');
 
-        for (int i = 0; i < iters; i++) {
-            log.info("Iteration: " + i);
+        final AtomicBoolean stop = new AtomicBoolean();
 
-            final AtomicInteger msgId = new AtomicInteger();
+        GridFuture<?> loadFut = null;
 
-            CountDownLatch latch = new CountDownLatch(threads * msgPerThread);
+        if (load) {
+            loadFut = GridTestUtils.runMultiThreadedAsync(new Callable<Long>() {
+                @Override public Long call() throws Exception {
+                    long dummyRes = 0;
 
-            MessageListener lsnr = new MessageListener(latch);
+                    List<String> list = new ArrayList<>();
 
-            createSpis(lsnr);
+                    while (!stop.get()) {
+                        for (int i = 0; i < 100; i++) {
+                            String str = new String(new byte[i]);
 
-            final AtomicInteger idx = new AtomicInteger();
+                            list.add(str);
 
-            try {
-                GridTestUtils.runMultiThreaded(new Callable<Void>() {
-                    @Override public Void call() throws Exception {
-                        int idx0 = idx.getAndIncrement();
-
-                        GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi = spis.get(idx0 % 2);
-
-                        GridNode srcNode = nodes.get(idx0 % 2);
-
-                        GridNode dstNode = nodes.get((idx0 + 1) % 2);
-
-                        if (sleep) {
-                            ThreadLocalRandom rnd = ThreadLocalRandom.current();
-
-                            long millis = rnd.nextLong(10);
-
-                            if (millis > 0)
-                                Thread.sleep(millis);
+                            dummyRes += str.hashCode();
                         }
 
-                        for (int i = 0; i < msgPerThread; i++)
-                            spi.sendMessage(dstNode, new GridTestMessage(srcNode.id(), msgId.incrementAndGet(), 0));
+                        if (list.size() > 1000_000) {
+                            list = new ArrayList<>();
 
-                        return null;
+                            System.gc();
+                        }
                     }
-                }, threads, "test");
 
-                assertTrue(latch.await(10, TimeUnit.SECONDS));
+                    return dummyRes;
+                }
+            }, 2, "test-load");
+        }
 
-                for (GridCommunicationSpi spi : spis) {
-                    ConcurrentMap<UUID, GridTcpCommunicationClient> clients = U.field(spi, "clients");
+        try {
+            for (int i = 0; i < iters; i++) {
+                log.info("Iteration: " + i);
 
-                    assertEquals(1, clients.size());
+                final AtomicInteger msgId = new AtomicInteger();
 
-                    GridNioServer srv = U.field(spi, "nioSrvr");
+                CountDownLatch latch = new CountDownLatch(threads * msgPerThread);
 
-                    Collection sessions = U.field(srv, "sessions");
+                MessageListener lsnr = new MessageListener(latch);
 
-                    int expSessions = dualSocket() ? 2 : 1;
+                createSpis(lsnr);
 
-                    assertEquals(expSessions, sessions.size());
+                final AtomicInteger idx = new AtomicInteger();
+
+                try {
+                    GridTestUtils.runMultiThreaded(new Callable<Void>() {
+                        @Override public Void call() throws Exception {
+                            int idx0 = idx.getAndIncrement();
+
+                            Thread.currentThread().setName("Test thread [idx=" + idx0 + ", grid=" + (idx0 % 2) + ']');
+
+                            GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi = spis.get(idx0 % 2);
+
+                            GridNode srcNode = nodes.get(idx0 % 2);
+
+                            GridNode dstNode = nodes.get((idx0 + 1) % 2);
+
+                            if (sleep) {
+                                ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+                                long millis = rnd.nextLong(10);
+
+                                if (millis > 0)
+                                    Thread.sleep(millis);
+                            }
+
+                            for (int i = 0; i < msgPerThread; i++)
+                                spi.sendMessage(dstNode, new GridTestMessage(srcNode.id(), msgId.incrementAndGet(), 0));
+
+                            return null;
+                        }
+                    }, threads, "test");
+
+                    assertTrue(latch.await(10, TimeUnit.SECONDS));
+
+                    for (GridCommunicationSpi spi : spis) {
+                        ConcurrentMap<UUID, GridTcpCommunicationClient> clients = U.field(spi, "clients");
+
+                        assertEquals(1, clients.size());
+
+                        final GridNioServer srv = U.field(spi, "nioSrvr");
+
+                        GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                            @Override public boolean apply() {
+                                Collection sessions = U.field(srv, "sessions");
+
+                                return sessions.size() == 1;
+                            }
+                        }, 5000);
+
+                        Collection sessions = U.field(srv, "sessions");
+
+                        assertEquals(1, sessions.size());
+                    }
+                }
+                finally {
+                    stopSpis();
                 }
             }
-            finally {
-                stopSpis();
-            }
+        }
+        finally {
+            stop.set(true);
+
+            if (loadFut != null)
+                loadFut.get();
         }
     }
 
@@ -201,15 +265,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
         spi.setSharedMemoryPort(-1);
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(60_000);
+        spi.setConnectTimeout(10_000);
 
         return spi;
-    }
-
-    /**
-     * @return Value for {@link GridTcpCommunicationSpi#isDualSocketConnection()} property.
-     */
-    protected boolean dualSocket() {
-        return false;
     }
 
     /**

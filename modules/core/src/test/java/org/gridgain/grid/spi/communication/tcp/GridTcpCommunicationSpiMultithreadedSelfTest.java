@@ -14,6 +14,7 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.communication.*;
 import org.gridgain.grid.util.direct.*;
+import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.nio.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -329,6 +330,28 @@ public abstract class GridTcpCommunicationSpiMultithreadedSelfTest extends GridS
         run.set(false);
 
         fut2.get();
+
+        // Wait when all messages are acknowledged to do not break next tests' logic.
+        for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis.values()) {
+            GridNioServer srv = U.field(spi, "nioSrvr");
+
+            Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
+
+            for (GridNioSession ses : sessions) {
+                final GridNioRecoveryDescriptor snd = ses.recoveryDescriptor();
+
+                if (snd != null) {
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return snd.messagesFutures().isEmpty();
+                        }
+                    }, 10_000);
+
+                    assertEquals("Unexpected messages: " + snd.messagesFutures(), 0,
+                        snd.messagesFutures().size());
+                }
+            }
+        }
     }
 
     /**
