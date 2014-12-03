@@ -35,6 +35,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
+    /** Task start time. */
     protected long start;
 
     /**

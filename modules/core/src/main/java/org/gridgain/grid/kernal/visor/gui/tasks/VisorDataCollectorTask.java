@@ -662,7 +662,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
             dr(res);
 
             if (debug)
-                start0 = log(g.log(), "Collected dr", getClass(), start0);
+                log(g.log(), "Collected DR", getClass(), start0);
 
             // TODO: gg-mongo mongo(res);
 

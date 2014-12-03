@@ -29,7 +29,12 @@ public class VisorTaskUtils {
     private static final String DFLT_EMPTY_NAME = "<default>";
 
     /** Debug date format. */
-    private static final SimpleDateFormat DEBUG_DATE_FMT = new SimpleDateFormat("HH:mm:ss,SSS");
+    private static final ThreadLocal<SimpleDateFormat> DEBUG_DATE_FMT = new ThreadLocal<SimpleDateFormat>() {
+        /** {@inheritDoc} */
+        @Override protected SimpleDateFormat initialValue() {
+            return new SimpleDateFormat("HH:mm:ss,SSS");
+        }
+    };
 
     /** Visor debug task flag. */
     private static final String VISOR_DEBUG_KEY = "VISOR_DEBUG_KEY";
@@ -262,7 +267,7 @@ public class VisorTaskUtils {
                 log.warning(msg);
         }
         else
-            X.println("[" + DEBUG_DATE_FMT.format(time) + "]" +
+            X.println("[" + DEBUG_DATE_FMT.get().format(time) + "]" +
                 String.format("%30s %s", "<" + Thread.currentThread().getName() + ">", msg));
     }
 

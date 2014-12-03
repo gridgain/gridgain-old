@@ -29,7 +29,7 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     protected long start;
 
     /** Debug flag. */
-    protected @Nullable boolean debug;
+    protected boolean debug;
 
     /**
      * Create job with specified argument.
