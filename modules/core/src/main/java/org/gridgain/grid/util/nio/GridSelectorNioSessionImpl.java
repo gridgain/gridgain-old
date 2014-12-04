@@ -17,6 +17,7 @@ import org.jetbrains.annotations.*;
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
@@ -177,6 +178,17 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
         assert res : "Future was not added to queue";
 
         return queueSize.incrementAndGet();
+    }
+
+    /**
+     * @param futs Futures to resend.
+     */
+    void resend(Collection<GridNioFuture<?>> futs) {
+        assert queue.isEmpty() : queue.size();
+
+        boolean add = queue.addAll(futs);
+
+        assert add;
     }
 
     /**

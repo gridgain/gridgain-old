@@ -12,6 +12,7 @@ package org.gridgain.grid.util.nio;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
+import org.gridgain.grid.spi.*;
 import org.gridgain.grid.util.typedef.internal.*;
 
 import java.io.*;
@@ -176,6 +177,16 @@ public class GridNioRecoveryDescriptor {
     }
 
     /**
+     * @param ctx SPI context.
+     * @return {@code True} if node still exists with the same order.
+     */
+    public boolean nodeAlive(GridSpiContext ctx) {
+        GridNode node0 = ctx.node(node.id());
+
+        return node0 != null && node0.order() == node.order();
+    }
+
+    /**
      * @throws InterruptedException If interrupted.
      * @return {@code True} if reserved.
      */
@@ -187,7 +198,7 @@ public class GridNioRecoveryDescriptor {
             if (!connected)
                 reserved = true;
 
-            return reserved;
+            return !connected;
         }
     }
 
@@ -210,8 +221,6 @@ public class GridNioRecoveryDescriptor {
 
             connected = true;
 
-            //log.info("Connected, has req: " + (handshakeReq != null));
-
             if (handshakeReq != null) {
                 GridInClosure<Boolean> c = handshakeReq.get2();
 
@@ -231,8 +240,6 @@ public class GridNioRecoveryDescriptor {
      */
     public void release() {
         synchronized (this) {
-            //log.info("Release recovery " + this);
-
             connected = false;
 
             if (handshakeReq != null) {
@@ -244,13 +251,14 @@ public class GridNioRecoveryDescriptor {
 
                 c.apply(true);
             }
-            else
+            else {
                 reserved = false;
+
+                notifyAll();
+            }
 
             if (nodeLeft)
                 completeOnNodeLeft();
-
-            notifyAll();
         }
     }
 
@@ -262,24 +270,18 @@ public class GridNioRecoveryDescriptor {
     public boolean tryReserve(long id, GridInClosure<Boolean> c) {
         synchronized (this) {
             if (connected) {
-                //log.info("Try reserve, already connected " + id);
-
                 c.apply(false);
 
                 return false;
             }
 
             if (reserved) {
-                //log.info("Try reserve, will wait " + id);
-
                 if (handshakeReq != null) {
                     assert handshakeReq.get1() != null;
 
                     long id0 = handshakeReq.get1();
 
                     assert id0 != id : id0;
-
-                    //log.info("Try reserve, already have " + id0);
 
                     if (id > id0) {
                         GridInClosure<Boolean> c0 = handshakeReq.get2();
@@ -299,8 +301,6 @@ public class GridNioRecoveryDescriptor {
                 return false;
             }
             else {
-                //log.info("Try reserve, reserved " + id);
-
                 reserved = true;
 
                 return true;

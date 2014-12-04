@@ -391,30 +391,29 @@ public class GridNioServer<T> {
 
     /**
      * @param ses Session.
-     * @param msgFuts Message futures to resend.
-     * @param node Node.
      */
-    public void resend(GridNioSession ses, Collection<GridNioFuture<?>> msgFuts, GridNode node) {
+    public void resend(GridNioSession ses) {
         assert ses instanceof GridSelectorNioSessionImpl;
-        assert !F.isEmpty(msgFuts) : msgFuts;
 
-        if (log.isDebugEnabled())
-            log.debug("Resend messages [rmtNode=" + node.id() + ", msgCnt=" + msgFuts.size() + ']');
+        GridNioRecoveryDescriptor recoveryDesc = ses.recoveryDescriptor();
 
-        log.info("Resend messages [rmtNode=" + node.id() + ", msgCnt=" + msgFuts.size() + ']');
+        if (recoveryDesc != null && !recoveryDesc.messagesFutures().isEmpty()) {
+            Deque<GridNioFuture<?>> futs = recoveryDesc.messagesFutures();
 
-        GridSelectorNioSessionImpl ses0 = (GridSelectorNioSessionImpl)ses;
+            if (log.isDebugEnabled())
+                log.debug("Resend messages [rmtNode=" + recoveryDesc.node().id() + ", msgCnt=" + futs.size() + ']');
 
-        for (GridNioFuture<?> fut : msgFuts) {
-            if (ses0.closed())
-                break;
+            GridSelectorNioSessionImpl ses0 = (GridSelectorNioSessionImpl)ses;
 
-            ((NioOperationFuture)fut).resetMessage(ses0);
+            GridNioFuture<?> fut0 = futs.iterator().next();
 
-            int msgCnt = ses0.offerFuture(fut);
+            for (GridNioFuture<?> fut : futs)
+                ((NioOperationFuture)fut).resetMessage(ses0);
 
-            if (msgCnt == 1)
-                clientWorkers.get(ses0.selectorIndex()).offer(((NioOperationFuture)fut));
+            ses0.resend(futs);
+
+            // Wake up worker.
+            clientWorkers.get(ses0.selectorIndex()).offer(((NioOperationFuture)fut0));
         }
     }
 
@@ -1378,6 +1377,9 @@ public class GridNioServer<T> {
 
                 ses.key(key);
 
+                if (!ses.accepted())
+                    resend(ses);
+
                 sessions.add(ses);
 
                 try {
@@ -1479,8 +1481,6 @@ public class GridNioServer<T> {
                         }
                     }
                     finally {
-                        //log.info("Release from close");
-
                         recovery.release();
                     }
                 }

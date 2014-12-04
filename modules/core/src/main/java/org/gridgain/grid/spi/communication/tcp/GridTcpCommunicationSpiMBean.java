@@ -268,7 +268,7 @@ public interface GridTcpCommunicationSpiMBean extends GridSpiManagementMBean {
     public long getSocketWriteTimeout();
 
     /**
-     * @return
+     * @return Number of received messages after which acknowledgment is sent.
      */
     public int getRecoveryAcknowledgementCount();
 }

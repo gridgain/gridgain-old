@@ -37,5 +37,8 @@ public class GridTcpCommunicationSpiConfigSelfTest extends GridSpiAbstractConfig
         checkNegativeSpiProperty(new GridTcpCommunicationSpi(), "bufferSizeRatio", 0);
         checkNegativeSpiProperty(new GridTcpCommunicationSpi(), "connectTimeout", -1);
         checkNegativeSpiProperty(new GridTcpCommunicationSpi(), "maxConnectTimeout", -1);
+        checkNegativeSpiProperty(new GridTcpCommunicationSpi(), "socketWriteTimeout", -1);
+        checkNegativeSpiProperty(new GridTcpCommunicationSpi(), "recoveryAcknowledgementCount", 0);
+        checkNegativeSpiProperty(new GridTcpCommunicationSpi(), "recoveryAcknowledgementCount", -1);
     }
 }

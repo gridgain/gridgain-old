@@ -483,6 +483,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         spi.setSharedMemoryPort(-1);
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(10_000);
+        spi.setConnectTimeout(10_000);
         spi.setRecoveryAcknowledgementCount(5);
         spi.setSelectorsCount(10);
         spi.setSocketWriteTimeout(1000);
