@@ -145,7 +145,7 @@ public class GridCacheStoreManager<K, V> extends GridCacheManagerAdapter<K, V> {
             if (log.isDebugEnabled())
                 log.debug("Loaded value from store [key=" + key + ", val=" + val + ']');
 
-            return val;
+            return cctx.portableEnabled() ? (V)cctx.marshalToPortable(val) : val;
         }
 
         return null;
@@ -200,7 +200,14 @@ public class GridCacheStoreManager<K, V> extends GridCacheManagerAdapter<K, V> {
                 try {
                     singleThreadGate.loadAll(tx, keys0, new CI2<K, Object>() {
                         @Override public void apply(K k, Object o) {
-                            vis.apply(k, convert(o));
+                            V v = convert(o);
+
+                            if (cctx.portableEnabled()) {
+                                k = (K)cctx.marshalToPortable(k);
+                                v = (V)cctx.marshalToPortable(v);
+                            }
+
+                            vis.apply(k, v);
                         }
                     });
                 }

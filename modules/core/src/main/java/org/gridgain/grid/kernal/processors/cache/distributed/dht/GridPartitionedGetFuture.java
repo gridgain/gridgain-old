@@ -487,12 +487,15 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
                 for (GridCacheEntryInfo<K, V> info : infos) {
                     info.unmarshalValue(cctx, cctx.deploy().globalLoader());
 
+                    K key = info.key();
                     V val = info.value();
 
-                    if (cctx.portableEnabled() && deserializePortable && val instanceof GridPortableObject)
-                        val = ((GridPortableObject)val).deserialize();
+                    if (cctx.portableEnabled() && deserializePortable) {
+                        key = (K)cctx.unwrapPortableIfNeeded(key, false);
+                        val = (V)cctx.unwrapPortableIfNeeded(val, false);
+                    }
 
-                    map.put(info.key(), val);
+                    map.put(key, val);
                 }
 
                 return map;

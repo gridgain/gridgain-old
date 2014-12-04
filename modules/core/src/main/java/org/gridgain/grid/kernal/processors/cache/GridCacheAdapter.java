@@ -1834,8 +1834,6 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                     if (key == null)
                         continue;
 
-                    K key0 = null;
-
                     while (true) {
                         GridCacheEntryEx<K, V> entry;
 
@@ -1844,12 +1842,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
 
                             cached = null;
                         }
-                        else {
-                            if (key0 == null)
-                                key0 = ctx.portableEnabled() ? (K)ctx.marshalToPortable(key) : key;
-
-                            entry = entryEx(key0);
-                        }
+                        else
+                            entry = entryEx(key);
 
                         try {
                             V val = entry.innerGet(null,
@@ -1871,7 +1865,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                                 if (misses == null)
                                     misses = new GridLeanMap<>();
 
-                                misses.put(key0, ver);
+                                misses.put(key, ver);
                             }
                             else {
                                 val = ctx.cloneOnFlag(val);
@@ -4657,6 +4651,14 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
     public GridFuture<Map<K, V>> getAllAsync(@Nullable Collection<? extends K> keys,
         boolean deserializePortable, @Nullable GridPredicate<GridCacheEntry<K, V>> filter) {
         String taskName = ctx.kernalContext().job().currentTaskName();
+
+        if (ctx.portableEnabled() && !F.isEmpty(keys)) {
+            keys = F.viewReadOnly(keys, new C1<K, K>() {
+                @Override public K apply(K k) {
+                    return (K)ctx.marshalToPortable(k);
+                }
+            });
+        }
 
         return getAllAsync(keys, ctx.hasFlag(GET_PRIMARY), /*skip tx*/false, null, null, taskName,
             deserializePortable, filter);
