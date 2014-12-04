@@ -258,7 +258,9 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
                 ses1.pauseReads().get();
 
-                for (int j = 0; j < 10_000; j++) {
+                boolean err = false;
+
+                for (int j = 0; j < 20_000; j++) {
                     try {
                         spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
                     }
@@ -269,11 +271,13 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
                         sentCnt += j;
 
+                        err = true;
+
                         break;
                     }
                 }
 
-                assertTrue("Failed to provoke write timeout: " + sentCnt, sentCnt > 0);
+                assertTrue("Failed to provoke write timeout", err);
 
                 ses1.resumeReads().get();
 
@@ -414,6 +418,8 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
                 ses1.pauseReads().get();
 
+                boolean err = false;
+
                 for (int j = 0; j < 10_000; j++) {
                     try {
                         spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
@@ -425,11 +431,13 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
                         sentCnt += j;
 
+                        err = true;
+
                         break;
                     }
                 }
 
-                assertTrue("Failed to provoke write timeout: " + sentCnt, sentCnt > 0);
+                assertTrue("Failed to provoke write timeout", err);
 
                 ses1.resumeReads().get();
 
@@ -487,6 +495,8 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         spi.setRecoveryAcknowledgementCount(5);
         spi.setSelectorsCount(10);
         spi.setSocketWriteTimeout(1000);
+        spi.setSocketSendBuffer(512);
+        spi.setSocketReceiveBuffer(512);
 
         return spi;
     }
