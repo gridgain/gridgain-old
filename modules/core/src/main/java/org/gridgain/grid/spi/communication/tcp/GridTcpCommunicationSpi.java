@@ -537,6 +537,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             @SuppressWarnings("PackageVisibleInnerClass")
             class ConnectClosure implements GridInClosure<Boolean> {
                 /** */
+                private static final long serialVersionUID = 0L;
+
+                /** */
                 private final GridNioSession ses;
 
                 /** */
