@@ -78,7 +78,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override protected VisorDataCollectorTaskResult reduce0(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override protected VisorDataCollectorTaskResult reduce0(List<GridComputeJobResult> results)
+        throws GridException {
         VisorDataCollectorTaskResult data = new VisorDataCollectorTaskResult();
 
         for (GridComputeJobResult res : results) {
@@ -582,7 +583,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                     }
                     finally {
                         if (debug)
-                            log(g.log(), "Collected ggfs: " + ggfs.name(), getClass(), start0);
+                            log(g.log(), "Collected GGFS: " + ggfs.name(), getClass(), start0);
                     }
                 }
             }
