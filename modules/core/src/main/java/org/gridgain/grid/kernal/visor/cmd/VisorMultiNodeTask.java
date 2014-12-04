@@ -46,8 +46,9 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /**
      * @return {@code true} if debug mode enabled.
+     * @throws GridException If operation failed.
      */
-    protected boolean debug() {
+    protected boolean debug() throws GridException {
         return debugState(g);
     }
 

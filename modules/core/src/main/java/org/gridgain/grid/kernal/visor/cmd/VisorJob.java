@@ -44,19 +44,21 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @Nullable @Override public Object execute() throws GridException {
         A arg = argument(0);
 
-        debug = debugState(g);
+        try {
+            debug = debugState(g);
 
-        start = U.currentTimeMillis();
+            start = U.currentTimeMillis();
 
-        if (debug)
-            logStart(g.log(), getClass(), start);
+            if (debug)
+                logStart(g.log(), getClass(), start);
 
-        R result = run(arg);
+            return run(arg);
+        }
+        finally {
+            if (debug)
+                logFinish(g.log(), getClass(), start);
+        }
 
-        if (debug)
-            logFinish(g.log(), getClass(), start);
-
-        return result;
     }
 
     /**

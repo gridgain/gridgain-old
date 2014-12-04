@@ -325,18 +325,14 @@ public class VisorTaskUtils {
     /**
      * @param g Grid to check for debug flag.
      * @return {@code true} if debug enabled.
+     * @throws GridException If get operation failed.
      */
-    public static boolean debugState(GridEx g) {
-        try {
-            Boolean debug = g.localNode().isDaemon()
-                ? g.<String, Boolean>nodeLocalMap().get(VISOR_DEBUG_KEY)
-                : g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).get(VISOR_DEBUG_KEY);
+    public static boolean debugState(GridEx g) throws GridException {
+        Boolean debug = g.localNode().isDaemon()
+            ? g.<String, Boolean>nodeLocalMap().get(VISOR_DEBUG_KEY)
+            : g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).get(VISOR_DEBUG_KEY);
 
-            return debug != null ? debug : false;
-        }
-        catch (GridException ignore) {
-            return false;
-        }
+        return debug != null ? debug : false;
     }
 
     /**
@@ -344,16 +340,12 @@ public class VisorTaskUtils {
      *
      * @param g Grid to set debug flag.
      * @param newState New value for debug state.
+     * @throws GridException If get operation failed.
      */
-    public static void debugState(GridEx g, Boolean newState) {
-        try {
-            if (g.localNode().isDaemon())
-                g.<String, Boolean>nodeLocalMap().put(VISOR_DEBUG_KEY, newState);
-            else
-                g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).putx(VISOR_DEBUG_KEY, newState);
-        }
-        catch (GridException ignore) {
-            // No-op.
-        }
+    public static void debugState(GridEx g, Boolean newState) throws GridException{
+        if (g.localNode().isDaemon())
+            g.<String, Boolean>nodeLocalMap().put(VISOR_DEBUG_KEY, newState);
+        else
+            g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).putx(VISOR_DEBUG_KEY, newState);
     }
 }
