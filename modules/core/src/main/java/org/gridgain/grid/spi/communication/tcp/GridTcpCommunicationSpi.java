@@ -3042,7 +3042,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     }
 
     /**
-     *
+     * Handshake message.
      */
     @SuppressWarnings("PublicInnerClass")
     public static class HandshakeMessage extends GridTcpCommunicationMessageAdapter {
@@ -3161,7 +3161,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     }
 
     /**
-     * Handshake message.
+     * Recovery acknowledgment message.
      */
     @SuppressWarnings("PublicInnerClass")
     public static class RecoveryLastReceivedMessage extends GridTcpCommunicationMessageAdapter {
