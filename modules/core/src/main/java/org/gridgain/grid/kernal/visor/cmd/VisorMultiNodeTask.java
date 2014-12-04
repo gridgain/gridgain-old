@@ -60,22 +60,26 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
         start = U.currentTimeMillis();
 
-        if (debug())
-            logStart(g.log(), getClass(), start);
-
         Set<UUID> nodeIds = arg.get1();
-        taskArg = arg.get2();
 
         Map<GridComputeJob, GridNode> map = new GridLeanMap<>(nodeIds.size());
 
-        for (GridNode node : subgrid)
-            if (nodeIds.contains(node.id()))
-                map.put(job(taskArg), node);
+        try {
+            if (debug())
+                logStart(g.log(), getClass(), start);
 
-        if (debug())
-            logMapped(g.log(), getClass(), map.values());
+            taskArg = arg.get2();
 
-        return map;
+            for (GridNode node : subgrid)
+                if (nodeIds.contains(node.id()))
+                    map.put(job(taskArg), node);
+
+            return map;
+        }
+        finally {
+            if (debug())
+                logMapped(g.log(), getClass(), map.values());
+        }
     }
 
     /** {@inheritDoc} */
@@ -90,11 +94,12 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
     /** {@inheritDoc} */
     @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
-        R result = reduce0(results);
-
-        if (debug())
-            logFinish(g.log(), getClass(), start);
-
-        return result;
+        try {
+            return reduce0(results);
+        }
+        finally {
+            if (debug())
+                logFinish(g.log(), getClass(), start);
+        }
     }
 }

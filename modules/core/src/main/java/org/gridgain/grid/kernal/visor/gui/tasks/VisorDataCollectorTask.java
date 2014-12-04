@@ -50,21 +50,26 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
         start = U.currentTimeMillis();
 
-        if (debug())
-            logStart(g.log(), getClass(), start);
+        Collection<GridNode> nodes = g.nodes();
 
-        taskArg = arg.get2();
+        Map<GridComputeJob, GridNode> map = U.newHashMap(nodes.size());
 
-        Map<GridComputeJob, GridNode> map = new HashMap<>();
+        try {
+            if (debug())
+                logStart(g.log(), getClass(), start);
 
-        // Collect data from ALL nodes.
-        for (GridNode node : g.nodes())
-            map.put(job(taskArg), node);
+            taskArg = arg.get2();
 
-        if (debug())
-            logMapped(g.log(), getClass(), map.values());
+            // Collect data from ALL nodes.
+            for (GridNode node : nodes)
+                map.put(job(taskArg), node);
 
-        return map;
+            return map;
+        }
+        finally {
+            if (debug())
+                logMapped(g.log(), getClass(), map.values());
+        }
     }
 
     /** {@inheritDoc} */
@@ -541,10 +546,13 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                 for (GridCache cache : g.cachesx()) {
                     long start0 = U.currentTimeMillis();
 
-                    res.caches.add(VisorCache.from(g, cache, arg.sample));
-
-                    if (debug)
-                        log(g.log(), "Collected cache: " + cache.name(), getClass(), start0);
+                    try {
+                        res.caches.add(VisorCache.from(g, cache, arg.sample));
+                    }
+                    finally {
+                        if (debug)
+                            log(g.log(), "Collected cache: " + cache.name(), getClass(), start0);
+                    }
                 }
             }
             catch(Throwable cachesEx) {
@@ -560,19 +568,22 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                 for (GridGgfs ggfs : ggfsProc.ggfss()) {
                     long start0 = U.currentTimeMillis();
 
-                    Collection<GridIpcServerEndpoint> endPoints = ggfsProc.endpoints(ggfs.name());
+                    try {
+                        Collection<GridIpcServerEndpoint> endPoints = ggfsProc.endpoints(ggfs.name());
 
-                    if (endPoints != null) {
-                        for (GridIpcServerEndpoint ep : endPoints)
-                            if (ep.isManagement())
-                                res.ggfsEndpoints.add(new VisorGgfsEndpoint(ggfs.name(), g.name(),
-                                    ep.getHost(), ep.getPort()));
+                        if (endPoints != null) {
+                            for (GridIpcServerEndpoint ep : endPoints)
+                                if (ep.isManagement())
+                                    res.ggfsEndpoints.add(new VisorGgfsEndpoint(ggfs.name(), g.name(),
+                                        ep.getHost(), ep.getPort()));
+                        }
+
+                        res.ggfss.add(VisorGgfs.from(ggfs));
                     }
-
-                    res.ggfss.add(VisorGgfs.from(ggfs));
-
-                    if (debug)
-                        log(g.log(), "Collected ggfs: " + ggfs.name(), getClass(), start0);
+                    finally {
+                        if (debug)
+                            log(g.log(), "Collected ggfs: " + ggfs.name(), getClass(), start0);
+                    }
                 }
             }
             catch(Throwable ggfssEx) {
@@ -589,10 +600,13 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                     for (GridStreamerConfiguration cfg : cfgs) {
                         long start0 = U.currentTimeMillis();
 
-                        res.streamers.add(VisorStreamer.from(g.streamer(cfg.getName())));
-
-                        if (debug)
-                            log(g.log(), "Collected streamer: " + cfg.getName(), getClass(), start0);
+                        try {
+                            res.streamers.add(VisorStreamer.from(g.streamer(cfg.getName())));
+                        }
+                        finally {
+                            if (debug)
+                                log(g.log(), "Collected streamer: " + cfg.getName(), getClass(), start0);
+                        }
                     }
                 }
             }
