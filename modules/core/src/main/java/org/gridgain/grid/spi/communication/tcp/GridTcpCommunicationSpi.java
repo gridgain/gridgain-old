@@ -469,7 +469,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                                     try {
                                                         msgFut.get();
 
-                                                        log.info("Concurrent connect closure, async connected");
+                                                        //log.info("Concurrent connect closure, async connected");
 
                                                         GridTcpNioCommunicationClient client =
                                                             createClient(recoveryDesc, ses, rmtNode, rmtRcv);
@@ -477,13 +477,13 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                                         fut.onDone(client);
                                                     }
                                                     catch (GridException | IOException e) {
-                                                        log.info("Concurrent connect closure, async connection failed: " + e);
+                                                        //log.info("Concurrent connect closure, async connection failed: " + e);
 
                                                         if (log.isDebugEnabled())
                                                             log.debug("Failed to send recovery handshake " +
                                                                 "[rmtNode=" + rmtNode.id() + ", err=" + e + ']');
 
-                                                        log.info("Release 4 " + gridName);
+                                                        //log.info("Release 4 " + gridName);
 
                                                         recoveryDesc.release();
 
@@ -2232,9 +2232,6 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         client = new GridTcpNioCommunicationClient(ses);
 
                         conn = true;
-
-                        if (recoveryData != null)
-                            recoveryData.connected();
                     }
                     finally {
                         if (!conn) {
