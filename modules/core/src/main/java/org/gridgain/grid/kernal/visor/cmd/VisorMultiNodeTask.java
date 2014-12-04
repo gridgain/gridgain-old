@@ -14,7 +14,6 @@ import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.resources.*;
-import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
@@ -44,14 +43,6 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
      */
     protected abstract VisorJob<A, J> job(A arg);
 
-    /**
-     * @return {@code true} if debug mode enabled.
-     * @throws GridException If operation failed.
-     */
-    protected boolean debug() throws GridException {
-        return debugState(g);
-    }
-
     /** {@inheritDoc} */
     @Nullable @Override public Map<? extends GridComputeJob, GridNode> map(List<GridNode> subgrid,
         @Nullable GridBiTuple<Set<UUID>, A> arg) throws GridException {
@@ -60,14 +51,16 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
 
         start = U.currentTimeMillis();
 
+        boolean debug = debugState(g);
+
+        if (debug)
+            logStart(g.log(), getClass(), start);
+
         Set<UUID> nodeIds = arg.get1();
 
-        Map<GridComputeJob, GridNode> map = new GridLeanMap<>(nodeIds.size());
+        Map<GridComputeJob, GridNode> map = U.newHashMap(nodeIds.size());
 
         try {
-            if (debug())
-                logStart(g.log(), getClass(), start);
-
             taskArg = arg.get2();
 
             for (GridNode node : subgrid)
@@ -77,7 +70,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
             return map;
         }
         finally {
-            if (debug())
+            if (debug)
                 logMapped(g.log(), getClass(), map.values());
         }
     }
@@ -98,7 +91,7 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
             return reduce0(results);
         }
         finally {
-            if (debug())
+            if (debugState(g))
                 logFinish(g.log(), getClass(), start);
         }
     }

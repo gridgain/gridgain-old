@@ -50,14 +50,16 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
         start = U.currentTimeMillis();
 
+        boolean debug = debugState(g);
+
+        if (debug)
+            logStart(g.log(), getClass(), start);
+
         Collection<GridNode> nodes = g.nodes();
 
         Map<GridComputeJob, GridNode> map = U.newHashMap(nodes.size());
 
         try {
-            if (debug())
-                logStart(g.log(), getClass(), start);
-
             taskArg = arg.get2();
 
             // Collect data from ALL nodes.
@@ -67,7 +69,7 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
             return map;
         }
         finally {
-            if (debug())
+            if (debug)
                 logMapped(g.log(), getClass(), map.values());
         }
     }
