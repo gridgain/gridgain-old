@@ -69,7 +69,7 @@ public class GridCacheStoreManager<K, V> extends GridCacheManagerAdapter<K, V> {
         if (!cctx.config().isKeepPortableInStore()) {
             if (cctx.config().isPortableEnabled()) {
                 if (store instanceof GridInteropAware)
-                    ((GridInteropAware)store).configure(convertPortable);
+                    ((GridInteropAware)store).configure(true);
                 else
                     convertPortable = true;
             }
