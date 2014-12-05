@@ -48,15 +48,30 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         assert arg != null;
         assert arg.get1() != null;
 
-        taskArg = arg.get2();
+        start = U.currentTimeMillis();
 
-        Map<GridComputeJob, GridNode> map = new HashMap<>();
+        boolean debug = debugState(g);
 
-        // Collect data from ALL nodes.
-        for (GridNode node : g.nodes())
-            map.put(job(taskArg), node);
+        if (debug)
+            logStart(g.log(), getClass(), start);
 
-        return map;
+        Collection<GridNode> nodes = g.nodes();
+
+        Map<GridComputeJob, GridNode> map = U.newHashMap(nodes.size());
+
+        try {
+            taskArg = arg.get2();
+
+            // Collect data from ALL nodes.
+            for (GridNode node : nodes)
+                map.put(job(taskArg), node);
+
+            return map;
+        }
+        finally {
+            if (debug)
+                logMapped(g.log(), getClass(), map.values());
+        }
     }
 
     /** {@inheritDoc} */
@@ -65,7 +80,8 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public VisorDataCollectorTaskResult reduce(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override protected VisorDataCollectorTaskResult reduce0(List<GridComputeJobResult> results)
+        throws GridException {
         VisorDataCollectorTaskResult data = new VisorDataCollectorTaskResult();
 
         for (GridComputeJobResult res : results) {
@@ -531,7 +547,15 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         private void caches(VisorDataCollectorJobResult res, VisorDataCollectorTaskArg arg) {
             try {
                 for (GridCache cache : g.cachesx()) {
-                    res.caches.add(VisorCache.from(g, cache, arg.sample));
+                    long start0 = U.currentTimeMillis();
+
+                    try {
+                        res.caches.add(VisorCache.from(g, cache, arg.sample));
+                    }
+                    finally {
+                        if (debug)
+                            log(g.log(), "Collected cache: " + cache.name(), getClass(), start0);
+                    }
                 }
             }
             catch(Throwable cachesEx) {
@@ -545,16 +569,24 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                 GridGgfsProcessorAdapter ggfsProc = ((GridKernal)g).context().ggfs();
 
                 for (GridGgfs ggfs : ggfsProc.ggfss()) {
-                    Collection<GridIpcServerEndpoint> endPoints = ggfsProc.endpoints(ggfs.name());
+                    long start0 = U.currentTimeMillis();
 
-                    if (endPoints != null) {
-                        for (GridIpcServerEndpoint ep : endPoints)
-                            if (ep.isManagement())
-                                res.ggfsEndpoints.add(new VisorGgfsEndpoint(ggfs.name(), g.name(),
-                                    ep.getHost(), ep.getPort()));
+                    try {
+                        Collection<GridIpcServerEndpoint> endPoints = ggfsProc.endpoints(ggfs.name());
+
+                        if (endPoints != null) {
+                            for (GridIpcServerEndpoint ep : endPoints)
+                                if (ep.isManagement())
+                                    res.ggfsEndpoints.add(new VisorGgfsEndpoint(ggfs.name(), g.name(),
+                                        ep.getHost(), ep.getPort()));
+                        }
+
+                        res.ggfss.add(VisorGgfs.from(ggfs));
                     }
-
-                    res.ggfss.add(VisorGgfs.from(ggfs));
+                    finally {
+                        if (debug)
+                            log(g.log(), "Collected GGFS: " + ggfs.name(), getClass(), start0);
+                    }
                 }
             }
             catch(Throwable ggfssEx) {
@@ -569,7 +601,15 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
                 if (cfgs != null) {
                     for (GridStreamerConfiguration cfg : cfgs) {
-                        res.streamers.add(VisorStreamer.from(g.streamer(cfg.getName())));
+                        long start0 = U.currentTimeMillis();
+
+                        try {
+                            res.streamers.add(VisorStreamer.from(g.streamer(cfg.getName())));
+                        }
+                        finally {
+                            if (debug)
+                                log(g.log(), "Collected streamer: " + cfg.getName(), getClass(), start0);
+                        }
                     }
                 }
             }
@@ -609,17 +649,37 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
 
             res.topologyVersion = g.topologyVersion();
 
+            long start0 = U.currentTimeMillis();
+
             events(res, arg);
+
+            if (debug)
+                start0 = log(g.log(), "Collected events", getClass(), start0);
 
             license(res);
 
+            if (debug)
+                start0 = log(g.log(), "Collected license", getClass(), start0);
+
             caches(res, arg);
+
+            if (debug)
+                start0 = log(g.log(), "Collected caches", getClass(), start0);
 
             ggfs(res);
 
+            if (debug)
+                start0 = log(g.log(), "Collected ggfs", getClass(), start0);
+
             streamers(res);
 
+            if (debug)
+                start0 = log(g.log(), "Collected streamers", getClass(), start0);
+
             dr(res);
+
+            if (debug)
+                log(g.log(), "Collected DR", getClass(), start0);
 
             // TODO: gg-mongo mongo(res);
 
