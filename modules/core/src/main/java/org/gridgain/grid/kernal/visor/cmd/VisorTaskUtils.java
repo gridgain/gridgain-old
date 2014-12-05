@@ -342,7 +342,7 @@ public class VisorTaskUtils {
      * @param newState New value for debug state.
      * @throws GridException If get operation failed.
      */
-    public static void debugState(GridEx g, Boolean newState) throws GridException{
+    public static void debugState(GridEx g, Boolean newState) throws GridException {
         if (g.localNode().isDaemon())
             g.<String, Boolean>nodeLocalMap().put(VISOR_DEBUG_KEY, newState);
         else
