@@ -9,9 +9,14 @@
 
 package org.gridgain.grid.kernal.visor.cmd;
 
+import org.gridgain.grid.*;
+import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.logger.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
+import java.text.*;
 import java.util.*;
 
 import static java.lang.System.*;
@@ -22,6 +27,17 @@ import static java.lang.System.*;
 public class VisorTaskUtils {
     /** Default substitute for {@code null} names. */
     private static final String DFLT_EMPTY_NAME = "<default>";
+
+    /** Debug date format. */
+    private static final ThreadLocal<SimpleDateFormat> DEBUG_DATE_FMT = new ThreadLocal<SimpleDateFormat>() {
+        /** {@inheritDoc} */
+        @Override protected SimpleDateFormat initialValue() {
+            return new SimpleDateFormat("HH:mm:ss,SSS");
+        }
+    };
+
+    /** Visor debug task flag. */
+    private static final String VISOR_DEBUG_KEY = "VISOR_DEBUG_KEY";
 
     /**
      * @param name Grid-style nullable name.
@@ -136,6 +152,12 @@ public class VisorTaskUtils {
         return U.compact(obj.getClass().getName());
     }
 
+    /**
+     * Compact class names.
+     *
+     * @param obj Object for compact.
+     * @return Compacted string.
+     */
     @Nullable public static String compactClass(Object obj) {
         if (obj == null)
             return null;
@@ -190,5 +212,140 @@ public class VisorTaskUtils {
         String sysProp = getProperty(propName);
 
         return (sysProp != null && !sysProp.isEmpty()) ? Boolean.getBoolean(sysProp) : dflt;
+    }
+
+    /**
+     * Pretty-formatting for duration.
+     *
+     * @param ms Millisecond to format.
+     * @return Formatted presentation.
+     */
+    private static String formatDuration(long ms) {
+        assert ms >= 0;
+
+        if (ms == 0)
+            return "< 1 ms";
+
+        SB sb = new SB();
+
+        long dd = ms / 1440000; // 1440 mins = 60 mins * 24 hours
+
+        if (dd > 0)
+            sb.a(dd).a(dd == 1 ? " day " : " days ");
+
+        ms %= 1440000;
+
+        long hh = ms / 60000;
+
+        if (hh > 0)
+            sb.a(hh).a(hh == 1 ? " hour " : " hours ");
+
+        long min = ms / 60000;
+
+        if (min > 0)
+            sb.a(min).a(min == 1 ? " min " : " mins ");
+
+        ms %= 60000;
+
+        if (ms > 0)
+            sb.a(ms).a(" ms ");
+
+        return sb.toString().trim();
+    }
+
+    /**
+     *
+     * @param log Logger.
+     * @param time Time.
+     * @param msg Message.
+     */
+    private static void log0(@Nullable GridLogger log, long time, String msg) {
+        if (log != null) {
+            if (log.isDebugEnabled())
+                log.debug(msg);
+            else
+                log.warning(msg);
+        }
+        else
+            X.println("[" + DEBUG_DATE_FMT.get().format(time) + "]" +
+                String.format("%30s %s", "<" + Thread.currentThread().getName() + ">", msg));
+    }
+
+    /**
+     * Log start.
+     *
+     * @param log Logger.
+     * @param clazz Class.
+     * @param start Start time.
+     */
+    public static void logStart(@Nullable GridLogger log, Class<?> clazz, long start) {
+        log0(log, start, "[" + clazz.getSimpleName() + "]: STARTED");
+    }
+
+    /**
+     * Log finished.
+     *
+     * @param log Logger.
+     * @param clazz Class.
+     * @param start Start time.
+     */
+    public static void logFinish(@Nullable GridLogger log, Class<?> clazz, long start) {
+        final long end = U.currentTimeMillis();
+
+        log0(log, end, String.format("[%s]: FINISHED, duration: %s", clazz.getSimpleName(), formatDuration(end - start)));
+    }
+
+    /**
+     * Log task mapped.
+     *
+     * @param log Logger.
+     * @param clazz Task class.
+     * @param nodes Mapped nodes.
+     */
+    public static void logMapped(@Nullable GridLogger log, Class<?> clazz, Collection<GridNode> nodes) {
+        log0(log, U.currentTimeMillis(),
+            String.format("[%s]: MAPPED: %s", clazz.getSimpleName(), U.toShortString(nodes)));
+    }
+
+    /**
+     * Log message.
+     *
+     * @param log Logger.
+     * @param clazz class.
+     * @param start start time.
+     */
+    public static long log(@Nullable GridLogger log, String msg, Class<?> clazz, long start) {
+        final long end = U.currentTimeMillis();
+
+        log0(log, end, String.format("[%s]: %s, duration: %s", clazz.getSimpleName(), msg, formatDuration(end - start)));
+
+        return end;
+    }
+
+    /**
+     * @param g Grid to check for debug flag.
+     * @return {@code true} if debug enabled.
+     * @throws GridException If get operation failed.
+     */
+    public static boolean debugState(GridEx g) throws GridException {
+        Boolean debug = g.localNode().isDaemon()
+            ? g.<String, Boolean>nodeLocalMap().get(VISOR_DEBUG_KEY)
+            : g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).get(VISOR_DEBUG_KEY);
+
+        return debug != null ? debug : false;
+    }
+
+    /**
+     * Set grid debug state.
+     *
+     * @param g Grid to set debug flag.
+     * @param newState New value for debug state.
+     * @throws GridException If get operation failed.
+     */
+    public static void debugState(GridEx g, Boolean newState) throws GridException {
+        if (g.localNode().isDaemon())
+            g.<String, Boolean>nodeLocalMap().put(VISOR_DEBUG_KEY, newState);
+        else
+            g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).putx(VISOR_DEBUG_KEY, newState);
     }
 }

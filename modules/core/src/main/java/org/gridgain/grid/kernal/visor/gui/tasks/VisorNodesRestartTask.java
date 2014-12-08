@@ -27,7 +27,7 @@ public class VisorNodesRestartTask extends VisorMultiNodeTask<Void, Void, Void> 
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
-    @Nullable @Override public Void reduce(List<GridComputeJobResult> results) throws GridException {
+    @Nullable @Override protected Void reduce0(List<GridComputeJobResult> results) throws GridException {
         return null;
     }
 

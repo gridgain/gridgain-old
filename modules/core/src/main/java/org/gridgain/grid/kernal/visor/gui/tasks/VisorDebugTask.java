@@ -7,61 +7,53 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.kernal.visor.cmd.tasks;
+package org.gridgain.grid.kernal.visor.gui.tasks;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.processors.task.*;
 import org.gridgain.grid.kernal.visor.cmd.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
-import java.util.*;
+import static  org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
 
 /**
- * Ack task to run on node.
+ * Change debug level for Visor tasks, jobs.
  */
 @GridInternal
-public class VisorAckTask extends VisorMultiNodeTask<String, Void, Void> {
+public class VisorDebugTask extends VisorOneNodeTask<Boolean, Void> {
     /** */
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
-    @Override protected VisorAckJob job(String arg) {
-        return new VisorAckJob(arg);
-    }
-
-    /** {@inheritDoc} */
-    @Nullable @Override protected Void reduce0(List<GridComputeJobResult> results) throws GridException {
-        return null;
+    @Override protected VisorJob<Boolean, Void> job(Boolean arg) {
+        return new VisorDebugJob(arg);
     }
 
     /**
-     * Ack job to run on node.
+     * Job that change debug level for Visor tasks, jobs.
      */
-    private static class VisorAckJob extends VisorJob<String, Void> {
+    private static class VisorDebugJob extends VisorJob<Boolean, Void> {
         /** */
         private static final long serialVersionUID = 0L;
 
         /**
-         * Create job with given argument.
-         *
-         * @param arg Message to ack in node console.
+         * @param arg New debug level.
          */
-        private VisorAckJob(String arg) {
+        protected VisorDebugJob(@Nullable Boolean arg) {
             super(arg);
         }
 
         /** {@inheritDoc} */
-        @Override protected Void run(String arg) throws GridException {
-            System.out.println("<visor>: ack: " + (arg == null ? g.localNode().id() : arg));
+        @Override protected Void run(@Nullable Boolean newVal) throws GridException {
+            debugState(g, newVal);
 
             return null;
         }
 
         /** {@inheritDoc} */
         @Override public String toString() {
-            return S.toString(VisorAckJob.class, this);
+            return S.toString(VisorDebugJob.class, this);
         }
     }
 }
