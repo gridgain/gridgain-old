@@ -168,7 +168,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     public static final int DFLT_SHMEM_PORT = 48100;
 
     /** Default idle connection timeout (value is <tt>30000</tt>ms). */
-    public static final long DFLT_IDLE_CONN_TIMEOUT = 30000;
+    // TODO 8822: restore 30_000.
+    public static final long DFLT_IDLE_CONN_TIMEOUT = 5000;
 
     /** Default value for connection buffer flush frequency (value is <tt>100</tt> ms). */
     public static final long DFLT_CONN_BUF_FLUSH_FREQ = 100;
@@ -426,6 +427,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     GridNioRecoveryDescriptor recovery = ses.recoveryDescriptor();
 
+                    /*
                     if (recovery != null) {
                         if (msg instanceof RecoveryLastReceivedMessage) {
                             RecoveryLastReceivedMessage msg0 = (RecoveryLastReceivedMessage)msg;
@@ -439,6 +441,35 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             return;
                         }
                         else {
+                            long rcvCnt = recovery.onReceived();
+
+                            if (rcvCnt % recoveryAckCnt == 0) {
+                                if (log.isDebugEnabled())
+                                    log.debug("Send recovery acknowledgement [rmtNode=" + sndId +
+                                        ", rcvCnt=" + rcvCnt + ']');
+
+                                nioSrvr.sendSystem(ses, new RecoveryLastReceivedMessage(rcvCnt));
+
+                                recovery.lastAcknowledged(rcvCnt);
+                            }
+                        }
+                    }
+                    */
+                    // TODO: 8822 remove.
+                    if (msg instanceof RecoveryLastReceivedMessage) {
+                        RecoveryLastReceivedMessage msg0 = (RecoveryLastReceivedMessage)msg;
+
+                        if (log.isDebugEnabled())
+                            log.debug("Received recovery acknowledgement [rmtNode=" + sndId +
+                                ", rcvCnt=" + msg0.received() + ']');
+
+                        if (recovery != null)
+                            recovery.ackReceived(msg0.received());
+
+                        return;
+                    }
+                    else {
+                        if (recovery != null && recovery.enabled()) {
                             long rcvCnt = recovery.onReceived();
 
                             if (rcvCnt % recoveryAckCnt == 0) {
@@ -2564,6 +2595,18 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         }
     }
 
+    /** */
+    // TODO: 8822 remove.
+    private long recoveryEnableTime = 5 * 60 * 1000;
+
+    public long getRecoveryEnableTime() {
+        return recoveryEnableTime;
+    }
+
+    public void setRecoveryEnableTime(long recoveryEnableTime) {
+        this.recoveryEnableTime = recoveryEnableTime;
+    }
+
     /**
      *
      */
@@ -2578,6 +2621,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         /** {@inheritDoc} */
         @SuppressWarnings({"BusyWait"})
         @Override protected void body() throws InterruptedException {
+            long startTime = U.currentTimeMillis();
+
             while (!isInterrupted()) {
                 cleanupRecovery();
 
@@ -2604,7 +2649,20 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     if (client instanceof GridTcpNioCommunicationClient) {
                         recovery = recoveryDescs.get(new ClientKey(node.id(), node.order()));
 
-                        if (recovery != null && recovery.lastAcknowledged() != recovery.received()) {
+                        if (recovery != null) {
+                            // FIXME: 8822: remove.
+                            log.info("Recovery [node=" + node.id() + ", enabled=" + recovery.enabled() + ", queueSize=" + recovery.messagesFutures().size() + ']');
+
+                            if (!recovery.enabled()) {
+                                if (U.currentTimeMillis() - startTime > recoveryEnableTime) {
+                                    log.info("Enable recovery [node=" + node.id() + ']');
+
+                                    recovery.enabled(true);
+                                }
+                            }
+                        }
+
+                        if (recovery != null && recovery.enabled() && recovery.lastAcknowledged() != recovery.received()) {
                             RecoveryLastReceivedMessage msg = new RecoveryLastReceivedMessage(recovery.received());
 
                             if (log.isDebugEnabled())

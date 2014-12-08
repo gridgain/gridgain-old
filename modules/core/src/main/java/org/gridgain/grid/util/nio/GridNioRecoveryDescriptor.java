@@ -58,6 +58,10 @@ public class GridNioRecoveryDescriptor {
     /** Number of outgoing connect attempts. */
     private long connectCnt;
 
+    /** */
+    // FIXME: 8822: remove.
+    private boolean enabled;
+
     /**
      * @param queueSize Expected message queue size.
      * @param node Node.
@@ -71,6 +75,14 @@ public class GridNioRecoveryDescriptor {
 
         this.node = node;
         this.log = log;
+    }
+
+    public boolean enabled() {
+        return enabled;
+    }
+
+    public void enabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     /**
@@ -130,11 +142,19 @@ public class GridNioRecoveryDescriptor {
      * @param fut NIO future.
      */
     public void add(GridNioFuture<?> fut) {
-        if (!fut.skipRecovery()) {
-            if (resendCnt == 0)
-                msgFuts.addLast(fut);
-            else
-                resendCnt--;
+        if (enabled) {
+            if (!fut.skipRecovery()) {
+                if (resendCnt == 0) {
+                    msgFuts.addLast(fut);
+
+                    // TODO 8822: remove.
+                    if (msgFuts.size() > 5000) {
+                        msgFuts.clear();
+                    }
+                }
+                else
+                    resendCnt--;
+            }
         }
     }
 
@@ -149,11 +169,21 @@ public class GridNioRecoveryDescriptor {
         while (acked < rcvCnt) {
             GridNioFuture<?> fut = msgFuts.pollFirst();
 
+            /*
             assert fut != null;
 
             ((GridNioFutureImpl)fut).onDone();
+            */
+            // TODO 8822 restore assert.
+            if (fut != null)
+                ((GridNioFutureImpl)fut).onDone();
 
             acked++;
+        }
+
+        // TODO 8822: remove.
+        if (msgFuts.size() > rcvCnt) {
+            msgFuts.clear();
         }
     }
 
