@@ -23,6 +23,11 @@ public class GridSpiCommunicationSelfTestSuite extends TestSuite {
     public static TestSuite suite() throws Exception {
         TestSuite suite = new TestSuite("Gridgain Communication SPI Test Suite");
 
+        suite.addTest(new TestSuite(GridTcpCommunicationSpiRecoveryAckSelfTest.class));
+        suite.addTest(new TestSuite(GridTcpCommunicationSpiRecoverySelfTest.class));
+
+        suite.addTest(new TestSuite(GridTcpCommunicationSpiConcurrentConnectSelfTest.class));
+
         suite.addTest(new TestSuite(GridTcpCommunicationSpiTcpSelfTest.class));
         suite.addTest(new TestSuite(GridTcpCommunicationSpiTcpNoDelayOffSelfTest.class));
         suite.addTest(new TestSuite(GridTcpCommunicationSpiShmemSelfTest.class));
@@ -33,11 +38,6 @@ public class GridSpiCommunicationSelfTestSuite extends TestSuite {
         suite.addTest(new TestSuite(GridTcpCommunicationSpiMultithreadedShmemTest.class));
 
         suite.addTest(new TestSuite(GridTcpCommunicationSpiConfigSelfTest.class));
-
-        suite.addTest(new TestSuite(GridTcpCommunicationSpiConcurrentConnectSelfTest.class));
-
-        suite.addTest(new TestSuite(GridTcpCommunicationSpiRecoverySelfTest.class));
-        suite.addTest(new TestSuite(GridTcpCommunicationSpiRecoveryAckSelfTest.class));
 
         return suite;
     }
