@@ -47,7 +47,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     private static final int ITERS = 10;
 
     /** */
-    private static int port;
+    private static int port = 50_000;
 
     /**
      *
@@ -494,16 +494,13 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         GridTcpCommunicationSpi spi = new GridTcpCommunicationSpi();
 
         spi.setSharedMemoryPort(-1);
-        spi.setLocalPort(port++ + GridTestUtils.getNextCommPort(getClass()));
+        spi.setLocalPort(port++);
         spi.setIdleConnectionTimeout(10_000);
         spi.setConnectTimeout(10_000);
         spi.setRecoveryAcknowledgementCount(5);
         spi.setSocketWriteTimeout(1000);
         spi.setSocketSendBuffer(512);
         spi.setSocketReceiveBuffer(512);
-
-        if (port > 512)
-            port = 0;
 
         return spi;
     }

@@ -47,7 +47,7 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
     protected static final List<GridNode> nodes = new ArrayList<>();
 
     /** */
-    private static int port;
+    private static int port = 60_000;
 
     /**
      *
@@ -276,12 +276,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
 
         spi.setLocalAddress("127.0.0.1");
         spi.setSharedMemoryPort(-1);
-        spi.setLocalPort(port++ + GridTestUtils.getNextCommPort(getClass()));
+        spi.setLocalPort(port++);
         spi.setIdleConnectionTimeout(60_000);
         spi.setConnectTimeout(10_000);
-
-        if (port > 512)
-            port = 0;
 
         return spi;
     }
