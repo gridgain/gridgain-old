@@ -149,7 +149,7 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
 
         /**
          *
-         * @param id Uniq query result id.
+         * @param id Unique query result id.
          */
         private void scheduleResultSetHolderRemoval(final String id) {
             ((GridKernal)g).context().timeout().addTimeoutObject(new GridTimeoutObjectAdapter(RMV_DELAY) {
