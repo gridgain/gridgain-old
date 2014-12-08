@@ -46,6 +46,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
     /** */
     protected static final List<GridNode> nodes = new ArrayList<>();
 
+    /** */
+    private static int port;
+
     /**
      *
      */
@@ -65,6 +68,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
         private final CountDownLatch latch;
 
         /** */
+        private final AtomicInteger cntr = new AtomicInteger();
+
+        /** */
         private final ConcurrentHashSet<Long> msgIds = new ConcurrentHashSet<>();
 
         /**
@@ -78,15 +84,17 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
         @Override public void onMessage(UUID nodeId, GridTcpCommunicationMessageAdapter msg, GridRunnable msgC) {
             msgC.run();
 
-            if (msg instanceof GridTestMessage) {
-                GridTestMessage msg0 = (GridTestMessage)msg;
+            assertTrue(msg instanceof GridTestMessage);
 
-                assertEquals(nodeId, msg0.getSourceNodeId());
+            cntr.incrementAndGet();
 
-                assertTrue(msgIds.add(msg0.getMsgId()));
+            GridTestMessage msg0 = (GridTestMessage)msg;
 
-                latch.countDown();
-            }
+            assertEquals(nodeId, msg0.getSourceNodeId());
+
+            assertTrue(msgIds.add(msg0.getMsgId()));
+
+            latch.countDown();
         }
 
         /** {@inheritDoc} */
@@ -184,7 +192,9 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
 
                 final AtomicInteger msgId = new AtomicInteger();
 
-                CountDownLatch latch = new CountDownLatch(threads * msgPerThread);
+                final int expMsgs = threads * msgPerThread;
+
+                CountDownLatch latch = new CountDownLatch(expMsgs);
 
                 MessageListener lsnr = new MessageListener(latch);
 
@@ -242,6 +252,8 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
 
                         assertEquals(1, sessions.size());
                     }
+
+                    assertEquals(expMsgs, lsnr.cntr.get());
                 }
                 finally {
                     stopSpis();
@@ -262,10 +274,14 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
     private GridCommunicationSpi createSpi() {
         GridTcpCommunicationSpi spi = new GridTcpCommunicationSpi();
 
+        spi.setLocalAddress("127.0.0.1");
         spi.setSharedMemoryPort(-1);
-        spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
+        spi.setLocalPort(port++ + GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(60_000);
         spi.setConnectTimeout(10_000);
+
+        if (port > 512)
+            port = 0;
 
         return spi;
     }

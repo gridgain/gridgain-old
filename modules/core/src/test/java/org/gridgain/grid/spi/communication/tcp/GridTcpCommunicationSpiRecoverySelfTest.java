@@ -43,6 +43,12 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     /** */
     private static final int SPI_CNT = 2;
 
+    /** */
+    private static final int ITERS = 10;
+
+    /** */
+    private static int port;
+
     /**
      *
      */
@@ -141,7 +147,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
      */
     public void testBlockListener() throws Exception {
         // Test listener throws exception and stops selector thread, so must restart SPI.
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < ITERS; i++) {
             log.info("Creating SPIs: " + i);
 
             createSpis();
@@ -169,65 +175,60 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         GridNode node0 = nodes.get(0);
         GridNode node1 = nodes.get(1);
 
+        lsnr1.block();
+
         int msgId = 0;
 
-        for (int i = 0; i < 5; i++) {
-            log.info("Iteration: " + i);
+        for (int j = 0; j < 10; j++) {
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
 
-            lsnr1.block();
-
-            for (int j = 0; j < 10; j++) {
-                spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
-
-                spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
-            }
-
-            lsnr1.blockLatch.await();
-
-            lsnr1.unblock();
-
-            Thread.sleep(500);
-
-            int errCnt = 0;
-
-            int msgs = 0;
-
-            while (true) {
-                try {
-                    int id = msgId + 1;
-
-                    spi0.sendMessage(node1, new GridTestMessage(node0.id(), id, 0));
-
-                    msgId++;
-
-                    msgs++;
-
-                    if (msgs == 10)
-                        break;
-                }
-                catch (GridSpiException e) {
-                    errCnt++;
-
-                    if (errCnt > 10)
-                        fail("Failed to send message: " + e);
-                }
-            }
-
-            for (int j = 0; j < 10; j++)
-                spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
-
-
-            final int expMsgs = (i + 1) * 20;
-
-            GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                @Override public boolean apply() {
-                    return lsnr0.rcvCnt.get() >= expMsgs && lsnr1.rcvCnt.get() >= expMsgs;
-                }
-            }, 5000);
-
-            assertEquals(expMsgs, lsnr0.rcvCnt.get());
-            assertEquals(expMsgs, lsnr1.rcvCnt.get());
+            spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
         }
+
+        lsnr1.blockLatch.await();
+
+        lsnr1.unblock();
+
+        Thread.sleep(500);
+
+        int errCnt = 0;
+
+        int msgs = 0;
+
+        while (true) {
+            try {
+                int id = msgId + 1;
+
+                spi0.sendMessage(node1, new GridTestMessage(node0.id(), id, 0));
+
+                msgId++;
+
+                msgs++;
+
+                if (msgs == 10)
+                    break;
+            }
+            catch (GridSpiException e) {
+                errCnt++;
+
+                if (errCnt > 10)
+                    fail("Failed to send message: " + e);
+            }
+        }
+
+        for (int j = 0; j < 10; j++)
+            spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
+
+        final int expMsgs = 20;
+
+        GridTestUtils.waitForCondition(new GridAbsPredicate() {
+            @Override public boolean apply() {
+                return lsnr0.rcvCnt.get() >= expMsgs && lsnr1.rcvCnt.get() >= expMsgs;
+            }
+        }, 5000);
+
+        assertEquals(expMsgs, lsnr0.rcvCnt.get());
+        assertEquals(expMsgs, lsnr1.rcvCnt.get());
     }
 
     /**
@@ -237,55 +238,55 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         createSpis();
 
         try {
-            GridTcpCommunicationSpi spi0 = spis.get(0);
-            GridTcpCommunicationSpi spi1 = spis.get(1);
+            final GridTcpCommunicationSpi spi0 = spis.get(0);
+            final GridTcpCommunicationSpi spi1 = spis.get(1);
 
             final TestListener lsnr1 = (TestListener)spi1.getListener();
 
-            GridNode node0 = nodes.get(0);
-            GridNode node1 = nodes.get(1);
+            final GridNode node0 = nodes.get(0);
+            final GridNode node1 = nodes.get(1);
 
-            int msgId = 0;
+            final AtomicInteger msgId = new AtomicInteger();
 
             // Send message to establish connection.
-            spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
             int sentCnt = 1;
 
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < ITERS; i++) {
                 log.info("Iteration: " + i);
 
-                GridNioSession ses1 = receiveSession(spi1);
+                final GridNioSession ses0 = communicationSession(spi0);
+                final GridNioSession ses1 = communicationSession(spi1);
 
                 ses1.pauseReads().get();
 
-                boolean err = false;
+                GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
+                    @Override public Void call() throws Exception {
+                        for (int i = 0; i < 5000; i++)
+                            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                for (int j = 0; j < 10_000; j++) {
-                    try {
-                        spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+                        return null;
                     }
-                    catch (GridSpiException e) {
-                        log.info("Expected error [sent=" + j + ", err=" + e + ']');
+                });
 
-                        assertTrue("Expect to be able to send at least one message.", j > 0);
-
-                        sentCnt += j;
-
-                        err = true;
-
-                        break;
+                // Wait when session is closed because of write timeout.
+                GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                    @Override public boolean apply() {
+                        return ses0.closeTime() != 0;
                     }
-                }
+                }, 5000);
 
-                assertTrue("Failed to provoke write timeout", err);
+                assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
 
                 ses1.resumeReads().get();
 
                 for (int j = 0; j < 100; j++)
-                    spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+                    spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                sentCnt += 100;
+                sndFut.get();
+
+                sentCnt += (5000 + 100);
 
                 final int expMsgs = sentCnt;
 
@@ -310,55 +311,53 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         createSpis();
 
         try {
-            GridTcpCommunicationSpi spi0 = spis.get(0);
-            GridTcpCommunicationSpi spi1 = spis.get(1);
+            final GridTcpCommunicationSpi spi0 = spis.get(0);
+            final GridTcpCommunicationSpi spi1 = spis.get(1);
 
             final TestListener lsnr0 = (TestListener)spi0.getListener();
             final TestListener lsnr1 = (TestListener)spi1.getListener();
 
-            GridNode node0 = nodes.get(0);
-            GridNode node1 = nodes.get(1);
+            final GridNode node0 = nodes.get(0);
+            final GridNode node1 = nodes.get(1);
 
-            int msgId = 0;
+            final AtomicInteger msgId = new AtomicInteger();
 
             // Send message to establish connection.
-            spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
             int expCnt0 = 0;
 
             int expCnt1 = 1;
 
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < ITERS; i++) {
                 log.info("Iteration: " + i);
 
-                final GridNioSession ses1 = receiveSession(spi1);
+                final GridNioSession ses0 = communicationSession(spi0);
+                final GridNioSession ses1 = communicationSession(spi1);
 
                 ses1.pauseReads().get();
 
-                boolean err = false;
+                GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
+                    @Override public Void call() throws Exception {
+                        for (int i = 0; i < 5000; i++)
+                            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                for (int j = 0; j < 10_000; j++) {
-                    try {
-                        spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+                        return null;
                     }
-                    catch (GridSpiException e) {
-                        log.info("Expected error [sent=" + j + ", err=" + e + ']');
+                });
 
-                        assertTrue("Expect to be able to send at least one message.", j > 0);
-
-                        err = true;
-
-                        expCnt1 += j;
-
-                        break;
+                // Wait when session is closed because of write timeout.
+                GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                    @Override public boolean apply() {
+                        return ses0.closeTime() != 0;
                     }
-                }
+                }, 5000);
 
-                assertTrue("Failed to provoke write timeout", err);
+                assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
 
                 ses1.resumeReads().get();
 
-                // Wait when session is closed, then open new connection from node1.
+                // Wait when session is closed, then to open new connection from node1.
                 GridTestUtils.waitForCondition(new GridAbsPredicate() {
                     @Override public boolean apply() {
                         return ses1.closeTime() != 0;
@@ -368,9 +367,12 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
                 assertTrue("Failed to wait for session close", ses1.closeTime() != 0);
 
                 for (int j = 0; j < 100; j++)
-                    spi1.sendMessage(node0, new GridTestMessage(node1.id(), ++msgId, 0));
+                    spi1.sendMessage(node0, new GridTestMessage(node1.id(), msgId.incrementAndGet(), 0));
+
+                sndFut.get();
 
                 expCnt0 += 100;
+                expCnt1 += 5000;
 
                 final int expMsgs0 = expCnt0;
                 final int expMsgs1 = expCnt1;
@@ -397,50 +399,52 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         createSpis();
 
         try {
-            GridTcpCommunicationSpi spi0 = spis.get(0);
-            GridTcpCommunicationSpi spi1 = spis.get(1);
+            final GridTcpCommunicationSpi spi0 = spis.get(0);
+            final GridTcpCommunicationSpi spi1 = spis.get(1);
 
             final TestListener lsnr1 = (TestListener)spi1.getListener();
 
-            GridNode node0 = nodes.get(0);
-            GridNode node1 = nodes.get(1);
+            final GridNode node0 = nodes.get(0);
+            final GridNode node1 = nodes.get(1);
 
-            int msgId = 0;
+            final AtomicInteger msgId = new AtomicInteger();
 
             // Send message to establish connection.
-            spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
             int sentCnt = 1;
 
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < ITERS; i++) {
                 log.info("Iteration: " + i);
 
-                GridNioSession ses1 = receiveSession(spi1);
+                final GridNioSession ses0 = communicationSession(spi0);
+                final GridNioSession ses1 = communicationSession(spi1);
 
                 ses1.pauseReads().get();
 
-                boolean err = false;
+                GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
+                    @Override public Void call() throws Exception {
+                        for (int i = 0; i < 5000; i++)
+                            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                for (int j = 0; j < 10_000; j++) {
-                    try {
-                        spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+                        return null;
                     }
-                    catch (GridSpiException e) {
-                        log.info("Expected error [sent=" + j + ", err=" + e + ']');
+                });
 
-                        assertTrue("Expect to be able to send at least one message.", j > 0);
-
-                        sentCnt += j;
-
-                        err = true;
-
-                        break;
+                // Wait when session is closed because of write timeout.
+                GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                    @Override public boolean apply() {
+                        return ses0.closeTime() != 0;
                     }
-                }
+                }, 5000);
 
-                assertTrue("Failed to provoke write timeout", err);
+                assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
 
                 ses1.resumeReads().get();
+
+                sndFut.get();
+
+                sentCnt += 5000;
 
                 final int expMsgs = sentCnt;
 
@@ -464,7 +468,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
      * @throws Exception If failed.
      */
     @SuppressWarnings("unchecked")
-    private GridNioSession receiveSession(GridTcpCommunicationSpi spi) throws Exception {
+    private GridNioSession communicationSession(GridTcpCommunicationSpi spi) throws Exception {
         final GridNioServer srv = U.field(spi, "nioSrvr");
 
         GridTestUtils.waitForCondition(new GridAbsPredicate() {
@@ -490,14 +494,16 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         GridTcpCommunicationSpi spi = new GridTcpCommunicationSpi();
 
         spi.setSharedMemoryPort(-1);
-        spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
+        spi.setLocalPort(port++ + GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(10_000);
         spi.setConnectTimeout(10_000);
         spi.setRecoveryAcknowledgementCount(5);
-        spi.setSelectorsCount(10);
         spi.setSocketWriteTimeout(1000);
         spi.setSocketSendBuffer(512);
         spi.setSocketReceiveBuffer(512);
+
+        if (port > 512)
+            port = 0;
 
         return spi;
     }
