@@ -95,6 +95,7 @@ import static org.gridgain.grid.events.GridEventType.*;
  * <li>Socket receive buffer size (see {@link #setSocketReceiveBuffer(int)})</li>
  * <li>Socket send buffer size (see {@link #setSocketSendBuffer(int)})</li>
  * <li>Socket write timeout (see {@link #setSocketWriteTimeout(long)})</li>
+ * <li>Number of received messages after which acknowledgment is sent (see {@link #setRecoveryAcknowledgementCount(int)})</li>
  * </ul>
  * <h2 class="header">Java Example</h2>
  * GridTcpCommunicationSpi is used by default and should be explicitly configured
@@ -360,10 +361,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                             if (reserved) {
                                 try {
-                                    ses.send(new RecoveryLastReceivedMessage(recoveryDesc.receivedCount()));
-
                                     GridTcpNioCommunicationClient client =
-                                        createClient(recoveryDesc, ses, rmtNode, msg0.received());
+                                        createClient(recoveryDesc, ses, rmtNode, msg0.received(), true);
 
                                     fut.onDone(client);
                                 }
@@ -388,10 +387,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                     new ConnectClosure(ses, recoveryDesc, rmtNode, msg0, fut));
 
                                 if (reserved) {
-                                    ses.send(new RecoveryLastReceivedMessage(recoveryDesc.receivedCount()));
-
                                     GridTcpNioCommunicationClient client =
-                                        createClient(recoveryDesc, ses, rmtNode, msg0.received());
+                                        createClient(recoveryDesc, ses, rmtNode, msg0.received(), true);
 
                                     fut.onDone(client);
                                 }
@@ -484,18 +481,23 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
              * @param ses Session.
              * @param node Node.
              * @param rcvCnt Number of received messages..
+             * @param sndRes If {@code true} sends response for recovery handshake.
              * @return Client.
              */
             private GridTcpNioCommunicationClient createClient(
                 GridNioRecoveryDescriptor recovery,
                 GridNioSession ses,
                 GridNode node,
-                long rcvCnt) {
+                long rcvCnt,
+                boolean sndRes) {
                 recovery.onHandshake(rcvCnt);
 
                 ses.recoveryDescriptor(recovery);
 
                 nioSrvr.resend(ses);
+
+                if (sndRes)
+                    nioSrvr.sendSystem(ses, new RecoveryLastReceivedMessage(recovery.receivedCount()));
 
                 GridTcpNioCommunicationClient client = new GridTcpNioCommunicationClient(ses);
 
@@ -585,7 +587,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                     msgFut.get();
 
                                     GridTcpNioCommunicationClient client =
-                                        createClient(recoveryDesc, ses, rmtNode, msg.received());
+                                        createClient(recoveryDesc, ses, rmtNode, msg.received(), false);
 
                                     fut.onDone(client);
                                 }
@@ -2075,21 +2077,21 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             return null;
                     }
 
-                    long recoveryLastRcv = -1;
+                    long rcvCnt = -1;
 
                     try {
                         ch.socket().connect(addr, (int)connTimeout0);
 
-                        recoveryLastRcv = safeHandshake(ch, recoveryDesc, node.id(), connTimeout0);
+                        rcvCnt = safeHandshake(ch, recoveryDesc, node.id(), connTimeout0);
 
-                        if (recoveryLastRcv == -1) {
+                        if (rcvCnt == -1) {
                             assert recovery;
 
                             return null;
                         }
                     }
                     finally {
-                        if (recoveryDesc != null && recoveryLastRcv == -1)
+                        if (recoveryDesc != null && rcvCnt == -1)
                             recoveryDesc.release();
                     }
 
@@ -2101,17 +2103,17 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     if (!locVer.equals(rmtVer))
                         diffVerNodeId = node.id();
 
-                    if (recoveryDesc != null)
-                        recoveryDesc.onHandshake(recoveryLastRcv);
-
                     try {
                         Map<Integer, Object> meta = new HashMap<>();
 
                         meta.put(NODE_ID_META, node.id());
                         meta.put(GridNioServer.DIFF_VER_NODE_ID_META_KEY, diffVerNodeId);
 
-                        if (recoveryDesc != null)
+                        if (recoveryDesc != null) {
+                            recoveryDesc.onHandshake(rcvCnt);
+
                             meta.put(-1, recoveryDesc);
+                        }
 
                         GridNioSession ses = nioSrvr.createSession(ch, meta).get();
 

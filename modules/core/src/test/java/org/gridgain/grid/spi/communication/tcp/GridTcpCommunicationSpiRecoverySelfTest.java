@@ -9,6 +9,7 @@
 
 package org.gridgain.grid.spi.communication.tcp;
 
+import org.eclipse.jetty.util.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.*;
@@ -63,7 +64,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         private CountDownLatch blockLatch;
 
         /** */
-        private Set<Long> msgIds = new HashSet<>();
+        private ConcurrentHashSet<Long> msgIds = new ConcurrentHashSet<>();
 
         /** */
         private AtomicInteger rcvCnt = new AtomicInteger();
@@ -260,7 +261,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
                 boolean err = false;
 
-                for (int j = 0; j < 20_000; j++) {
+                for (int j = 0; j < 10_000; j++) {
                     try {
                         spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
                     }

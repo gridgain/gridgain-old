@@ -189,6 +189,10 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
         boolean add = queue.addAll(futs);
 
         assert add;
+
+        boolean set = queueSize.compareAndSet(0, futs.size());
+
+        assert set;
     }
 
     /**

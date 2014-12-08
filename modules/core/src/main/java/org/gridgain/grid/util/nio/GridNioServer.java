@@ -407,8 +407,11 @@ public class GridNioServer<T> {
 
             GridNioFuture<?> fut0 = futs.iterator().next();
 
-            for (GridNioFuture<?> fut : futs)
+            for (GridNioFuture<?> fut : futs) {
+                fut.messageThread(true);
+
                 ((NioOperationFuture)fut).resetMessage(ses0);
+            }
 
             ses0.resend(futs);
 

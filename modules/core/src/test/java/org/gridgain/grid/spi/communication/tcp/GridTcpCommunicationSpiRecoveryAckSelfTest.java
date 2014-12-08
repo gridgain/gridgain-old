@@ -9,6 +9,7 @@
 
 package org.gridgain.grid.spi.communication.tcp;
 
+import org.eclipse.jetty.util.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.communication.*;
@@ -55,7 +56,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
     @SuppressWarnings({"deprecation"})
     private class TestListener implements GridCommunicationListener<GridTcpCommunicationMessageAdapter> {
         /** */
-        private Set<Long> msgIds = new HashSet<>();
+        private ConcurrentHashSet<Long> msgIds = new ConcurrentHashSet<>();
 
         /** */
         private AtomicInteger rcvCnt = new AtomicInteger();
