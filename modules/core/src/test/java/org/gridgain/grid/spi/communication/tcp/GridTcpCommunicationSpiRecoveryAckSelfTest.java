@@ -52,6 +52,13 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
         }, GridTestMessage.DIRECT_TYPE);
     }
 
+    /**
+     * Disable SPI auto-start.
+     */
+    public GridTcpCommunicationSpiRecoveryAckSelfTest() {
+        super(false);
+    }
+
     /** */
     @SuppressWarnings({"deprecation"})
     private class TestListener implements GridCommunicationListener<GridTcpCommunicationMessageAdapter> {
@@ -339,6 +346,8 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
      */
     private void stopSpis() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis) {
+            spi.onContextDestroyed();
+
             spi.setListener(null);
 
             spi.spiStop();
