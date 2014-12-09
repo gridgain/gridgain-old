@@ -1937,9 +1937,6 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                                 assert old == null;
                             }
-                            else
-                                // Delay before retry (expect that client will be initialized from incoming connection).
-                                U.sleep(200);
                         }
 
                         fut.onDone(client0);
