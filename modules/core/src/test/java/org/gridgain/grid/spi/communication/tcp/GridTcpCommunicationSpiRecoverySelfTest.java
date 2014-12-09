@@ -610,7 +610,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     /**
      * @throws Exception If failed.
      */
-    private void createSpis() throws Exception {
+    private void startSpis() throws Exception {
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -656,6 +656,34 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
             for (GridNode n : nodes) {
                 if (!n.equals(e.getKey()))
                     e.getValue().remoteNodes().add(n);
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    private void createSpis() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            try {
+                startSpis();
+
+                break;
+            }
+            catch (GridException e) {
+                if (e.hasCause(BindException.class)) {
+                    if (i < 2) {
+                        info("Failed to start SPIs because of BindException, will retry after delay.");
+
+                        stopSpis();
+
+                        U.sleep(10_000);
+                    }
+                    else
+                        throw e;
+                }
+                else
+                    throw e;
             }
         }
     }

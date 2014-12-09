@@ -558,29 +558,6 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             }
 
             /**
-             * @param locNode Local node (for debug message).
-             * @param rmtNodeId Remote node ID.
-             * @param ses Session.
-             * @return {@code True} if already has client for given remote node.
-             */
-            private boolean alreadyConnected(GridNode locNode, UUID rmtNodeId, GridNioSession ses) {
-                GridCommunicationClient oldClient = clients.get(rmtNodeId);
-
-                if (oldClient != null) {
-                    if (log.isDebugEnabled())
-                        log.debug("Received incoming connection when already connected " +
-                            "to this node, rejecting [locNode=" + locNode.id() +
-                            ", rmtNode=" + rmtNodeId + ']');
-
-                    ses.send(new RecoveryLastReceivedMessage(-1));
-
-                    return true;
-                }
-
-                return false;
-            }
-
-            /**
              *
              */
             @SuppressWarnings("PackageVisibleInnerClass")

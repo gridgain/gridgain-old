@@ -14,12 +14,14 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.config.*;
 import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
 
 import javax.management.*;
+import java.net.*;
 import java.util.*;
 import java.util.Map.*;
 
@@ -240,6 +242,34 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            try {
+                startSpis();
+
+                break;
+            }
+            catch (GridException e) {
+                if (e.hasCause(BindException.class)) {
+                    if (i < 2) {
+                        info("Failed to start SPIs because of BindException, will retry after delay.");
+
+                        afterTestsStopped();
+
+                        U.sleep(10_000);
+                    }
+                    else
+                        throw e;
+                }
+                else
+                    throw e;
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    private void startSpis() throws Exception {
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();

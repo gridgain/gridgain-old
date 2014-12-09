@@ -21,6 +21,7 @@ import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
 
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
@@ -293,7 +294,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
      * @param queueLimit Message queue limit.
      * @throws Exception If failed.
      */
-    private void createSpis(int ackCnt, int idleTimeout, int queueLimit) throws Exception {
+    private void startSpis(int ackCnt, int idleTimeout, int queueLimit) throws Exception {
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -337,6 +338,37 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
             for (GridNode n : nodes) {
                 if (!n.equals(e.getKey()))
                     e.getValue().remoteNodes().add(n);
+            }
+        }
+    }
+
+    /**
+     * @param ackCnt Recovery acknowledgement count.
+     * @param idleTimeout Idle connection timeout.
+     * @param queueLimit Message queue limit.
+     * @throws Exception If failed.
+     */
+    private void createSpis(int ackCnt, int idleTimeout, int queueLimit) throws Exception {
+        for (int i = 0; i < 3; i++) {
+            try {
+                startSpis(ackCnt, idleTimeout, queueLimit);
+
+                break;
+            }
+            catch (GridException e) {
+                if (e.hasCause(BindException.class)) {
+                    if (i < 2) {
+                        info("Failed to start SPIs because of BindException, will retry after delay.");
+
+                        stopSpis();
+
+                        U.sleep(10_000);
+                    }
+                    else
+                        throw e;
+                }
+                else
+                    throw e;
             }
         }
     }

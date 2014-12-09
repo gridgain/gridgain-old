@@ -21,6 +21,7 @@ import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
 
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -294,7 +295,7 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
      * @param lsnr Message listener.
      * @throws Exception If failed.
      */
-    private void createSpis(MessageListener lsnr) throws Exception {
+    private void startSpis(MessageListener lsnr) throws Exception {
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -342,6 +343,35 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
             for (GridNode n : nodes) {
                 if (!n.equals(e.getKey()))
                     e.getValue().remoteNodes().add(n);
+            }
+        }
+    }
+
+    /**
+     * @param lsnr Message listener.
+     * @throws Exception If failed.
+     */
+    private void createSpis(MessageListener lsnr) throws Exception {
+        for (int i = 0; i < 3; i++) {
+            try {
+                startSpis(lsnr);
+
+                break;
+            }
+            catch (GridException e) {
+                if (e.hasCause(BindException.class)) {
+                    if (i < 2) {
+                        info("Failed to start SPIs because of BindException, will retry after delay.");
+
+                        stopSpis();
+
+                        U.sleep(10_000);
+                    }
+                    else
+                        throw e;
+                }
+                else
+                    throw e;
             }
         }
     }
