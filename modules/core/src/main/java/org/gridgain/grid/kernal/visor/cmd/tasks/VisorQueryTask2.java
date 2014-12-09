@@ -165,16 +165,8 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
 
                             scheduleResultSetHolderRemoval(id);
                         }
-                        else {
+                        else
                             storage.remove(id); // Remove stored future otherwise.
-
-                            try {
-                                t.future().cancel();
-                            }
-                            catch (GridException ignore) {
-                                //no-op
-                            }
-                        }
                     }
                 }
             });
