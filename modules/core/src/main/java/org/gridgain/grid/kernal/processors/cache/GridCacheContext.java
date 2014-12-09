@@ -1853,12 +1853,10 @@ public class GridCacheContext<K, V> implements Externalizable {
 
             return unwrapped ? F.t(key, val) : o;
         }
-        else {
-            if (o instanceof Collection)
-                return unwrapPortablesIfNeeded((Collection<Object>)o, false);
-            else if (o instanceof GridPortableObject)
-                return ((GridPortableObject)o).deserialize();
-        }
+        else if (o instanceof Collection)
+            return unwrapPortablesIfNeeded((Collection<Object>)o, false);
+        else if (o instanceof GridPortableObject)
+            return ((GridPortableObject)o).deserialize();
 
         return o;
     }
