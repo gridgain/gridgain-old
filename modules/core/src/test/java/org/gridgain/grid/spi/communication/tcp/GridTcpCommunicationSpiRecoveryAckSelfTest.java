@@ -190,59 +190,85 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
      * @throws Exception If failed.
      */
     public void testQueueOverflow() throws Exception {
-        createSpis(5, 60_000, 10);
+        for (int i = 0; i < 3; i++) {
+            try {
+                startSpis(5, 60_000, 10);
 
-        try {
-            GridTcpCommunicationSpi spi0 = spis.get(0);
-            GridTcpCommunicationSpi spi1 = spis.get(1);
+                checkOverflow();
 
-            GridNode node0 = nodes.get(0);
-            GridNode node1 = nodes.get(1);
+                break;
+            }
+            catch (GridException e) {
+                if (e.hasCause(BindException.class)) {
+                    if (i < 2) {
+                        info("Got exception caused by BindException, will retry after delay: " + e);
 
-            final GridNioServer srv1 = U.field(spi1, "nioSrvr");
+                        stopSpis();
 
-            int msgId = 0;
+                        U.sleep(10_000);
+                    }
+                    else
+                        throw e;
+                }
+                else
+                    throw e;
+            }
+            finally {
+                stopSpis();
+            }
+        }
+    }
 
-            // Send message to establish connection.
+    /**
+     * @throws Exception If failed.
+     */
+    private void checkOverflow() throws Exception {
+        GridTcpCommunicationSpi spi0 = spis.get(0);
+        GridTcpCommunicationSpi spi1 = spis.get(1);
+
+        GridNode node0 = nodes.get(0);
+        GridNode node1 = nodes.get(1);
+
+        final GridNioServer srv1 = U.field(spi1, "nioSrvr");
+
+        int msgId = 0;
+
+        // Send message to establish connection.
+        spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+
+        // Prevent node1 from send
+        GridTestUtils.setFieldValue(srv1, "skipWrite", true);
+
+        final GridNioSession ses0 = communicationSession(spi0);
+
+        for (int i = 0; i < 150; i++)
             spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
 
-            // Prevent node1 from send
-            GridTestUtils.setFieldValue(srv1, "skipWrite", true);
+        // Wait when session is closed because of queue overflow.
+        GridTestUtils.waitForCondition(new GridAbsPredicate() {
+            @Override public boolean apply() {
+                return ses0.closeTime() != 0;
+            }
+        }, 5000);
 
-            final GridNioSession ses0 = communicationSession(spi0);
+        assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
 
-            for (int i = 0; i < 150; i++)
-                spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+        GridTestUtils.setFieldValue(srv1, "skipWrite", false);
 
-            // Wait when session is closed because of queue overflow.
-            GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                @Override public boolean apply() {
-                    return ses0.closeTime() != 0;
-                }
-            }, 5000);
+        for (int i = 0; i < 100; i++)
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
 
-            assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
+        final int expMsgs = 251;
 
-            GridTestUtils.setFieldValue(srv1, "skipWrite", false);
+        final TestListener lsnr = (TestListener)spi1.getListener();
 
-            for (int i = 0; i < 100; i++)
-                spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+        GridTestUtils.waitForCondition(new GridAbsPredicate() {
+            @Override public boolean apply() {
+                return lsnr.rcvCnt.get() >= expMsgs;
+            }
+        }, 5000);
 
-            final int expMsgs = 251;
-
-            final TestListener lsnr = (TestListener)spi1.getListener();
-
-            GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                @Override public boolean apply() {
-                    return lsnr.rcvCnt.get() >= expMsgs;
-                }
-            }, 5000);
-
-            assertEquals(expMsgs, lsnr.rcvCnt.get());
-        }
-        finally {
-            stopSpis();
-        }
+        assertEquals(expMsgs, lsnr.rcvCnt.get());
     }
 
     /**
@@ -385,9 +411,8 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
             spi.spiStop();
         }
 
-        for (GridTestResources rsrcs : spiRsrcs) {
+        for (GridTestResources rsrcs : spiRsrcs)
             rsrcs.stopThreads();
-        }
 
         spis.clear();
         nodes.clear();
