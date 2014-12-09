@@ -712,8 +712,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                 if (peek != null) {
                     V v = peek.get();
 
-                    if (ctx.portableEnabled() && !ctx.keepPortable() && v instanceof GridPortableObject)
-                        v = ((GridPortableObject)v).deserialize();
+                    if (ctx.portableEnabled())
+                        v = (V)ctx.unwrapPortableIfNeeded(v, ctx.keepPortable());
 
                     return F.t(ctx.cloneOnFlag(v));
                 }
@@ -728,7 +728,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                     V v = peek.get();
 
                     if (ctx.portableEnabled() && !ctx.keepPortable() && v instanceof GridPortableObject)
-                        v = ((GridPortableObject)v).deserialize();
+                        v = (V)ctx.unwrapPortableIfNeeded(v, ctx.keepPortable());
 
                     return F.t(ctx.cloneOnFlag(v));
                 }
@@ -1870,8 +1870,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                             else {
                                 val = ctx.cloneOnFlag(val);
 
-                                if (ctx.portableEnabled() && deserializePortable && val instanceof GridPortableObject)
-                                    val = ((GridPortableObject)val).deserialize();
+                                if (ctx.portableEnabled() && deserializePortable)
+                                    val = (V)ctx.unwrapPortableIfNeeded(val, false);
 
                                 map.put(key, val);
 
@@ -3584,8 +3584,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
 
         V val = unswapped.value();
 
-        if (ctx.portableEnabled() && deserializePortable && val instanceof GridPortableObject)
-            return (V)((GridPortableObject)val).deserialize();
+        if (ctx.portableEnabled())
+            return (V)ctx.unwrapPortableIfNeeded(val, !deserializePortable);
         else
             return ctx.cloneOnFlag(val);
     }

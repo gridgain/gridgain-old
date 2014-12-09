@@ -15,12 +15,11 @@ import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
-import org.gridgain.grid.portables.*;
 import org.gridgain.grid.util.*;
-import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.tostring.*;
+import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.io.*;
@@ -406,8 +405,8 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
                                     colocated.removeIfObsolete(key);
                             }
                             else {
-                                if (cctx.portableEnabled() && deserializePortable && v instanceof GridPortableObject)
-                                    v = ((GridPortableObject)v).deserialize();
+                                if (cctx.portableEnabled())
+                                    v = (V)cctx.unwrapPortableIfNeeded(v, !deserializePortable);
 
                                 locVals.put(key, v);
 

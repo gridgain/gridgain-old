@@ -1813,9 +1813,9 @@ public class GridCacheContext<K, V> implements Externalizable {
      * @return Unwrapped object.
      */
     public Object unwrapPortableIfNeeded(Object o, boolean keepPortable) {
-        assert U.isPortableOrCollectionType(o.getClass());
+        assert !portableEnabled() || U.isPortableOrCollectionType(o.getClass());
 
-        if (keepPortable || !config().isPortableEnabled())
+        if (keepPortable || !portableEnabled())
             return o;
 
         return unwrapPortable(o);
