@@ -542,6 +542,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                 if (sndRes)
                     nioSrvr.sendSystem(ses, new RecoveryLastReceivedMessage(recovery.receivedCount()));
 
+                recovery.connected();
+
                 GridTcpNioCommunicationClient client = null;
 
                 if (createClient) {
@@ -551,8 +553,6 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     assert oldClient == null;
                 }
-
-                recovery.connected();
 
                 return client;
             }
@@ -608,10 +608,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                 /** {@inheritDoc} */
                 @Override public void apply(Boolean success) {
                     if (success) {
-                        GridNioFuture<?> msgFut =
-                            ses.send(new RecoveryLastReceivedMessage(recoveryDesc.receivedCount()));
-
-                        msgFut.listenAsync(new GridInClosure<GridNioFuture<?>>() {
+                        GridInClosure<GridNioFuture<?>> lsnr = new GridInClosure<GridNioFuture<?>>() {
                             @Override public void apply(GridNioFuture<?> msgFut) {
                                 try {
                                     msgFut.get();
@@ -634,7 +631,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                     clientFuts.remove(rmtNode.id(), fut);
                                 }
                             }
-                        });
+                        };
+
+                        nioSrvr.sendSystem(ses, new RecoveryLastReceivedMessage(recoveryDesc.receivedCount()), lsnr);
                     }
                     else {
                         try {
@@ -1937,6 +1936,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                                 assert old == null;
                             }
+                            else
+                                U.sleep(200);
                         }
 
                         fut.onDone(client0);

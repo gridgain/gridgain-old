@@ -9,18 +9,14 @@
 
 package org.gridgain.grid.spi.communication;
 
-import mx4j.tools.adaptor.http.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.direct.*;
-import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
-import org.gridgain.testframework.config.*;
 import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
 
-import javax.management.*;
 import java.net.*;
 import java.util.*;
 import java.util.Map.*;
@@ -49,9 +45,6 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
     /** */
     private static final Object mux = new Object();
 
-    /** */
-    private static final ObjectName mBeanName;
-
     /**
      *
      */
@@ -61,13 +54,6 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
                 return new GridTestMessage();
             }
         }, GridTestMessage.DIRECT_TYPE);
-
-        try {
-            mBeanName = new ObjectName("mbeanAdaptor:protocol=HTTP");
-        }
-        catch (MalformedObjectNameException e) {
-            throw new GridRuntimeException(e);
-        }
     }
 
     /** */
@@ -255,7 +241,7 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
 
                         afterTestsStopped();
 
-                        U.sleep(10_000);
+                        U.sleep(30_000);
                     }
                     else
                         throw e;
@@ -281,7 +267,7 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
 
             GridTestUtils.setFieldValue(spi, "gridName", "grid-" + i);
 
-            GridTestResources rsrcs = new GridTestResources(getMBeanServer(i));
+            GridTestResources rsrcs = new GridTestResources();
 
             GridTestNode node = new GridTestNode(rsrcs.getNodeId());
 
@@ -321,26 +307,6 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
         }
     }
 
-    /**
-     * @param idx Node index.
-     * @return Configured MBean server.
-     * @throws Exception If failed.
-     */
-    private MBeanServer getMBeanServer(int idx) throws Exception {
-        HttpAdaptor mbeanAdaptor = new HttpAdaptor();
-
-        MBeanServer mbeanSrv = MBeanServerFactory.createMBeanServer();
-
-        mbeanAdaptor.setPort(
-            Integer.valueOf(GridTestProperties.getProperty("comm.mbeanserver.selftest.baseport")) + idx);
-
-        mbeanSrv.registerMBean(mbeanAdaptor, mBeanName);
-
-        mbeanAdaptor.start();
-
-        return mbeanSrv;
-    }
-
     /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis.values()) {
@@ -351,10 +317,7 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
             spi.spiStop();
         }
 
-        for (GridTestResources rsrcs : spiRsrcs) {
+        for (GridTestResources rsrcs : spiRsrcs)
             rsrcs.stopThreads();
-
-            rsrcs.getMBeanServer().unregisterMBean(mBeanName);
-        }
     }
 }

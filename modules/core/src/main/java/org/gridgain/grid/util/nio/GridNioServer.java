@@ -10,6 +10,7 @@
 package org.gridgain.grid.util.nio;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.thread.*;
 import org.gridgain.grid.util.*;
@@ -378,11 +379,31 @@ public class GridNioServer<T> {
      * @return Future.
      */
     public GridNioFuture<?> sendSystem(GridNioSession ses, GridTcpCommunicationMessageAdapter msg) {
+        return sendSystem(ses, msg, null);
+    }
+
+    /**
+     * Adds message at the front of the queue without acquiring back pressure semaphore.
+     *
+     * @param ses Session.
+     * @param msg Message.
+     * @param lsnr Future listener notified from the session thread.
+     * @return Future.
+     */
+    public GridNioFuture<?> sendSystem(GridNioSession ses,
+        GridTcpCommunicationMessageAdapter msg,
+        @Nullable GridInClosure<? super GridNioFuture<?>> lsnr) {
         assert ses instanceof GridSelectorNioSessionImpl;
 
         GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
+
+        if (lsnr != null) {
+            fut.listenAsync(lsnr);
+
+            assert !fut.isDone();
+        }
 
         send0(impl, fut, true);
 
@@ -432,7 +453,8 @@ public class GridNioServer<T> {
         GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
 
         if (impl.closed())
-            return new GridNioFinishedFuture(new IOException("Failed to send message (connection was closed): " + ses));
+            return new GridNioFinishedFuture(new IOException("Failed to pause/resume reads " +
+                "(connection was closed): " + ses));
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, op);
 
