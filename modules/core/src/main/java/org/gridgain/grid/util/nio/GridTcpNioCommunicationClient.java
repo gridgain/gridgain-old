@@ -24,10 +24,10 @@ import java.util.*;
  * Grid client for NIO server.
  */
 public class GridTcpNioCommunicationClient extends GridAbstractCommunicationClient {
-    /** Socket. */
+    /** Session. */
     private final GridNioSession ses;
 
-    /** */
+    /** Logger. */
     private final GridLogger log;
 
     /**

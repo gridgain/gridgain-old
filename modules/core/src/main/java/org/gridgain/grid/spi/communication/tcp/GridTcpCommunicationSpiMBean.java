@@ -270,5 +270,12 @@ public interface GridTcpCommunicationSpiMBean extends GridSpiManagementMBean {
     /**
      * @return Number of received messages after which acknowledgment is sent.
      */
-    public int getRecoveryAcknowledgementCount();
+    @GridMBeanDescription("Number of received messages after which acknowledgment is sent.")
+    public int getMessageAcknowledgementPeriod();
+
+    /**
+     * @return Maximum number of unacknowledged messages.
+     */
+    @GridMBeanDescription("Maximum number of unacknowledged messages.")
+    public int getMaxUnacknowledgedMessageCount();
 }

@@ -155,7 +155,7 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
      * @param writeFut Write request.
      * @return Updated size of the queue.
      */
-    int offerSystemMessage(GridNioFuture<?> writeFut) {
+    int offerSystemFuture(GridNioFuture<?> writeFut) {
         writeFut.messageThread(true);
 
         boolean res = queue.offerFirst(writeFut);

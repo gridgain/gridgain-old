@@ -359,7 +359,7 @@ public class GridNioServer<T> {
         assert ses != null;
         assert fut != null;
 
-        int msgCnt = sys ? ses.offerSystemMessage(fut) : ses.offerFuture(fut);
+        int msgCnt = sys ? ses.offerSystemFuture(fut) : ses.offerFuture(fut);
 
         if (ses.closed()) {
             if (ses.removeFuture(fut))

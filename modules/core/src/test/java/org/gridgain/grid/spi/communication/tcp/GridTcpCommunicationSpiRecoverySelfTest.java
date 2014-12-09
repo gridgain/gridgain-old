@@ -599,7 +599,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
         spi.setLocalPort(port++);
         spi.setIdleConnectionTimeout(10_000);
         spi.setConnectTimeout(10_000);
-        spi.setRecoveryAcknowledgementCount(5);
+        spi.setMessageAcknowledgementPeriod(5);
         spi.setSocketWriteTimeout(1000);
         spi.setSocketSendBuffer(512);
         spi.setSocketReceiveBuffer(512);

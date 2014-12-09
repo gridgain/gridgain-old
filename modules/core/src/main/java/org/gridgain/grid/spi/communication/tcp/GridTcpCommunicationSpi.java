@@ -95,7 +95,8 @@ import static org.gridgain.grid.events.GridEventType.*;
  * <li>Socket receive buffer size (see {@link #setSocketReceiveBuffer(int)})</li>
  * <li>Socket send buffer size (see {@link #setSocketSendBuffer(int)})</li>
  * <li>Socket write timeout (see {@link #setSocketWriteTimeout(long)})</li>
- * <li>Number of received messages after which acknowledgment is sent (see {@link #setRecoveryAcknowledgementCount(int)})</li>
+ * <li>Number of received messages after which acknowledgment is sent (see {@link #setMessageAcknowledgementPeriod(int)})</li>
+ * <li>Maximum number of unacknowledged messages (see {@link #setMaxUnacknowledgedMessageCount(int)})</li>
  * </ul>
  * <h2 class="header">Java Example</h2>
  * GridTcpCommunicationSpi is used by default and should be explicitly configured
@@ -212,8 +213,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /** Default value for {@code TCP_NODELAY} socket option (value is <tt>true</tt>). */
     public static final boolean DFLT_TCP_NODELAY = true;
 
-    /** Default recovery acknowledge count. */
-    public static final int DFLT_RECOVERY_ACK_CNT = 512;
+    /** Default message acknowledgement period. */
+    public static final int DFLT_MSG_ACK_PERIOD = 512;
 
     /** Default socket write timeout. */
     public static final long DFLT_SOCKET_WRITE_TIMEOUT = GridNioServer.DFLT_SES_WRITE_TIMEOUT;
@@ -269,11 +270,11 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         clients.remove(id, rmv)) {
                         rmv.forceClose();
 
-                        if (!stopped) {
+                        if (!stopping) {
                             GridNioRecoveryDescriptor recoveryData = ses.recoveryDescriptor();
 
                             if (recoveryData != null) {
-                                if (recoveryData.nodeAlive(getSpiContext())) {
+                                if (recoveryData.nodeAlive(getSpiContext().node(id))) {
                                     if (!recoveryData.messagesFutures().isEmpty()) {
                                         if (log.isDebugEnabled())
                                             log.debug("Session was closed but there are unacknowledged messages, " +
@@ -445,7 +446,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         else {
                             long rcvCnt = recovery.onReceived();
 
-                            if (rcvCnt % recoveryAckCnt == 0) {
+                            if (rcvCnt % msgAckPeriod == 0) {
                                 if (log.isDebugEnabled())
                                     log.debug("Send recovery acknowledgement [rmtNode=" + sndId +
                                         ", rcvCnt=" + rcvCnt + ']');
@@ -710,7 +711,10 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private boolean asyncSnd = true;
 
     /** Number of received messages after which acknowledgment is sent. */
-    private int recoveryAckCnt = DFLT_RECOVERY_ACK_CNT;
+    private int msgAckPeriod = DFLT_MSG_ACK_PERIOD;
+
+    /** Maximum number of unacknowledged messages. */
+    private int maxUnackMsgCnt;
 
     /** Socket write timeout. */
     private long sockWriteTimeout = DFLT_SOCKET_WRITE_TIMEOUT;
@@ -768,6 +772,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
     /** Context initialization latch. */
     private final CountDownLatch ctxInitLatch = new CountDownLatch(1);
+
+    /** Stopping flag. */
+    private volatile boolean stopping;
 
     /** metrics listener. */
     private final GridNioMetricsListener metricsLsnr = new GridNioMetricsListener() {
@@ -1015,20 +1022,41 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /**
      * Gets number of received messages after which acknowledgment is sent.
      * <p>
-     * Default to {@link #DFLT_RECOVERY_ACK_CNT}.
+     * Default to {@link #DFLT_MSG_ACK_PERIOD}.
      *
      * @return Number of received messages after which acknowledgment is sent.
      */
-    @Override public int getRecoveryAcknowledgementCount() {
-        return recoveryAckCnt;
+    @Override public int getMessageAcknowledgementPeriod() {
+        return msgAckPeriod;
     }
 
     /**
-     * @param recoveryAckCnt Number of received messages after which acknowledgment is sent.
+     * @param msgAckPeriod Number of received messages after which acknowledgment is sent.
      */
     @GridSpiConfiguration(optional = true)
-    public void setRecoveryAcknowledgementCount(int recoveryAckCnt) {
-        this.recoveryAckCnt = recoveryAckCnt;
+    public void setMessageAcknowledgementPeriod(int msgAckPeriod) {
+        this.msgAckPeriod = msgAckPeriod;
+    }
+
+    /**
+     * Gets maximum number of unacknowledged messages. If size of unacknowledged messages
+     * queue exceeds this number then connection to node is closed and reconnect is
+     * attempted.
+     *
+     * @return Maximum number of unacknowledged messages.
+     */
+    @Override public int getMaxUnacknowledgedMessageCount() {
+        return maxUnackMsgCnt;
+    }
+
+    /**
+     * Gets maximum number of unacknowledged messages.
+     *
+     * @param maxUnackMsgCnt Maximum number of unacknowledged messages.
+     */
+    @GridSpiConfiguration(optional = true)
+    public void setMaxUnacknowledgedMessageCount(int maxUnackMsgCnt) {
+        this.maxUnackMsgCnt = maxUnackMsgCnt;
     }
 
     /**
@@ -1415,7 +1443,16 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         assertParameter(connTimeout >= 0, "connTimeout >= 0");
         assertParameter(maxConnTimeout >= connTimeout, "maxConnTimeout >= connTimeout");
         assertParameter(sockWriteTimeout >= 0, "sockWriteTimeout >= 0");
-        assertParameter(recoveryAckCnt > 0, "recoveryAckCnt > 0");
+        assertParameter(msgAckPeriod > 0, "msgAckPeriod > 0");
+        assertParameter(maxUnackMsgCnt >= 0, "maxUnackMsgCnt >= 0");
+
+        if (maxUnackMsgCnt > 0) {
+            assertParameter(maxUnackMsgCnt >= msgQueueLimit * 5,
+                "Specified 'maxUnackMsgCnt' is too low, it should be at least 'msgQueueLimit * 5'.");
+
+            assertParameter(maxUnackMsgCnt >= msgAckPeriod * 5,
+                "Specified 'maxUnackMsgCnt' is too low, it should be at least 'msgAckPeriod * 5'.");
+        }
 
         if (!asyncSnd)
             U.warn(log, "Ignoring 'asyncSend' configuration property (GridTcpCommunicationSpi does not support " +
@@ -1497,7 +1534,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             log.debug(configInfo("maxConnTimeout", maxConnTimeout));
             log.debug(configInfo("reconCnt", reconCnt));
             log.debug(configInfo("sockWriteTimeout", sockWriteTimeout));
-            log.debug(configInfo("recoveryAckCnt", recoveryAckCnt));
+            log.debug(configInfo("msgAckPeriod", msgAckPeriod));
+            log.debug(configInfo("maxUnackMsgCnt", maxUnackMsgCnt));
         }
 
         if (connBufSize > 8192)
@@ -1685,12 +1723,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             locPort + ", portRange=" + locPortRange + ", locHost=" + locHost + ']', lastEx);
     }
 
-    /** */
-    private volatile boolean stopped;
-
     /** {@inheritDoc} */
     @Override public void spiStop() throws GridSpiException {
-        stopped = true;
+        assert stopping;
 
         unregisterMBean();
 
@@ -1733,7 +1768,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
     /** {@inheritDoc} */
     @Override protected void onContextDestroyed0() {
-        stopped = true;
+        stopping = true;
 
         if (ctxInitLatch.getCount() > 0)
             // Safety.
@@ -1857,7 +1892,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             GridCommunicationClient client = clients.get(nodeId);
 
             if (client == null) {
-                if (stopped)
+                if (stopping)
                     throw new GridSpiException("Grid is stopping.");
 
                 // Do not allow concurrent connects.
@@ -2406,12 +2441,12 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         GridNioRecoveryDescriptor recovery = recoveryDescs.get(id);
 
         if (recovery == null) {
-            int queueSize = msgQueueLimit != 0 ? (msgQueueLimit * 2) : 1024;
+            int maxSize = Math.max(msgQueueLimit, msgAckPeriod);
 
-            int queueLimit = Math.max(queueSize * 5, recoveryAckCnt * 5);
+            int queueLimit = maxUnackMsgCnt != 0 ? maxUnackMsgCnt : (maxSize * 5);
 
             GridNioRecoveryDescriptor old =
-                recoveryDescs.put(id, recovery = new GridNioRecoveryDescriptor(queueSize, queueLimit, node, log));
+                recoveryDescs.put(id, recovery = new GridNioRecoveryDescriptor(queueLimit, node, log));
 
             if (old != null)
                 recovery = old;
@@ -2648,7 +2683,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     if (idleTime >= idleConnTimeout) {
                         if (recovery != null &&
-                            recovery.nodeAlive(getSpiContext()) &&
+                            recovery.nodeAlive(getSpiContext().node(nodeId)) &&
                             !recovery.messagesFutures().isEmpty()) {
                             if (log.isDebugEnabled())
                                 log.debug("Node connection is idle, but there are unacknowledged messages, " +
@@ -2681,7 +2716,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                 GridNioRecoveryDescriptor recoverySnd = e.getValue();
 
-                if (!recoverySnd.nodeAlive(getSpiContext())) {
+                if (!recoverySnd.nodeAlive(getSpiContext().node(recoverySnd.node().id()))) {
                     if (left == null)
                         left = new HashSet<>();
 
@@ -2874,7 +2909,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                 GridNode node = recoveryDesc.node();
 
-                if (clients.containsKey(node.id()) || !recoveryDesc.nodeAlive(getSpiContext()))
+                if (clients.containsKey(node.id()) || !recoveryDesc.nodeAlive(getSpiContext().node(node.id())))
                     continue;
 
                 try {
@@ -2886,7 +2921,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     client.release();
                 }
                 catch (GridException e) {
-                    if (recoveryDesc.nodeAlive(getSpiContext())) {
+                    if (recoveryDesc.nodeAlive(getSpiContext().node(node.id()))) {
                         if (log.isDebugEnabled())
                             log.debug("Recovery reconnect failed, will retry " +
                                 "[rmtNode=" + recoveryDesc.node().id() + ", err=" + e + ']');

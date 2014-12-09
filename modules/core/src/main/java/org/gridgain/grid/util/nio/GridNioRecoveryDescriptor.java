@@ -12,8 +12,8 @@ package org.gridgain.grid.util.nio;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
-import org.gridgain.grid.spi.*;
 import org.gridgain.grid.util.typedef.internal.*;
+import org.jetbrains.annotations.*;
 
 import java.io.*;
 import java.util.*;
@@ -38,7 +38,7 @@ public class GridNioRecoveryDescriptor {
     private boolean reserved;
 
     /** Last acknowledged message. */
-    private volatile long lastAck;
+    private long lastAck;
 
     /** Node left flag. */
     private boolean nodeLeft;
@@ -62,17 +62,15 @@ public class GridNioRecoveryDescriptor {
     private final int queueLimit;
 
     /**
-     * @param queueSize Expected message queue size.
-     * @param queueLimit Maximum queue size.
+     * @param queueLimit Maximum size of unacknowledged messages queue.
      * @param node Node.
      * @param log Logger.
      */
-    public GridNioRecoveryDescriptor(int queueSize, int queueLimit, GridNode node, GridLogger log) {
+    public GridNioRecoveryDescriptor(int queueLimit, GridNode node, GridLogger log) {
         assert !node.isLocal() : node;
-        assert queueSize > 0 : queueSize;
-        assert queueLimit > 0 && queueLimit > queueSize: queueLimit;
+        assert queueLimit > 0;
 
-        msgFuts = new ArrayDeque<>(queueSize);
+        msgFuts = new ArrayDeque<>(queueLimit);
 
         this.queueLimit = queueLimit;
         this.node = node;
@@ -182,12 +180,20 @@ public class GridNioRecoveryDescriptor {
      * Node left callback.
      */
     public void onNodeLeft() {
+        GridNioFuture<?>[] futs = null;
+
         synchronized (this) {
             nodeLeft = true;
 
-            if (!reserved)
-                completeOnNodeLeft();
+            if (!reserved && !msgFuts.isEmpty()) {
+                futs = msgFuts.toArray(new GridNioFuture<?>[msgFuts.size()]);
+
+                msgFuts.clear();
+            }
         }
+
+        if (futs != null)
+            completeOnNodeLeft(futs);
     }
 
     /**
@@ -198,13 +204,11 @@ public class GridNioRecoveryDescriptor {
     }
 
     /**
-     * @param ctx SPI context.
-     * @return {@code True} if node still exists with the same order.
+     * @param node Node.
+     * @return {@code True} if node is not null and has the same order as initial remtoe node.
      */
-    public boolean nodeAlive(GridSpiContext ctx) {
-        GridNode node0 = ctx.node(node.id());
-
-        return node0 != null && node0.order() == node.order();
+    public boolean nodeAlive(@Nullable GridNode node) {
+        return node != null && node.order() == this.node.order();
     }
 
     /**
@@ -260,6 +264,8 @@ public class GridNioRecoveryDescriptor {
      *
      */
     public void release() {
+        GridNioFuture<?>[] futs = null;
+
         synchronized (this) {
             connected = false;
 
@@ -278,9 +284,15 @@ public class GridNioRecoveryDescriptor {
                 notifyAll();
             }
 
-            if (nodeLeft)
-                completeOnNodeLeft();
+            if (nodeLeft && !msgFuts.isEmpty()) {
+                futs = msgFuts.toArray(new GridNioFuture<?>[msgFuts.size()]);
+
+                msgFuts.clear();
+            }
         }
+
+        if (futs != null)
+            completeOnNodeLeft(futs);
     }
 
     /**
@@ -330,13 +342,11 @@ public class GridNioRecoveryDescriptor {
     }
 
     /**
-     *
+     * @param futs Futures to complete.
      */
-    private void completeOnNodeLeft() {
-        for (GridNioFuture<?> msg : msgFuts)
+    private void completeOnNodeLeft(GridNioFuture<?>[] futs) {
+        for (GridNioFuture<?> msg : futs)
             ((GridNioFutureImpl)msg).onDone(new IOException("Failed to send message, node has left: " + node.id()));
-
-        msgFuts.clear();
     }
 
     /** {@inheritDoc} */
