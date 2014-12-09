@@ -272,14 +272,18 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         if (!stopped) {
                             GridNioRecoveryDescriptor recoveryData = ses.recoveryDescriptor();
 
-                            if (recoveryData != null &&
-                                recoveryData.nodeAlive(getSpiContext()) &&
-                                !recoveryData.messagesFutures().isEmpty()) {
-                                if (log.isDebugEnabled())
-                                    log.debug("Session was closed but there are unacknowledged messages, " +
-                                        "will try to reconnect [rmtNode=" + recoveryData.node().id() + ']');
+                            if (recoveryData != null) {
+                                if (recoveryData.nodeAlive(getSpiContext())) {
+                                    if (!recoveryData.messagesFutures().isEmpty()) {
+                                        if (log.isDebugEnabled())
+                                            log.debug("Session was closed but there are unacknowledged messages, " +
+                                                "will try to reconnect [rmtNode=" + recoveryData.node().id() + ']');
 
-                                recoveryWorker.addReconnectRequest(recoveryData);
+                                        recoveryWorker.addReconnectRequest(recoveryData);
+                                    }
+                                }
+                                else
+                                    recoveryData.onNodeLeft();
                             }
                         }
                     }
@@ -2402,8 +2406,10 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         if (recovery == null) {
             int queueSize = msgQueueLimit != 0 ? (msgQueueLimit * 2) : 1024;
 
+            int queueLimit = Math.max(queueSize * 5, recoveryAckCnt * 5);
+
             GridNioRecoveryDescriptor old =
-                recoveryDescs.put(id, recovery = new GridNioRecoveryDescriptor(queueSize, node, log));
+                recoveryDescs.put(id, recovery = new GridNioRecoveryDescriptor(queueSize, queueLimit, node, log));
 
             if (old != null)
                 recovery = old;

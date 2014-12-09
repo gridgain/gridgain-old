@@ -1360,7 +1360,9 @@ public class GridNioServer<T> {
                     readBuf.order(order);
                 }
 
-                final GridSelectorNioSessionImpl ses = new GridSelectorNioSessionImpl(idx,
+                final GridSelectorNioSessionImpl ses = new GridSelectorNioSessionImpl(
+                    log,
+                    idx,
                     filterChain,
                     (InetSocketAddress)sockCh.getLocalAddress(),
                     (InetSocketAddress)sockCh.getRemoteAddress(),

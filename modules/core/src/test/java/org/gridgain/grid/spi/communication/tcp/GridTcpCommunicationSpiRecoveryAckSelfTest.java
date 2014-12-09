@@ -103,14 +103,13 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
      * @throws Exception If failed.
      */
     private void checkAck(int ackCnt, int idleTimeout, int msgPerIter) throws Exception {
-        createSpis(ackCnt, idleTimeout);
+        createSpis(ackCnt, idleTimeout, GridTcpCommunicationSpi.DFLT_MSG_QUEUE_LIMIT);
 
         try {
             GridTcpCommunicationSpi spi0 = spis.get(0);
             GridTcpCommunicationSpi spi1 = spis.get(1);
 
             GridNode node0 = nodes.get(0);
-
             GridNode node1 = nodes.get(1);
 
             int msgId = 0;
@@ -180,11 +179,95 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testQueueOverflow() throws Exception {
+        createSpis(5, 60_000, 10);
+
+        try {
+            GridTcpCommunicationSpi spi0 = spis.get(0);
+            GridTcpCommunicationSpi spi1 = spis.get(1);
+
+            GridNode node0 = nodes.get(0);
+            GridNode node1 = nodes.get(1);
+
+            final GridNioServer srv1 = U.field(spi1, "nioSrvr");
+
+            int msgId = 0;
+
+            // Send message to establish connection.
+            spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+
+            // Prevent node1 from send
+            GridTestUtils.setFieldValue(srv1, "skipWrite", true);
+
+            final GridNioSession ses0 = communicationSession(spi0);
+
+            for (int i = 0; i < 150; i++)
+                spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+
+            // Wait when session is closed because of queue overflow.
+            GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                @Override public boolean apply() {
+                    return ses0.closeTime() != 0;
+                }
+            }, 5000);
+
+            assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
+
+            GridTestUtils.setFieldValue(srv1, "skipWrite", false);
+
+            for (int i = 0; i < 100; i++)
+                spi0.sendMessage(node1, new GridTestMessage(node0.id(), ++msgId, 0));
+
+            final int expMsgs = 251;
+
+            final TestListener lsnr = (TestListener)spi1.getListener();
+
+            GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                @Override public boolean apply() {
+                    return lsnr.rcvCnt.get() >= expMsgs;
+                }
+            }, 5000);
+
+            assertEquals(expMsgs, lsnr.rcvCnt.get());
+        }
+        finally {
+            stopSpis();
+        }
+    }
+
+    /**
+     * @param spi SPI.
+     * @return Session.
+     * @throws Exception If failed.
+     */
+    @SuppressWarnings("unchecked")
+    private GridNioSession communicationSession(GridTcpCommunicationSpi spi) throws Exception {
+        final GridNioServer srv = U.field(spi, "nioSrvr");
+
+        GridTestUtils.waitForCondition(new GridAbsPredicate() {
+            @Override public boolean apply() {
+                Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
+
+                return !sessions.isEmpty();
+            }
+        }, 5000);
+
+        Collection<? extends GridNioSession> sessions = GridTestUtils.getFieldValue(srv, "sessions");
+
+        assertEquals(1, sessions.size());
+
+        return sessions.iterator().next();
+    }
+
+    /**
      * @param ackCnt Recovery acknowledgement count.
      * @param idleTimeout Idle connection timeout.
+     * @param queueLimit Message queue limit.
      * @return SPI instance.
      */
-    protected GridTcpCommunicationSpi getSpi(int ackCnt, int idleTimeout) {
+    protected GridTcpCommunicationSpi getSpi(int ackCnt, int idleTimeout, int queueLimit) {
         GridTcpCommunicationSpi spi = new GridTcpCommunicationSpi();
 
         spi.setSharedMemoryPort(-1);
@@ -192,6 +275,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
         spi.setIdleConnectionTimeout(idleTimeout);
         spi.setTcpNoDelay(true);
         spi.setRecoveryAcknowledgementCount(ackCnt);
+        spi.setMessageQueueLimit(queueLimit);
 
         return spi;
     }
@@ -199,9 +283,10 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
     /**
      * @param ackCnt Recovery acknowledgement count.
      * @param idleTimeout Idle connection timeout.
+     * @param queueLimit Message queue limit.
      * @throws Exception If failed.
      */
-    private void createSpis(int ackCnt, int idleTimeout) throws Exception {
+    private void createSpis(int ackCnt, int idleTimeout, int queueLimit) throws Exception {
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -209,7 +294,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
         Map<GridNode, GridSpiTestContext> ctxs = new HashMap<>();
 
         for (int i = 0; i < SPI_CNT; i++) {
-            GridTcpCommunicationSpi spi = getSpi(ackCnt, idleTimeout);
+            GridTcpCommunicationSpi spi = getSpi(ackCnt, idleTimeout, queueLimit);
 
             GridTestUtils.setFieldValue(spi, "gridName", "grid-" + i);
 

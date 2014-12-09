@@ -9,6 +9,7 @@
 
 package org.gridgain.grid.util.nio;
 
+import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.tostring.*;
 import org.jdk8.backport.*;
@@ -53,9 +54,13 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
     /** Recovery data. */
     private GridNioRecoveryDescriptor recovery;
 
+    /** Logger. */
+    private final GridLogger log;
+
     /**
      * Creates session instance.
      *
+     * @param log Logger.
      * @param selectorIdx Selector index for this session.
      * @param filterChain Filter chain that will handle requests.
      * @param locAddr Local address.
@@ -66,6 +71,7 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
      * @param readBuf Read buffer.
      */
     GridSelectorNioSessionImpl(
+        GridLogger log,
         int selectorIdx,
         GridNioFilterChain filterChain,
         InetSocketAddress locAddr,
@@ -82,6 +88,10 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
 
         assert locAddr != null : "GridSelectorNioSessionImpl should have local socket address.";
         assert rmtAddr != null : "GridSelectorNioSessionImpl should have remote socket address.";
+
+        assert log != null;
+
+        this.log = log;
 
         this.selectorIdx = selectorIdx;
 
@@ -207,8 +217,21 @@ class GridSelectorNioSessionImpl extends GridNioSessionImpl {
             if (sem != null && !last.messageThread())
                 sem.release();
 
-            if (recovery != null)
-                recovery.add(last);
+            if (recovery != null) {
+                if (!recovery.add(last)) {
+                    LT.warn(log, null, "Unacknowledged messages queue size overflow, will attempt to reconnect " +
+                        "[remoteAddr=" + remoteAddress() +
+                        ", queueLimit=" + recovery.queueLimit() + ']');
+
+                    if (log.isDebugEnabled())
+                        log.debug("Unacknowledged messages queue size overflow, will attempt to reconnect " +
+                            "[remoteAddr=" + remoteAddress() +
+                            ", queueSize=" + recovery.messagesFutures().size() +
+                            ", queueLimit=" + recovery.queueLimit() + ']');
+
+                    close();
+                }
+            }
         }
 
         return last;

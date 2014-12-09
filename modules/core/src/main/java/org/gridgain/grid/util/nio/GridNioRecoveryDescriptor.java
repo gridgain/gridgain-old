@@ -40,7 +40,7 @@ public class GridNioRecoveryDescriptor {
     /** Last acknowledged message. */
     private volatile long lastAck;
 
-    /** */
+    /** Node left flag. */
     private boolean nodeLeft;
 
     /** Target node. */
@@ -49,26 +49,32 @@ public class GridNioRecoveryDescriptor {
     /** Logger. */
     private final GridLogger log;
 
-    /** */
+    /** Incoming connection request from remote node. */
     private GridBiTuple<Long, GridInClosure<Boolean>> handshakeReq;
 
-    /** */
+    /** Connected flag. */
     private boolean connected;
 
     /** Number of outgoing connect attempts. */
     private long connectCnt;
 
+    /** Maximum size of unacknowledged messages queue. */
+    private final int queueLimit;
+
     /**
      * @param queueSize Expected message queue size.
+     * @param queueLimit Maximum queue size.
      * @param node Node.
      * @param log Logger.
      */
-    public GridNioRecoveryDescriptor(int queueSize, GridNode node, GridLogger log) {
+    public GridNioRecoveryDescriptor(int queueSize, int queueLimit, GridNode node, GridLogger log) {
         assert !node.isLocal() : node;
         assert queueSize > 0 : queueSize;
+        assert queueLimit > 0 && queueLimit > queueSize: queueLimit;
 
         msgFuts = new ArrayDeque<>(queueSize);
 
+        this.queueLimit = queueLimit;
         this.node = node;
         this.log = log;
     }
@@ -127,17 +133,30 @@ public class GridNioRecoveryDescriptor {
     }
 
     /**
-     * @param fut NIO future.
+     * @return Maximum size of unacknowledged messages queue.
      */
-    public void add(GridNioFuture<?> fut) {
+    public int queueLimit() {
+        return queueLimit;
+    }
+
+    /**
+     * @param fut NIO future.
+     * @return {@code False} if queue limit is exceeded.
+     */
+    public boolean add(GridNioFuture<?> fut) {
         assert fut != null;
 
         if (!fut.skipRecovery()) {
-            if (resendCnt == 0)
+            if (resendCnt == 0) {
                 msgFuts.addLast(fut);
+
+                return msgFuts.size() < queueLimit;
+            }
             else
                 resendCnt--;
         }
+
+        return true;
     }
 
     /**
@@ -164,9 +183,9 @@ public class GridNioRecoveryDescriptor {
      */
     public void onNodeLeft() {
         synchronized (this) {
-            if (reserved)
-                nodeLeft = true;
-            else
+            nodeLeft = true;
+
+            if (!reserved)
                 completeOnNodeLeft();
         }
     }
@@ -316,6 +335,8 @@ public class GridNioRecoveryDescriptor {
     private void completeOnNodeLeft() {
         for (GridNioFuture<?> msg : msgFuts)
             ((GridNioFutureImpl)msg).onDone(new IOException("Failed to send message, node has left: " + node.id()));
+
+        msgFuts.clear();
     }
 
     /** {@inheritDoc} */
