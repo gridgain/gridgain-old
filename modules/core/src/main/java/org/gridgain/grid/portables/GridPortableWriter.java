@@ -11,6 +11,7 @@ package org.gridgain.grid.portables;
 
 import org.jetbrains.annotations.*;
 
+import java.math.*;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
@@ -83,6 +84,13 @@ public interface GridPortableWriter {
      * @throws GridPortableException In case of error.
      */
     public void writeBoolean(String fieldName, boolean val) throws GridPortableException;
+
+    /**
+     * @param fieldName Field name.
+     * @param val Value to write.
+     * @throws GridPortableException In case of error.
+     */
+    public void writeDecimal(String fieldName, @Nullable BigDecimal val) throws GridPortableException;
 
     /**
      * @param fieldName Field name.
@@ -174,6 +182,13 @@ public interface GridPortableWriter {
      * @throws GridPortableException In case of error.
      */
     public void writeBooleanArray(String fieldName, @Nullable boolean[] val) throws GridPortableException;
+
+    /**
+     * @param fieldName Field name.
+     * @param val Value to write.
+     * @throws GridPortableException In case of error.
+     */
+    public void writeDecimalArray(String fieldName, @Nullable BigDecimal[] val) throws GridPortableException;
 
     /**
      * @param fieldName Field name.
