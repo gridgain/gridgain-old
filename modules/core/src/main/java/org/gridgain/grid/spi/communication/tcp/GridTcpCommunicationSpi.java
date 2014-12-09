@@ -340,8 +340,27 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     boolean recovery = rmtVer.compareTo(RECOVERY_SINCE_VER) >= 0;
 
                     if (recovery) {
-                        if (alreadyConnected(locNode, sndId, ses))
-                            return;
+                        GridCommunicationClient oldClient = clients.get(sndId);
+
+                        boolean hasShmemClient = false;
+
+                        if (oldClient != null) {
+                            if (oldClient instanceof GridTcpNioCommunicationClient) {
+                                if (log.isDebugEnabled())
+                                    log.debug("Received incoming connection when already connected " +
+                                            "to this node, rejecting [locNode=" + locNode.id() +
+                                            ", rmtNode=" + sndId + ']');
+
+                                ses.send(new RecoveryLastReceivedMessage(-1));
+
+                                return;
+                            }
+                            else {
+                                assert oldClient instanceof GridShmemCommunicationClient;
+
+                                hasShmemClient = true;
+                            }
+                        }
 
                         GridFutureAdapterEx<GridCommunicationClient> fut = new GridFutureAdapterEx<>();
 
@@ -354,11 +373,28 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         final GridNioRecoveryDescriptor recoveryDesc = recoveryDescriptor(rmtNode);
 
                         if (oldFut == null) {
-                            if (alreadyConnected(locNode, sndId, ses))
-                                return;
+                            oldClient = clients.get(sndId);
+
+                            if (oldClient != null) {
+                                if (oldClient instanceof GridTcpNioCommunicationClient) {
+                                    if (log.isDebugEnabled())
+                                        log.debug("Received incoming connection when already connected " +
+                                                "to this node, rejecting [locNode=" + locNode.id() +
+                                                ", rmtNode=" + sndId + ']');
+
+                                    ses.send(new RecoveryLastReceivedMessage(-1));
+
+                                    return;
+                                }
+                                else {
+                                    assert oldClient instanceof GridShmemCommunicationClient;
+
+                                    hasShmemClient = true;
+                                }
+                            }
 
                             boolean reserved = recoveryDesc.tryReserve(msg0.connectCount(),
-                                new ConnectClosure(ses, recoveryDesc, rmtNode, msg0, fut));
+                                new ConnectClosure(ses, recoveryDesc, rmtNode, msg0, !hasShmemClient, fut));
 
                             if (log.isDebugEnabled())
                                 log.debug("Received incoming connection from remote node " +
@@ -367,7 +403,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             if (reserved) {
                                 try {
                                     GridTcpNioCommunicationClient client =
-                                        createClient(recoveryDesc, ses, rmtNode, msg0.received(), true);
+                                        connected(recoveryDesc, ses, rmtNode, msg0.received(), true, !hasShmemClient);
 
                                     fut.onDone(client);
                                 }
@@ -389,11 +425,11 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             }
                             else {
                                 boolean reserved = recoveryDesc.tryReserve(msg0.connectCount(),
-                                    new ConnectClosure(ses, recoveryDesc, rmtNode, msg0, fut));
+                                    new ConnectClosure(ses, recoveryDesc, rmtNode, msg0, !hasShmemClient, fut));
 
                                 if (reserved) {
                                     GridTcpNioCommunicationClient client =
-                                        createClient(recoveryDesc, ses, rmtNode, msg0.received(), true);
+                                        connected(recoveryDesc, ses, rmtNode, msg0.received(), true, !hasShmemClient);
 
                                     fut.onDone(client);
                                 }
@@ -487,14 +523,16 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
              * @param node Node.
              * @param rcvCnt Number of received messages..
              * @param sndRes If {@code true} sends response for recovery handshake.
+             * @param createClient If {@code true} creates NIO communication client.
              * @return Client.
              */
-            private GridTcpNioCommunicationClient createClient(
+            private GridTcpNioCommunicationClient connected(
                 GridNioRecoveryDescriptor recovery,
                 GridNioSession ses,
                 GridNode node,
                 long rcvCnt,
-                boolean sndRes) {
+                boolean sndRes,
+                boolean createClient) {
                 recovery.onHandshake(rcvCnt);
 
                 ses.recoveryDescriptor(recovery);
@@ -504,11 +542,15 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                 if (sndRes)
                     nioSrvr.sendSystem(ses, new RecoveryLastReceivedMessage(recovery.receivedCount()));
 
-                GridTcpNioCommunicationClient client = new GridTcpNioCommunicationClient(ses, log);
+                GridTcpNioCommunicationClient client = null;
 
-                GridCommunicationClient oldClient = clients.putIfAbsent(node.id(), client);
+                if (createClient) {
+                    client = new GridTcpNioCommunicationClient(ses, log);
 
-                assert oldClient == null;
+                    GridCommunicationClient oldClient = clients.putIfAbsent(node.id(), client);
+
+                    assert oldClient == null;
+                }
 
                 recovery.connected();
 
@@ -561,22 +603,28 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                 /** */
                 private final GridFutureAdapterEx<GridCommunicationClient> fut;
 
+                /** */
+                private final boolean createClient;
+
                 /**
                  * @param ses Incoming session.
                  * @param recoveryDesc Recovery descriptor.
                  * @param rmtNode Remote node.
                  * @param msg Handshake message.
+                 * @param createClient If {@code true} creates NIO communication client..
                  * @param fut Connect future.
                  */
                 ConnectClosure(GridNioSession ses,
                     GridNioRecoveryDescriptor recoveryDesc,
                     GridNode rmtNode,
                     HandshakeMessage msg,
+                    boolean createClient,
                     GridFutureAdapterEx<GridCommunicationClient> fut) {
                     this.ses = ses;
                     this.recoveryDesc = recoveryDesc;
                     this.rmtNode = rmtNode;
                     this.msg = msg;
+                    this.createClient = createClient;
                     this.fut = fut;
                 }
 
@@ -592,7 +640,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                     msgFut.get();
 
                                     GridTcpNioCommunicationClient client =
-                                        createClient(recoveryDesc, ses, rmtNode, msg.received(), false);
+                                        connected(recoveryDesc, ses, rmtNode, msg.received(), false, createClient);
 
                                     fut.onDone(client);
                                 }
