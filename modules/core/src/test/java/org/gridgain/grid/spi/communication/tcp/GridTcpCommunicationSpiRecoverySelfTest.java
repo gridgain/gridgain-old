@@ -47,7 +47,7 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
     private static final int ITERS = 10;
 
     /** */
-    private static int port = 50_000;
+    private static int port = 30_000;
 
     /**
      *
@@ -563,6 +563,8 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
      */
     private void stopSpis() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis) {
+            spi.onContextDestroyed();
+
             spi.setListener(null);
 
             spi.spiStop();

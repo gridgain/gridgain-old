@@ -314,6 +314,8 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
     /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis.values()) {
+            spi.onContextDestroyed();
+
             spi.setListener(null);
 
             spi.spiStop();

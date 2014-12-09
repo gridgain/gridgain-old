@@ -339,6 +339,8 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
      */
     private void stopSpis() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis) {
+            spi.onContextDestroyed();
+
             spi.setListener(null);
 
             spi.spiStop();

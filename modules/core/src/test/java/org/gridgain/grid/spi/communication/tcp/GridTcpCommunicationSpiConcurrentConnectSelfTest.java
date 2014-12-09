@@ -344,6 +344,8 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
      */
     private void stopSpis() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis) {
+            spi.onContextDestroyed();
+
             spi.setListener(null);
 
             spi.spiStop();
