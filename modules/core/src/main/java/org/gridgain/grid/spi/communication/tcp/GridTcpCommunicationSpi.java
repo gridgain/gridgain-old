@@ -1418,12 +1418,13 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         assertParameter(recoveryAckCnt > 0, "recoveryAckCnt > 0");
 
         if (!asyncSnd)
-            U.warn(log, "Synchronous IO in GridTcpCommunicationSpi is not supported anymore " +
-                    "(will automatically switch to asynchronous IO)");
+            U.warn(log, "Ignoring 'asyncSend' configuration property (GridTcpCommunicationSpi does not support " +
+                "synchronous IO anymore and will automatically switch to asynchronous IO).");
 
         if (dualSockConn)
-            U.warn(log, "Dual-socket connection in GridTcpCommunicationSpi is not supported anymore " +
-                    "(will automatically switch to signle socket connection mode)");
+            U.warn(log, "Ignoring 'dualSocketConnection' configuration property " +
+                "(GridTcpCommunicationSpi does not support dual-socket connection mode anymore and " +
+                "will automatically switch to single socket connection mode).");
 
         try {
             locHost = U.resolveLocalHost(locAddr);
@@ -1784,8 +1785,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private void checkAttributePresence(GridNode node, String attrName) {
         if (node.attribute(attrName) == null)
             U.warn(log, "Remote node has inconsistent configuration (required attribute was not found) " +
-                    "[attrName=" + attrName + ", nodeId=" + node.id() +
-                    "spiCls=" + U.getSimpleName(GridTcpCommunicationSpi.class) + ']');
+                "[attrName=" + attrName + ", nodeId=" + node.id() +
+                "spiCls=" + U.getSimpleName(GridTcpCommunicationSpi.class) + ']');
     }
 
     /** {@inheritDoc} */
@@ -1824,10 +1825,11 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         GridNode node0 = getSpiContext().node(node.id());
 
                         if (node0 == null)
-                            throw new GridException("Failed to send message to remote node, " +
-                                "node has left: " + node.id());
+                            throw new GridException("Failed to send message to remote node " +
+                                "(node has left the grid): " + node.id());
                     }
-                } while (retry);
+                }
+                while (retry);
             }
             catch (GridException e) {
                 throw new GridSpiException("Failed to send message to remote node: " + node, e);

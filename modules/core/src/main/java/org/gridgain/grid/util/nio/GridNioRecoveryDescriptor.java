@@ -164,7 +164,7 @@ public class GridNioRecoveryDescriptor {
      */
     public void ackReceived(long rcvCnt) {
         if (log.isDebugEnabled())
-            log.debug("Handle acknowledgment, acked=" + acked + ", rcvCnt=" + rcvCnt +
+            log.debug("Handle acknowledgment [acked=" + acked + ", rcvCnt=" + rcvCnt +
                 ", msgFuts=" + msgFuts.size() + ']');
 
         while (acked < rcvCnt) {
