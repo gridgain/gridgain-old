@@ -1385,7 +1385,8 @@ public class GridTcpDiscoverySpi extends GridSpiAdapter implements GridDiscovery
 
         getSpiContext().deregisterPorts();
 
-        ipFinder.onSpiContextDestroyed();
+        if (ipFinder != null)
+            ipFinder.onSpiContextDestroyed();
 
         if (metricsStore != null)
             metricsStore.onSpiContextDestroyed();
