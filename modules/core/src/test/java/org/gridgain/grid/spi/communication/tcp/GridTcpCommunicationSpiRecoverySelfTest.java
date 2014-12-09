@@ -22,6 +22,7 @@ import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.*;
 import org.gridgain.testframework.junits.spi.*;
 
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -58,6 +59,13 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
                 return new GridTestMessage();
             }
         }, GridTestMessage.DIRECT_TYPE);
+    }
+
+    /**
+     * Disable SPI auto-start.
+     */
+    public GridTcpCommunicationSpiRecoverySelfTest() {
+        super(false);
     }
 
     /** */
@@ -253,50 +261,78 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
             int sentCnt = 1;
 
+            int errCnt = 0;
+
             for (int i = 0; i < ITERS; i++) {
                 log.info("Iteration: " + i);
 
-                final GridNioSession ses0 = communicationSession(spi0);
-                final GridNioSession ses1 = communicationSession(spi1);
+                try {
+                    final GridNioSession ses0 = communicationSession(spi0);
+                    final GridNioSession ses1 = communicationSession(spi1);
 
-                ses1.pauseReads().get();
+                    ses1.pauseReads().get();
 
-                GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
-                    @Override public Void call() throws Exception {
-                        for (int i = 0; i < 5000; i++)
-                            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
+                    GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
+                        @Override public Void call() throws Exception {
+                            for (int i = 0; i < 5000; i++)
+                                spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                        return null;
+                            return null;
+                        }
+                    });
+
+                    // Wait when session is closed because of write timeout.
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return ses0.closeTime() != 0;
+                        }
+                    }, 5000);
+
+                    assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
+
+                    ses1.resumeReads().get();
+
+                    for (int j = 0; j < 100; j++)
+                        spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
+
+                    sndFut.get();
+
+                    sentCnt += (5000 + 100);
+
+                    final int expMsgs = sentCnt;
+
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return lsnr1.rcvCnt.get() >= expMsgs;
+                        }
+                    }, 60_000);
+
+                    assertEquals(expMsgs, lsnr1.rcvCnt.get());
+                }
+                catch (GridException e) {
+                    if (e.hasCause(BindException.class)) {
+                        errCnt++;
+
+                        if (errCnt > 3) {
+                            log.warning("Got exception > 3 times, test fails.");
+
+                            throw e;
+                        }
+
+                        if (i < ITERS - 1) {
+                            info("Got exception caused by BindException, will retry after delay: " + e);
+
+                            U.sleep(10_000);
+                        }
+                        else
+                            info("Got exception caused by BindException, will ignore: " + e);
                     }
-                });
+                    else {
+                        log.warning("Unexpected exception: " + e, e);
 
-                // Wait when session is closed because of write timeout.
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return ses0.closeTime() != 0;
+                        throw e;
                     }
-                }, 5000);
-
-                assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
-
-                ses1.resumeReads().get();
-
-                for (int j = 0; j < 100; j++)
-                    spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
-
-                sndFut.get();
-
-                sentCnt += (5000 + 100);
-
-                final int expMsgs = sentCnt;
-
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return lsnr1.rcvCnt.get() >= expMsgs;
-                    }
-                }, 60_000);
-
-                assertEquals(expMsgs, lsnr1.rcvCnt.get());
+                }
             }
         }
         finally {
@@ -329,62 +365,90 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
             int expCnt1 = 1;
 
+            int errCnt = 0;
+
             for (int i = 0; i < ITERS; i++) {
                 log.info("Iteration: " + i);
 
-                final GridNioSession ses0 = communicationSession(spi0);
-                final GridNioSession ses1 = communicationSession(spi1);
+                try {
+                    final GridNioSession ses0 = communicationSession(spi0);
+                    final GridNioSession ses1 = communicationSession(spi1);
 
-                ses1.pauseReads().get();
+                    ses1.pauseReads().get();
 
-                GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
-                    @Override public Void call() throws Exception {
-                        for (int i = 0; i < 5000; i++)
-                            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
+                    GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
+                        @Override public Void call() throws Exception {
+                            for (int i = 0; i < 5000; i++)
+                                spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                        return null;
+                            return null;
+                        }
+                    });
+
+                    // Wait when session is closed because of write timeout.
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return ses0.closeTime() != 0;
+                        }
+                    }, 5000);
+
+                    assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
+
+                    ses1.resumeReads().get();
+
+                    // Wait when session is closed, then to open new connection from node1.
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return ses1.closeTime() != 0;
+                        }
+                    }, 5000);
+
+                    assertTrue("Failed to wait for session close", ses1.closeTime() != 0);
+
+                    for (int j = 0; j < 100; j++)
+                        spi1.sendMessage(node0, new GridTestMessage(node1.id(), msgId.incrementAndGet(), 0));
+
+                    sndFut.get();
+
+                    expCnt0 += 100;
+                    expCnt1 += 5000;
+
+                    final int expMsgs0 = expCnt0;
+                    final int expMsgs1 = expCnt1;
+
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return lsnr0.rcvCnt.get() >= expMsgs0 && lsnr1.rcvCnt.get() >= expMsgs1;
+                        }
+                    }, 60_000);
+
+                    assertEquals(expMsgs0, lsnr0.rcvCnt.get());
+                    assertEquals(expMsgs1, lsnr1.rcvCnt.get());
+                }
+                catch (GridException e) {
+                    if (e.hasCause(BindException.class)) {
+                        errCnt++;
+
+                        if (errCnt > 3) {
+                            log.warning("Got exception > 3 times, test fails.");
+
+                            throw e;
+                        }
+
+                        if (i < ITERS - 1) {
+                            info("Got exception caused by BindException, will retry after delay: " + e);
+
+                            U.sleep(10_000);
+                        }
+                        else
+                            info("Got exception caused by BindException, will ignore: " + e);
                     }
-                });
+                    else {
+                        log.warning("Unexpected exception: " + e, e);
 
-                // Wait when session is closed because of write timeout.
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return ses0.closeTime() != 0;
+                        throw e;
                     }
-                }, 5000);
-
-                assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
-
-                ses1.resumeReads().get();
-
-                // Wait when session is closed, then to open new connection from node1.
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return ses1.closeTime() != 0;
-                    }
-                }, 5000);
-
-                assertTrue("Failed to wait for session close", ses1.closeTime() != 0);
-
-                for (int j = 0; j < 100; j++)
-                    spi1.sendMessage(node0, new GridTestMessage(node1.id(), msgId.incrementAndGet(), 0));
-
-                sndFut.get();
-
-                expCnt0 += 100;
-                expCnt1 += 5000;
-
-                final int expMsgs0 = expCnt0;
-                final int expMsgs1 = expCnt1;
-
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return lsnr0.rcvCnt.get() >= expMsgs0 && lsnr1.rcvCnt.get() >= expMsgs1;
-                    }
-                }, 60_000);
-
-                assertEquals(expMsgs0, lsnr0.rcvCnt.get());
-                assertEquals(expMsgs1, lsnr1.rcvCnt.get());
+                }
             }
         }
         finally {
@@ -414,47 +478,75 @@ public class GridTcpCommunicationSpiRecoverySelfTest<T extends GridCommunication
 
             int sentCnt = 1;
 
+            int errCnt = 0;
+
             for (int i = 0; i < ITERS; i++) {
                 log.info("Iteration: " + i);
 
-                final GridNioSession ses0 = communicationSession(spi0);
-                final GridNioSession ses1 = communicationSession(spi1);
+                try {
+                    final GridNioSession ses0 = communicationSession(spi0);
+                    final GridNioSession ses1 = communicationSession(spi1);
 
-                ses1.pauseReads().get();
+                    ses1.pauseReads().get();
 
-                GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
-                    @Override public Void call() throws Exception {
-                        for (int i = 0; i < 5000; i++)
-                            spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
+                    GridFuture<?> sndFut = GridTestUtils.runAsync(new Callable<Void>() {
+                        @Override public Void call() throws Exception {
+                            for (int i = 0; i < 5000; i++)
+                                spi0.sendMessage(node1, new GridTestMessage(node0.id(), msgId.incrementAndGet(), 0));
 
-                        return null;
+                            return null;
+                        }
+                    });
+
+                    // Wait when session is closed because of write timeout.
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return ses0.closeTime() != 0;
+                        }
+                    }, 5000);
+
+                    assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
+
+                    ses1.resumeReads().get();
+
+                    sndFut.get();
+
+                    sentCnt += 5000;
+
+                    final int expMsgs = sentCnt;
+
+                    GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                        @Override public boolean apply() {
+                            return lsnr1.rcvCnt.get() >= expMsgs;
+                        }
+                    }, 60_000);
+
+                    assertEquals(expMsgs, lsnr1.rcvCnt.get());
+                }
+                catch (GridException e) {
+                    if (e.hasCause(BindException.class)) {
+                        errCnt++;
+
+                        if (errCnt > 3) {
+                            log.warning("Got exception > 3 times, test fails.");
+
+                            throw e;
+                        }
+
+                        if (i < ITERS - 1) {
+                            info("Got exception caused by BindException, will retry after delay: " + e);
+
+                            U.sleep(10_000);
+                        }
+                        else
+                            info("Got exception caused by BindException, will ignore: " + e);
                     }
-                });
+                    else {
+                        log.warning("Unexpected exception: " + e, e);
 
-                // Wait when session is closed because of write timeout.
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return ses0.closeTime() != 0;
+                        throw e;
                     }
-                }, 5000);
-
-                assertTrue("Failed to wait for session close", ses0.closeTime() != 0);
-
-                ses1.resumeReads().get();
-
-                sndFut.get();
-
-                sentCnt += 5000;
-
-                final int expMsgs = sentCnt;
-
-                GridTestUtils.waitForCondition(new GridAbsPredicate() {
-                    @Override public boolean apply() {
-                        return lsnr1.rcvCnt.get() >= expMsgs;
-                    }
-                }, 60_000);
-
-                assertEquals(expMsgs, lsnr1.rcvCnt.get());
+                }
             }
         }
         finally {

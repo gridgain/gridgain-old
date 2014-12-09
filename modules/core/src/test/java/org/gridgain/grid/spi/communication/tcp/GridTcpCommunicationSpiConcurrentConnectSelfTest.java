@@ -61,6 +61,13 @@ public class GridTcpCommunicationSpiConcurrentConnectSelfTest<T extends GridComm
     }
 
     /**
+     * Disable SPI auto-start.
+     */
+    public GridTcpCommunicationSpiConcurrentConnectSelfTest() {
+        super(false);
+    }
+
+    /**
      *
      */
     private static class MessageListener implements GridCommunicationListener<GridTcpCommunicationMessageAdapter> {
