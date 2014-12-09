@@ -539,6 +539,8 @@ public abstract class GridTcpCommunicationSpiMultithreadedSelfTest extends GridS
     /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
         for (GridCommunicationSpi<GridTcpCommunicationMessageAdapter> spi : spis.values()) {
+            spi.onContextDestroyed();
+
             spi.setListener(null);
 
             spi.spiStop();
