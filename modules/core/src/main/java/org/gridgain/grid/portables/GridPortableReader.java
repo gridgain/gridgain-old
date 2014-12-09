@@ -11,6 +11,7 @@ package org.gridgain.grid.portables;
 
 import org.jetbrains.annotations.*;
 
+import java.math.*;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
@@ -83,6 +84,13 @@ public interface GridPortableReader {
      * @throws GridPortableException In case of error.
      */
     public boolean readBoolean(String fieldName) throws GridPortableException;
+
+    /**
+     * @param fieldName Field name.
+     * @return Decimal value.
+     * @throws GridPortableException In case of error.
+     */
+    @Nullable public BigDecimal readDecimal(String fieldName) throws GridPortableException;
 
     /**
      * @param fieldName Field name.
@@ -174,6 +182,13 @@ public interface GridPortableReader {
      * @throws GridPortableException In case of error.
      */
     @Nullable public boolean[] readBooleanArray(String fieldName) throws GridPortableException;
+
+    /**
+     * @param fieldName Field name.
+     * @return Decimal array.
+     * @throws GridPortableException In case of error.
+     */
+    @Nullable public BigDecimal[] readDecimalArray(String fieldName) throws GridPortableException;
 
     /**
      * @param fieldName Field name.

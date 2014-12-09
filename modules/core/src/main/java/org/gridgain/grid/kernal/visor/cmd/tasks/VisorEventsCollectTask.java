@@ -40,9 +40,8 @@ public class VisorEventsCollectTask extends VisorMultiNodeTask<VisorEventsCollec
     }
 
     /** {@inheritDoc} */
-    @Override public Iterable<? extends VisorGridEvent> reduce(
-        List<GridComputeJobResult> results) throws GridException {
-
+    @Override protected Iterable<? extends VisorGridEvent> reduce0(List<GridComputeJobResult> results)
+        throws GridException {
         Collection<VisorGridEvent> allEvents = new ArrayList<>();
 
         for (GridComputeJobResult r : results) {

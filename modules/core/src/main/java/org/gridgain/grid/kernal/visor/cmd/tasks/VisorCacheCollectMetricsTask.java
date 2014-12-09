@@ -38,7 +38,7 @@ public class VisorCacheCollectMetricsTask extends VisorMultiNodeTask<GridBiTuple
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Iterable<VisorCacheAggregatedMetrics> reduce(List<GridComputeJobResult> results)
+    @Nullable @Override protected Iterable<VisorCacheAggregatedMetrics> reduce0(List<GridComputeJobResult> results)
         throws GridException {
         Map<String, VisorCacheAggregatedMetrics> grpAggrMetrics = new HashMap<>();
 
