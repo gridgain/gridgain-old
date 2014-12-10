@@ -12,6 +12,7 @@ package org.gridgain.grid.spi.communication;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.direct.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.*;
@@ -20,6 +21,8 @@ import org.gridgain.testframework.junits.spi.*;
 import java.net.*;
 import java.util.*;
 import java.util.Map.*;
+
+import static org.gridgain.grid.kernal.GridNodeAttributes.*;
 
 /**
  * Super class for all communication self tests.
@@ -256,6 +259,8 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
      * @throws Exception If failed.
      */
     private void startSpis() throws Exception {
+        U.setWorkDirectory(null, U.getGridGainHome());
+
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -286,6 +291,7 @@ public abstract class GridAbstractCommunicationSelfTest<T extends GridCommunicat
             spi.setListener(new MessageListener(rsrcs.getNodeId()));
 
             node.setAttributes(spi.getNodeAttributes());
+            node.setAttribute(ATTR_MACS, F.concat(U.allLocalMACs(), ", "));
 
             nodes.add(node);
 

@@ -30,6 +30,8 @@ import java.util.Map.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
+import static org.gridgain.grid.kernal.GridNodeAttributes.*;
+
 /**
  * Class for multithreaded {@link GridTcpCommunicationSpi} test.
  */
@@ -436,6 +438,8 @@ public abstract class GridTcpCommunicationSpiMultithreadedSelfTest extends GridS
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
+        U.setWorkDirectory(null, U.getGridGainHome());
+
         spis.clear();
         nodes.clear();
         spiRsrcs.clear();
@@ -473,6 +477,7 @@ public abstract class GridTcpCommunicationSpiMultithreadedSelfTest extends GridS
             info("Lsnrs: " + lsnrs);
 
             node.setAttributes(spi.getNodeAttributes());
+            node.setAttribute(ATTR_MACS, F.concat(U.allLocalMACs(), ", "));
 
             nodes.add(node);
 
