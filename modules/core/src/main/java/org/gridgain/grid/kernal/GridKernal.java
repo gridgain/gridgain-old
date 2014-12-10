@@ -129,6 +129,28 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     /** Shutdown delay in msec. when license violation detected. */
     private static final int SHUTDOWN_DELAY = 60 * 1000;
 
+    /** Clock timer. */
+    private static final Thread timer = new Thread(new Runnable() {
+        @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
+        @Override public void run() {
+            while (true) {
+                GridUtils.updateCurrentTime();
+
+                try {
+                    Thread.sleep(10);
+                }
+                catch (InterruptedException ignored) {
+                    U.log(null, "Timer thread has been interrupted.");
+
+                    break;
+                }
+            }
+        }
+    }, "gridgain-clock");
+
+    /** */
+    private static final AtomicBoolean timerEnabled = new AtomicBoolean();
+
     /** */
     private GridConfiguration cfg;
 
@@ -552,6 +574,17 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
         }
         finally {
             gw.writeUnlock();
+        }
+
+        //Start clock timer
+        while (!timer.isAlive()) {
+            if (timerEnabled.compareAndSet(false, true)) {
+                timer.setDaemon(true);
+
+                timer.setPriority(10);
+
+                timer.start();
+            }
         }
 
         assert cfg != null;

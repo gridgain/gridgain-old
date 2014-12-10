@@ -495,30 +495,6 @@ public abstract class GridUtils {
             }
         }
 
-        Thread timer = new Thread(new Runnable() {
-            @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-            @Override public void run() {
-                while (true) {
-                    curTimeMillis = System.currentTimeMillis();
-
-                    try {
-                        Thread.sleep(10);
-                    }
-                    catch (InterruptedException ignored) {
-                        U.log(null, "Timer thread has been interrupted.");
-
-                        break;
-                    }
-                }
-            }
-        }, "gridgain-clock");
-
-        timer.setDaemon(true);
-
-        timer.setPriority(10);
-
-        timer.start();
-
         PORTABLE_CLS.add(Byte.class);
         PORTABLE_CLS.add(Short.class);
         PORTABLE_CLS.add(Integer.class);
@@ -8770,6 +8746,13 @@ public abstract class GridUtils {
         }
 
         return ver;
+    }
+
+    /**
+     * Updates current time.
+     */
+    public static void updateCurrentTime(){
+        curTimeMillis = System.currentTimeMillis();
     }
 
     /**
