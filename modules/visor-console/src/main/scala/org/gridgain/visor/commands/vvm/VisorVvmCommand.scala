@@ -204,7 +204,8 @@ class VisorVvmCommand {
                         case Some(addr) =>
                             // Sequential calls to VisualVM will not start separate processes
                             // but will add new JMX connection to it.
-                            Runtime.getRuntime.exec(vvmCommandArray(vvmCmd + " --openjmx " + addr + ":" + port))
+//                            Runtime.getRuntime.exec(vvmCommandArray(vvmCmd + " --openjmx " + addr + ":" + port)) TODO GG-9577
+                            Runtime.getRuntime.exec(vvmCmd + " --openjmx " + addr + ":" + port)
 
                             started = true
                         case None =>
@@ -214,7 +215,8 @@ class VisorVvmCommand {
             }
 
             if (!started)
-                Runtime.getRuntime.exec(vvmCommandArray(vvmCmd))
+//                Runtime.getRuntime.exec(vvmCommandArray(vvmCmd)) TODO GG-9577
+                Runtime.getRuntime.exec(vvmCmd)
         }
     }
 
