@@ -16,12 +16,11 @@ import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
 import org.gridgain.grid.lang.*;
-import org.gridgain.grid.portables.*;
 import org.gridgain.grid.security.*;
-import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.lang.*;
+import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.io.*;
@@ -304,8 +303,8 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                                 success = false;
                             }
                             else {
-                                if (ctx.portableEnabled() && deserializePortable && v instanceof GridPortableObject)
-                                    v = ((GridPortableObject)v).deserialize();
+                                if (ctx.portableEnabled())
+                                    v = (V)ctx.unwrapPortableIfNeeded(v, !deserializePortable);
 
                                 locVals.put(key, v);
                             }
