@@ -612,6 +612,27 @@ public class GridFutureAdapter<R> extends AbstractQueuedSynchronizer implements 
         }
 
         /** {@inheritDoc} */
+        @Override public boolean cancel() throws GridException {
+            checkValid();
+
+            return fut.cancel();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+            super.readExternal(in);
+
+            fut = (GridFutureAdapter<R>)in.readObject();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void writeExternal(ObjectOutput out) throws IOException {
+            super.writeExternal(out);
+
+            out.writeObject(fut);
+        }
+
+        /** {@inheritDoc} */
         @Override public String toString() {
             return "ChainFuture[orig=" + fut + ", doneCb=" + doneCb + ']';
         }
