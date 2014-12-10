@@ -20,8 +20,6 @@ import org.jetbrains.annotations.Nullable
 
 import java.io.File
 import java.net._
-import java.util
-import java.util.Collections
 
 import org.gridgain.visor._
 import org.gridgain.visor.commands.VisorConsoleCommand
@@ -194,28 +192,23 @@ class VisorVvmCommand {
                 if (port == null)
                     warn("JMX is not enabled for node (skipping): " + nid8(node))
                 else {
-                    var addr: String = null
-
-                    val addrs = new util.ArrayList(node.addresses)
-
-                    Collections.sort(addrs, U.inetAddressesComparator(false))
-
-                    breakable {
-                        for (a <- addrs if TU.reachableByPing(InetAddress.getByName(a), 2000)) {
-                            addr = a
-
-                            break()
+                    val addrs = node.addresses.filter(addr => {
+                        try
+                            !InetAddress.getByName(addr).isLoopbackAddress
+                        catch {
+                            case _: Throwable => false
                         }
-                    }
+                    })
 
-                    if (addr == null)
-                        scold("Visor failed to get reachable address for node (skipping): " + nid8(node))
-                    else {
-                        // Sequential calls to VisualVM will not start separate processes
-                        // but will add new JMX connection to it.
-                        Runtime.getRuntime.exec(vvmCommandArray(vvmCmd + " --openjmx " + addr + ":" + port))
+                    addrs.find(a => TU.reachableByPing(InetAddress.getByName(a), 2000)) match {
+                        case Some(addr) =>
+                            // Sequential calls to VisualVM will not start separate processes
+                            // but will add new JMX connection to it.
+                            Runtime.getRuntime.exec(vvmCommandArray(vvmCmd + " --openjmx " + addr + ":" + port))
 
-                        started = true
+                            started = true
+                        case None =>
+                            scold("Visor failed to get reachable address for node (skipping): " + nid8(node))
                     }
                 }
             }
