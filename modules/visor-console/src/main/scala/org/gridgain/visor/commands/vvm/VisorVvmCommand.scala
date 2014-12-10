@@ -13,21 +13,23 @@ package org.gridgain.visor.commands.vvm
 
 import org.gridgain.grid._
 import org.gridgain.grid.kernal.GridNodeAttributes._
+import org.gridgain.grid.kernal.visor.cmd.{VisorTaskUtils => TU}
 import org.gridgain.grid.util.{GridUtils => U}
-import org.gridgain.grid.util.typedef.X
+
+import org.jetbrains.annotations.Nullable
 
 import java.io.File
 import java.net._
-
-import scala.collection.JavaConversions._
-import scala.language.{implicitConversions, reflectiveCalls}
-import scala.util.control.Breaks._
-
-import org.jetbrains.annotations.Nullable
+import java.util
+import java.util.Collections
 
 import org.gridgain.visor._
 import org.gridgain.visor.commands.VisorConsoleCommand
 import org.gridgain.visor.visor._
+
+import scala.collection.JavaConversions._
+import scala.language.{implicitConversions, reflectiveCalls}
+import scala.util.control.Breaks._
 
 /**
  * ==Overview==
@@ -187,23 +189,27 @@ class VisorVvmCommand {
             val neighbors = grid.forHost(grid.localNode).nodes()
 
             for (node <- nodes if !neighbors.contains(node)) {
-                var addr: String = null
+                val port = node.attribute[java.lang.Integer](ATTR_JMX_PORT)
 
-                breakable {
-                    for (a <- node.addresses if U.reachable(InetAddress.getByName(a), 2000)) {
-                        addr = a
-
-                        break()
-                    }
-                }
-
-                if (addr == null)
-                    scold("Visor failed to get reachable address for node (skipping): " + nid8(node))
+                if (port == null)
+                    warn("JMX is not enabled for node (skipping): " + nid8(node))
                 else {
-                    val port = node.attribute[java.lang.Integer](ATTR_JMX_PORT)
+                    var addr: String = null
 
-                    if (port == null)
-                        warn("JMX is not enabled for node (skipping): " + nid8(node))
+                    val addrs = new util.ArrayList(node.addresses)
+
+                    Collections.sort(addrs, U.inetAddressesComparator(false))
+
+                    breakable {
+                        for (a <- addrs if TU.reachableByPing(InetAddress.getByName(a), 2000)) {
+                            addr = a
+
+                            break()
+                        }
+                    }
+
+                    if (addr == null)
+                        scold("Visor failed to get reachable address for node (skipping): " + nid8(node))
                     else {
                         // Sequential calls to VisualVM will not start separate processes
                         // but will add new JMX connection to it.
