@@ -262,18 +262,27 @@ public interface GridTcpCommunicationSpiMBean extends GridSpiManagementMBean {
     public double getBufferSizeRatio();
 
     /**
+     * Gets socket write timeout for TCP connections. If message can not be written to
+     * socket within this time then connection is closed and reconnect is attempted.
+     *
      * @return Socket write timeout for TCP connections.
      */
     @GridMBeanDescription("Socket write timeout.")
     public long getSocketWriteTimeout();
 
     /**
+     * Gets number of received messages per connection to node after which acknowledgment message is sent.
+     *
      * @return Number of received messages after which acknowledgment is sent.
      */
     @GridMBeanDescription("Number of received messages after which acknowledgment is sent.")
     public int getAckSendThreshold();
 
     /**
+     * Gets maximum number of stored unacknowledged messages per connection to node.
+     * If number of unacknowledged messages exceeds this number then connection to node is
+     * closed and reconnect is attempted.
+     *
      * @return Maximum number of unacknowledged messages.
      */
     @GridMBeanDescription("Maximum number of unacknowledged messages.")

@@ -217,7 +217,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     public static final int DFLT_ACK_SND_THRESHOLD = 512;
 
     /** Default socket write timeout. */
-    public static final long DFLT_SOCKET_WRITE_TIMEOUT = GridNioServer.DFLT_SES_WRITE_TIMEOUT;
+    public static final long DFLT_SOCK_WRITE_TIMEOUT = GridNioServer.DFLT_SES_WRITE_TIMEOUT;
 
     /** No-op runnable. */
     private static final GridRunnable NOOP = new GridRunnable() {
@@ -741,7 +741,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private int unackedMsgsBufSize;
 
     /** Socket write timeout. */
-    private long sockWriteTimeout = DFLT_SOCKET_WRITE_TIMEOUT;
+    private long sockWriteTimeout = DFLT_SOCK_WRITE_TIMEOUT;
 
     /** Shared memory accept worker. */
     private ShmemAcceptWorker shmemAcceptWorker;
@@ -1022,8 +1022,16 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         return idleConnTimeout;
     }
 
+    /** {@inheritDoc} */
+    @Override public long getSocketWriteTimeout() {
+        return sockWriteTimeout;
+    }
+
     /**
-     * Sets socket write timeout for TCP connection.
+     * Sets socket write timeout for TCP connection. If message can not be written to
+     * socket within this time then connection is closed and reconnect is attempted.
+     * <p>
+     * Default to {@link #DFLT_SOCK_WRITE_TIMEOUT}.
      *
      * @param sockWriteTimeout Socket write timeout for TCP connection.
      */
@@ -1032,29 +1040,16 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         this.sockWriteTimeout = sockWriteTimeout;
     }
 
-    /**
-     * Gets socket write timeout for TCP connection.
-     * <p>
-     * Default to {@link #DFLT_SOCKET_WRITE_TIMEOUT}.
-     *
-     * @return Socket write timeout for TCP connection.
-     */
-    @Override public long getSocketWriteTimeout() {
-        return sockWriteTimeout;
-    }
-
-    /**
-     * Gets number of received messages after which acknowledgment is sent.
-     * <p>
-     * Default to {@link #DFLT_ACK_SND_THRESHOLD}.
-     *
-     * @return Number of received messages after which acknowledgment is sent.
-     */
+    /** {@inheritDoc} */
     @Override public int getAckSendThreshold() {
         return ackSndThreshold;
     }
 
     /**
+     * Sets number of received messages per connection to node after which acknowledgment message is sent.
+     * <p>
+     * Default to {@link #DFLT_ACK_SND_THRESHOLD}.
+     *
      * @param ackSndThreshold Number of received messages after which acknowledgment is sent.
      */
     @GridSpiConfiguration(optional = true)
@@ -1062,19 +1057,15 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         this.ackSndThreshold = ackSndThreshold;
     }
 
-    /**
-     * Gets maximum number of unacknowledged messages. If size of unacknowledged messages
-     * queue exceeds this number then connection to node is closed and reconnect is
-     * attempted.
-     *
-     * @return Maximum number of unacknowledged messages.
-     */
+    /** {@inheritDoc} */
     @Override public int getUnacknowledgedMessagesBufferSize() {
         return unackedMsgsBufSize;
     }
 
     /**
-     * Gets maximum number of unacknowledged messages.
+     * Sets maximum number of stored unacknowledged messages per connection to node.
+     * If number of unacknowledged messages exceeds this number then connection to node is
+     * closed and reconnect is attempted.
      *
      * @param unackedMsgsBufSize Maximum number of unacknowledged messages.
      */
