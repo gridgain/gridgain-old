@@ -308,7 +308,7 @@ public class GridTcpCommunicationSpiRecoveryAckSelfTest<T extends GridCommunicat
         spi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
         spi.setIdleConnectionTimeout(idleTimeout);
         spi.setTcpNoDelay(true);
-        spi.setMessageAcknowledgementPeriod(ackCnt);
+        spi.setAckSendThreshold(ackCnt);
         spi.setMessageQueueLimit(queueLimit);
 
         return spi;

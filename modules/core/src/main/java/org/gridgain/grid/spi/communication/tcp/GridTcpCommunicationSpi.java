@@ -95,8 +95,8 @@ import static org.gridgain.grid.events.GridEventType.*;
  * <li>Socket receive buffer size (see {@link #setSocketReceiveBuffer(int)})</li>
  * <li>Socket send buffer size (see {@link #setSocketSendBuffer(int)})</li>
  * <li>Socket write timeout (see {@link #setSocketWriteTimeout(long)})</li>
- * <li>Number of received messages after which acknowledgment is sent (see {@link #setMessageAcknowledgementPeriod(int)})</li>
- * <li>Maximum number of unacknowledged messages (see {@link #setMaxUnacknowledgedMessageCount(int)})</li>
+ * <li>Number of received messages after which acknowledgment is sent (see {@link #setAckSendThreshold(int)})</li>
+ * <li>Maximum number of unacknowledged messages (see {@link #setUnacknowledgedMessagesBufferSize(int)})</li>
  * </ul>
  * <h2 class="header">Java Example</h2>
  * GridTcpCommunicationSpi is used by default and should be explicitly configured
@@ -140,7 +140,7 @@ import static org.gridgain.grid.events.GridEventType.*;
 public class GridTcpCommunicationSpi extends GridSpiAdapter
     implements GridCommunicationSpi<GridTcpCommunicationMessageAdapter>, GridTcpCommunicationSpiMBean {
     /** */
-    public static final GridProductVersion RECOVERY_SINCE_VER = GridProductVersion.fromString("6.5.6");
+    private static final GridProductVersion RECOVERY_SINCE_VER = GridProductVersion.fromString("6.5.6");
 
     /** IPC error message. */
     public static final String OUT_OF_RESOURCES_TCP_MSG = "Failed to allocate shared memory segment " +
@@ -213,8 +213,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /** Default value for {@code TCP_NODELAY} socket option (value is <tt>true</tt>). */
     public static final boolean DFLT_TCP_NODELAY = true;
 
-    /** Default message acknowledgement period. */
-    public static final int DFLT_MSG_ACK_PERIOD = 512;
+    /** Default received messages threshold for sending ack. */
+    public static final int DFLT_ACK_SND_THRESHOLD = 512;
 
     /** Default socket write timeout. */
     public static final long DFLT_SOCKET_WRITE_TIMEOUT = GridNioServer.DFLT_SES_WRITE_TIMEOUT;
@@ -482,7 +482,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                         else {
                             long rcvCnt = recovery.onReceived();
 
-                            if (rcvCnt % msgAckPeriod == 0) {
+                            if (rcvCnt % ackSndThreshold == 0) {
                                 if (log.isDebugEnabled())
                                     log.debug("Send recovery acknowledgement [rmtNode=" + sndId +
                                         ", rcvCnt=" + rcvCnt + ']');
@@ -735,10 +735,10 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     private boolean asyncSnd = true;
 
     /** Number of received messages after which acknowledgment is sent. */
-    private int msgAckPeriod = DFLT_MSG_ACK_PERIOD;
+    private int ackSndThreshold = DFLT_ACK_SND_THRESHOLD;
 
     /** Maximum number of unacknowledged messages. */
-    private int maxUnackMsgCnt;
+    private int unackedMsgsBufSize;
 
     /** Socket write timeout. */
     private long sockWriteTimeout = DFLT_SOCKET_WRITE_TIMEOUT;
@@ -1046,20 +1046,20 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     /**
      * Gets number of received messages after which acknowledgment is sent.
      * <p>
-     * Default to {@link #DFLT_MSG_ACK_PERIOD}.
+     * Default to {@link #DFLT_ACK_SND_THRESHOLD}.
      *
      * @return Number of received messages after which acknowledgment is sent.
      */
-    @Override public int getMessageAcknowledgementPeriod() {
-        return msgAckPeriod;
+    @Override public int getAckSendThreshold() {
+        return ackSndThreshold;
     }
 
     /**
-     * @param msgAckPeriod Number of received messages after which acknowledgment is sent.
+     * @param ackSndThreshold Number of received messages after which acknowledgment is sent.
      */
     @GridSpiConfiguration(optional = true)
-    public void setMessageAcknowledgementPeriod(int msgAckPeriod) {
-        this.msgAckPeriod = msgAckPeriod;
+    public void setAckSendThreshold(int ackSndThreshold) {
+        this.ackSndThreshold = ackSndThreshold;
     }
 
     /**
@@ -1069,18 +1069,18 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
      *
      * @return Maximum number of unacknowledged messages.
      */
-    @Override public int getMaxUnacknowledgedMessageCount() {
-        return maxUnackMsgCnt;
+    @Override public int getUnacknowledgedMessagesBufferSize() {
+        return unackedMsgsBufSize;
     }
 
     /**
      * Gets maximum number of unacknowledged messages.
      *
-     * @param maxUnackMsgCnt Maximum number of unacknowledged messages.
+     * @param unackedMsgsBufSize Maximum number of unacknowledged messages.
      */
     @GridSpiConfiguration(optional = true)
-    public void setMaxUnacknowledgedMessageCount(int maxUnackMsgCnt) {
-        this.maxUnackMsgCnt = maxUnackMsgCnt;
+    public void setUnacknowledgedMessagesBufferSize(int unackedMsgsBufSize) {
+        this.unackedMsgsBufSize = unackedMsgsBufSize;
     }
 
     /**
@@ -1467,15 +1467,15 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         assertParameter(connTimeout >= 0, "connTimeout >= 0");
         assertParameter(maxConnTimeout >= connTimeout, "maxConnTimeout >= connTimeout");
         assertParameter(sockWriteTimeout >= 0, "sockWriteTimeout >= 0");
-        assertParameter(msgAckPeriod > 0, "msgAckPeriod > 0");
-        assertParameter(maxUnackMsgCnt >= 0, "maxUnackMsgCnt >= 0");
+        assertParameter(ackSndThreshold > 0, "ackSndThreshold > 0");
+        assertParameter(unackedMsgsBufSize >= 0, "unackedMsgsBufSize >= 0");
 
-        if (maxUnackMsgCnt > 0) {
-            assertParameter(maxUnackMsgCnt >= msgQueueLimit * 5,
-                "Specified 'maxUnackMsgCnt' is too low, it should be at least 'msgQueueLimit * 5'.");
+        if (unackedMsgsBufSize > 0) {
+            assertParameter(unackedMsgsBufSize >= msgQueueLimit * 5,
+                "Specified 'unackedMsgsBufSize' is too low, it should be at least 'msgQueueLimit * 5'.");
 
-            assertParameter(maxUnackMsgCnt >= msgAckPeriod * 5,
-                "Specified 'maxUnackMsgCnt' is too low, it should be at least 'msgAckPeriod * 5'.");
+            assertParameter(unackedMsgsBufSize >= ackSndThreshold * 5,
+                "Specified 'unackedMsgsBufSize' is too low, it should be at least 'ackSndThreshold * 5'.");
         }
 
         if (!asyncSnd)
@@ -1558,8 +1558,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             log.debug(configInfo("maxConnTimeout", maxConnTimeout));
             log.debug(configInfo("reconCnt", reconCnt));
             log.debug(configInfo("sockWriteTimeout", sockWriteTimeout));
-            log.debug(configInfo("msgAckPeriod", msgAckPeriod));
-            log.debug(configInfo("maxUnackMsgCnt", maxUnackMsgCnt));
+            log.debug(configInfo("ackSndThreshold", ackSndThreshold));
+            log.debug(configInfo("unackedMsgsBufSize", unackedMsgsBufSize));
         }
 
         if (connBufSize > 8192)
@@ -2467,9 +2467,9 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
         GridNioRecoveryDescriptor recovery = recoveryDescs.get(id);
 
         if (recovery == null) {
-            int maxSize = Math.max(msgQueueLimit, msgAckPeriod);
+            int maxSize = Math.max(msgQueueLimit, ackSndThreshold);
 
-            int queueLimit = maxUnackMsgCnt != 0 ? maxUnackMsgCnt : (maxSize * 5);
+            int queueLimit = unackedMsgsBufSize != 0 ? unackedMsgsBufSize : (maxSize * 5);
 
             GridNioRecoveryDescriptor old =
                 recoveryDescs.put(id, recovery = new GridNioRecoveryDescriptor(queueLimit, node, log));
