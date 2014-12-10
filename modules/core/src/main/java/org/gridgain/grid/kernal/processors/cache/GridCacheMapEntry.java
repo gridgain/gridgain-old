@@ -4193,6 +4193,6 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
     /** {@inheritDoc} */
     @Override public synchronized String toString() {
-        return S.toString(GridCacheMapEntry.class, this, "hc", System.identityHashCode(this));
+        return S.toString(GridCacheMapEntry.class, this);
     }
 }
