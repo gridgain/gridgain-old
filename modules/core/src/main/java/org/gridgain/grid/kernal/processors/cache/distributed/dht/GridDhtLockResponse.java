@@ -160,8 +160,11 @@ public class GridDhtLockResponse<K, V> extends GridDistributedLockResponse<K, V>
         if (nearEvictedBytes == null && nearEvicted != null)
             nearEvictedBytes = marshalCollection(nearEvicted, ctx);
 
-        if (preloadEntriesBytes == null && preloadEntries != null)
+        if (preloadEntriesBytes == null && preloadEntries != null) {
+            marshalInfos(preloadEntries, ctx);
+
             preloadEntriesBytes = marshalCollection(preloadEntries, ctx);
+        }
     }
 
     /** {@inheritDoc} */
@@ -171,8 +174,11 @@ public class GridDhtLockResponse<K, V> extends GridDistributedLockResponse<K, V>
         if (nearEvicted == null && nearEvictedBytes != null)
             nearEvicted = unmarshalCollection(nearEvictedBytes, ctx, ldr);
 
-        if (preloadEntries == null && preloadEntriesBytes != null)
+        if (preloadEntries == null && preloadEntriesBytes != null) {
             preloadEntries = unmarshalCollection(preloadEntriesBytes, ctx, ldr);
+
+            unmarshalInfos(preloadEntries, ctx, ldr);
+        }
     }
 
     /** {@inheritDoc} */
