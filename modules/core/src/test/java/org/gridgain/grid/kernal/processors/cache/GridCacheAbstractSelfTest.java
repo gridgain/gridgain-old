@@ -540,7 +540,7 @@ public abstract class GridCacheAbstractSelfTest extends GridCommonAbstractTest {
 
         /** */
         public SumReducer() {
-            // no-op
+            // No-op.
         }
 
         /** {@inheritDoc} */
