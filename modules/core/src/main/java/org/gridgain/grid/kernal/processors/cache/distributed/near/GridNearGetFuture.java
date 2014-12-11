@@ -16,12 +16,11 @@ import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
 import org.gridgain.grid.kernal.processors.timeout.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
-import org.gridgain.grid.portables.*;
 import org.gridgain.grid.util.*;
-import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.tostring.*;
+import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.io.*;
@@ -447,8 +446,8 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
                 }
 
                 if (v != null && !reload) {
-                    if (cctx.portableEnabled() && deserializePortable && v instanceof GridPortableObject)
-                        v = ((GridPortableObject)v).deserialize();
+                    if (cctx.portableEnabled())
+                        v = (V)cctx.unwrapPortableIfNeeded(v, !deserializePortable);
 
                     add(new GridFinishedFuture<>(cctx.kernalContext(), Collections.singletonMap(key, v)));
                 }
@@ -577,8 +576,8 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
 
                     V val = info.value();
 
-                    if (cctx.portableEnabled() && deserializePortable && val instanceof GridPortableObject)
-                        val = ((GridPortableObject)val).deserialize();
+                    if (cctx.portableEnabled())
+                        val = (V)cctx.unwrapPortableIfNeeded(val, !deserializePortable);
 
                     map.put(info.key(), val);
                 }

@@ -16,6 +16,8 @@ import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
+import java.io.*;
+import java.net.*;
 import java.text.*;
 import java.util.*;
 
@@ -347,5 +349,35 @@ public class VisorTaskUtils {
             g.<String, Boolean>nodeLocalMap().put(VISOR_DEBUG_KEY, newState);
         else
             g.<String, Boolean>cachex(CU.UTILITY_CACHE_NAME).putx(VISOR_DEBUG_KEY, newState);
+    }
+
+    /**
+     * Checks if address can be reached using one argument InetAddress.isReachable() version or ping command if failed.
+     *
+     * @param addr Address to check.
+     * @param reachTimeout Timeout for the check.
+     * @return {@code True} if address is reachable.
+     */
+    public static boolean reachableByPing(InetAddress addr, int reachTimeout) {
+        try {
+            if (addr.isReachable(reachTimeout))
+                return true;
+
+            String cmd = String.format("ping -%s 1 %s", U.isWindows() ? "n" : "c", addr.getHostAddress());
+
+            Process myProcess = Runtime.getRuntime().exec(cmd);
+
+            myProcess.waitFor();
+
+            return myProcess.exitValue() == 0;
+        }
+        catch (IOException ignore) {
+            return false;
+        }
+        catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+
+            return false;
+        }
     }
 }
