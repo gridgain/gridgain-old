@@ -86,6 +86,14 @@ public abstract class GridAbstractTest extends TestCase {
 
     static {
         System.setProperty(GridSystemProperties.GG_ATOMIC_CACHE_DELETE_HISTORY_SIZE, "10000");
+
+        Thread timer = new Thread(new ClockTimer(), "gridgain-clock-for-tests");
+
+        timer.setDaemon(true);
+
+        timer.setPriority(10);
+
+        timer.start();
     }
 
     /** */
@@ -441,8 +449,6 @@ public abstract class GridAbstractTest extends TestCase {
 
                 G.start(cfg);
             }
-            else
-                U.startClockTimer();
 
             try {
                 beforeTestsStarted();
@@ -1126,8 +1132,6 @@ public abstract class GridAbstractTest extends TestCase {
 
                 if (startGrid)
                     G.stop(getTestGridName(), true);
-                else
-                    U.stopClockTimer();
 
                 // Remove counters.
                 tests.remove(getClass());
