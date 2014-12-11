@@ -2009,14 +2009,14 @@ public abstract class GridUtils {
             if (timer == null || !timer.isInterrupted()) {
                 timer = new Thread(new Runnable() {
                     @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-                    @Override
-                    public void run() {
+                    @Override public void run() {
                         while (true) {
                             curTimeMillis = System.currentTimeMillis();
 
                             try {
                                 Thread.sleep(10);
-                            } catch (InterruptedException ignored) {
+                            }
+                            catch (InterruptedException ignored) {
                                 U.log(null, "Timer thread has been interrupted.");
 
                                 break;

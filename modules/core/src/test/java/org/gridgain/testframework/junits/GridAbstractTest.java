@@ -441,6 +441,8 @@ public abstract class GridAbstractTest extends TestCase {
 
                 G.start(cfg);
             }
+            else
+                U.startClockTimer();
 
             try {
                 beforeTestsStarted();
@@ -1124,6 +1126,8 @@ public abstract class GridAbstractTest extends TestCase {
 
                 if (startGrid)
                     G.stop(getTestGridName(), true);
+                else
+                    U.stopClockTimer();
 
                 // Remove counters.
                 tests.remove(getClass());
