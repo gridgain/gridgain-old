@@ -45,7 +45,12 @@ public final class GridConfigurationFinder {
      * @throws IOException Thrown in case of any IO error.
      */
     public static List<GridTuple3<String, Long, File>> getConfigFiles() throws IOException {
-        return getConfigFiles(new File(U.getGridGainHome()));
+        String ggHome = U.getGridGainHome();
+
+        if (F.isEmpty(ggHome))
+            return Collections.emptyList();
+        else
+            return getConfigFiles(new File(ggHome));
     }
 
     /**
@@ -75,9 +80,9 @@ public final class GridConfigurationFinder {
             }
         });
 
-        File dflt = new File(U.getGridGainHome() + File.separator + DFLT_CFG);
+        File dflt = U.resolveGridGainPath(DFLT_CFG);
 
-        if (dflt.exists())
+        if (dflt != null)
             lst.addFirst(F.t(DFLT_CFG, dflt.lastModified(), dflt));
 
         return lst;
@@ -122,7 +127,11 @@ public final class GridConfigurationFinder {
                     }
 
                     if (springCfg) {
-                        String path = file.getAbsolutePath().substring(U.getGridGainHome().length());
+                        String ggHome = U.getGridGainHome();
+
+                        String path = ggHome != null
+                            ? file.getAbsolutePath().substring(ggHome.length())
+                            : file.getAbsolutePath();
 
                         if (path.startsWith(File.separator))
                             path = path.substring(File.separator.length());
