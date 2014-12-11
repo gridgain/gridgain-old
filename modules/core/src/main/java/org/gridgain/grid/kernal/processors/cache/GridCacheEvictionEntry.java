@@ -109,7 +109,7 @@ public class GridCacheEvictionEntry<K, V> implements GridCacheEntry<K, V>, Exter
     @Override public boolean backup() {
         GridCacheContext<K, V> ctx = cached.context();
 
-        return ctx.config().getCacheMode() == PARTITIONED &&
+        return ctx.config().getCacheMode() != LOCAL &&
             ctx.affinity().backups(cached.key(), ctx.affinity().affinityTopologyVersion()).contains(ctx.localNode());
     }
 

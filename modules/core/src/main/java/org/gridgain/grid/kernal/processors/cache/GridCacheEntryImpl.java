@@ -231,7 +231,7 @@ public class GridCacheEntryImpl<K, V> implements GridCacheEntry<K, V>, Externali
 
     /** {@inheritDoc} */
     @Override public boolean backup() {
-        return ctx.config().getCacheMode() == PARTITIONED &&
+        return ctx.config().getCacheMode() != LOCAL &&
             ctx.affinity().backups(key, ctx.affinity().affinityTopologyVersion()).contains(ctx.localNode());
     }
 
