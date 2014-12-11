@@ -284,6 +284,12 @@ public abstract class GridUtils {
     /** Clock timer. */
     private static Thread timer;
 
+    /** Grid counter. */
+    private static int gridCnt;
+
+    /** Mutex */
+    private static final Object mutex = new Object();
+
     /**
      * Initializes enterprise check.
      */
@@ -2002,42 +2008,54 @@ public abstract class GridUtils {
     }
 
     /**
-     * Starts clock timer.
+     * Starts clock timer if grid is first.
      */
-    public static void startClockTimer() {
-        timer = new Thread(new Runnable() {
-            @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-            @Override public void run() {
-                while (true) {
-                    curTimeMillis = System.currentTimeMillis();
+    public static void onGridStart() {
+        synchronized (mutex) {
+            if (gridCnt == 0) {
+                timer = new Thread(new Runnable() {
+                    @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
+                    @Override public void run() {
+                        while (true) {
+                            curTimeMillis = System.currentTimeMillis();
 
-                    try {
-                        Thread.sleep(10);
-                    }
-                    catch (InterruptedException ignored) {
-                        U.log(null, "Timer thread has been interrupted.");
+                            try {
+                                Thread.sleep(10);
+                            }
+                            catch (InterruptedException ignored) {
+                                U.log(null, "Timer thread has been interrupted.");
 
-                        break;
+                                break;
+                            }
+                        }
                     }
-                }
+                }, "gridgain-clock");
+
+                timer.setDaemon(true);
+
+                timer.setPriority(10);
+
+                timer.start();
             }
-        }, "gridgain-clock");
 
-        timer.setDaemon(true);
-
-        timer.setPriority(10);
-
-        timer.start();
+            ++gridCnt;
+        }
     }
 
     /**
-     * Stops clock timer.
+     * Stops clock timer if all nodes into JVM were stopped.
      */
-    public static void stopClockTimer(){
-        if (timer != null) {
-            timer.interrupt();
+    public static void onGridStop(){
+        synchronized (mutex) {
+            assert gridCnt > 0 : gridCnt;
 
-            timer = null;
+            --gridCnt;
+
+            if (gridCnt == 0 && timer != null) {
+                timer.interrupt();
+
+                timer = null;
+            }
         }
     }
 

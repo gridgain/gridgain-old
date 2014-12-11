@@ -129,9 +129,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     /** Shutdown delay in msec. when license violation detected. */
     private static final int SHUTDOWN_DELAY = 60 * 1000;
 
-    /** Grid counter. */
-    private static int countGrid;
-
     /** */
     private GridConfiguration cfg;
 
@@ -633,7 +630,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             nodeLoc = new GridNodeLocalMapImpl(ctx);
 
-            startClockTimer();
+            U.onGridStart();
 
             // Set context into rich adapter.
             setKernalContext(ctx);
@@ -1088,32 +1085,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                 "| support@gridgain.com" + NL;
 
             sendAdminEmailAsync("GridGain node started: " + nid8, body, false);
-        }
-    }
-
-    /**
-     * Starts clock timer if grid is first.
-     */
-    private static void startClockTimer() {
-        synchronized (GridKernal.class) {
-            if (countGrid == 0)
-                U.startClockTimer();
-
-            ++countGrid;
-        }
-    }
-
-    /**
-     * Stops clock timer if all nodes into JVM were stopped.
-     */
-    private static void stopClockTimer() {
-        synchronized (GridKernal.class) {
-            assert countGrid > 0 : countGrid;
-
-            --countGrid;
-
-            if (countGrid == 0)
-                U.stopClockTimer();
         }
     }
 
@@ -2141,7 +2112,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                 }
             }
 
-            stopClockTimer();
+            U.onGridStop();
         }
         else {
             // Proper notification.
