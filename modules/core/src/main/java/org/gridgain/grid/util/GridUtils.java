@@ -2463,10 +2463,17 @@ public abstract class GridUtils {
      */
     @SuppressWarnings({"UnusedCatchParameter"})
     @Nullable public static URL resolveGridGainUrl(String path, boolean metaInf) {
-        File f = resolveGridGainPath(path);
+        File ent = resolveGridGainPath(path);
+        File os = resolveGridGainPath("os/" + path);
 
-        if (f == null)
-            f = resolveGridGainPath("os/" + path);
+        File f = null;
+
+        if (ent != null && os != null)
+            f = GridProductImpl.ENT ? ent : os;
+        else if (ent != null)
+            f = ent;
+        else if (os != null)
+            f = os;
 
         if (f != null) {
             try {
