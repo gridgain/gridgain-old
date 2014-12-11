@@ -281,6 +281,9 @@ public abstract class GridUtils {
     /** GridGain Work Directory. */
     public static final String GRIDGAIN_WORK_DIR = System.getenv(GG_WORK_DIR);
 
+    /** Clock timer. */
+    private static Thread timer;
+
     /**
      * Initializes enterprise check.
      */
@@ -1995,6 +1998,49 @@ public abstract class GridUtils {
                     out.close();
                 }
             }
+        }
+    }
+
+    /**
+     * Starts clock timer
+     */
+    public static void startClockTimer() {
+        synchronized (GridUtils.class) {
+            if (timer == null || !timer.isInterrupted()) {
+                timer = new Thread(new Runnable() {
+                    @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
+                    @Override
+                    public void run() {
+                        while (true) {
+                            curTimeMillis = System.currentTimeMillis();
+
+                            try {
+                                Thread.sleep(10);
+                            } catch (InterruptedException ignored) {
+                                U.log(null, "Timer thread has been interrupted.");
+
+                                break;
+                            }
+                        }
+                    }
+                }, "gridgain-clock");
+
+                timer.setDaemon(true);
+
+                timer.setPriority(10);
+
+                timer.start();
+            }
+        }
+    }
+
+    /**
+     * Stops clock timer
+     */
+    public static void stopClockTimer(){
+        synchronized (GridUtils.class) {
+            if (timer != null && !timer.isInterrupted())
+                timer.interrupt();
         }
     }
 
@@ -8746,13 +8792,6 @@ public abstract class GridUtils {
         }
 
         return ver;
-    }
-
-    /**
-     * Updates current time.
-     */
-    public static void updateCurrentTime(){
-        curTimeMillis = System.currentTimeMillis();
     }
 
     /**

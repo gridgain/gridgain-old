@@ -129,27 +129,8 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     /** Shutdown delay in msec. when license violation detected. */
     private static final int SHUTDOWN_DELAY = 60 * 1000;
 
-    /** Clock timer. */
-    private static final Thread timer = new Thread(new Runnable() {
-        @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-        @Override public void run() {
-            while (true) {
-                GridUtils.updateCurrentTime();
-
-                try {
-                    Thread.sleep(10);
-                }
-                catch (InterruptedException ignored) {
-                    U.log(null, "Timer thread has been interrupted.");
-
-                    break;
-                }
-            }
-        }
-    }, "gridgain-clock");
-
-    /** */
-    private static final AtomicBoolean timerEnabled = new AtomicBoolean();
+    /** Grid counter. */
+    private static final AtomicInteger countGrid = new AtomicInteger();
 
     /** */
     private GridConfiguration cfg;
@@ -576,17 +557,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
             gw.writeUnlock();
         }
 
-        //Start clock timer
-        while (!timer.isAlive()) {
-            if (timerEnabled.compareAndSet(false, true)) {
-                timer.setDaemon(true);
-
-                timer.setPriority(10);
-
-                timer.start();
-            }
-        }
-
         assert cfg != null;
 
         // Make sure we got proper configuration.
@@ -662,6 +632,10 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
             GridKernalContextImpl ctx = new GridKernalContextImpl(log, this, cfg, gw, ENT);
 
             nodeLoc = new GridNodeLocalMapImpl(ctx);
+
+            //Start clock timer
+            if (countGrid.getAndIncrement() == 0)
+                U.startClockTimer();
 
             // Set context into rich adapter.
             setKernalContext(ctx);
@@ -2142,6 +2116,10 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                     }
                 }
             }
+
+            //Stops clock timer if all nodes into JVM were stopped
+            if (countGrid.decrementAndGet() == 0)
+                U.stopClockTimer();
         }
         else {
             // Proper notification.
