@@ -287,8 +287,8 @@ public abstract class GridUtils {
     /** Grid counter. */
     private static int gridCnt;
 
-    /** Mutex */
-    private static final Object mutex = new Object();
+    /** Mutex. */
+    private static final Object mux = new Object();
 
     /**
      * Initializes enterprise check.
@@ -2011,7 +2011,7 @@ public abstract class GridUtils {
      * Starts clock timer if grid is first.
      */
     public static void onGridStart() {
-        synchronized (mutex) {
+        synchronized (mux) {
             if (gridCnt == 0) {
                 timer = new Thread(new Runnable() {
                     @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
@@ -2046,7 +2046,7 @@ public abstract class GridUtils {
      * Stops clock timer if all nodes into JVM were stopped.
      */
     public static void onGridStop(){
-        synchronized (mutex) {
+        synchronized (mux) {
             assert gridCnt > 0 : gridCnt;
 
             --gridCnt;
