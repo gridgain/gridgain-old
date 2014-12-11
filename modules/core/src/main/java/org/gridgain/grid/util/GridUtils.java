@@ -2005,32 +2005,30 @@ public abstract class GridUtils {
      * Starts clock timer
      */
     public static void startClockTimer() {
-        synchronized (GridUtils.class) {
-            if (timer == null || !timer.isInterrupted()) {
-                timer = new Thread(new Runnable() {
-                    @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-                    @Override public void run() {
-                        while (true) {
-                            curTimeMillis = System.currentTimeMillis();
+        if (timer == null || timer.isInterrupted()) {
+            timer = new Thread(new Runnable() {
+                @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
+                @Override
+                public void run() {
+                    while (true) {
+                        curTimeMillis = System.currentTimeMillis();
 
-                            try {
-                                Thread.sleep(10);
-                            }
-                            catch (InterruptedException ignored) {
-                                U.log(null, "Timer thread has been interrupted.");
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException ignored) {
+                            U.log(null, "Timer thread has been interrupted.");
 
-                                break;
-                            }
+                            break;
                         }
                     }
-                }, "gridgain-clock");
+                }
+            }, "gridgain-clock");
 
-                timer.setDaemon(true);
+            timer.setDaemon(true);
 
-                timer.setPriority(10);
+            timer.setPriority(10);
 
-                timer.start();
-            }
+            timer.start();
         }
     }
 
@@ -2038,10 +2036,8 @@ public abstract class GridUtils {
      * Stops clock timer
      */
     public static void stopClockTimer(){
-        synchronized (GridUtils.class) {
-            if (timer != null && !timer.isInterrupted())
-                timer.interrupt();
-        }
+        if (timer != null && !timer.isInterrupted())
+            timer.interrupt();
     }
 
     /**
