@@ -130,7 +130,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     private static final int SHUTDOWN_DELAY = 60 * 1000;
 
     /** Grid counter. */
-    private static int countGrid = 0;
+    private static int countGrid;
 
     /** */
     private GridConfiguration cfg;
@@ -1094,7 +1094,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     /**
      * Starts clock timer if grid is first.
      */
-    private void startClockTimer() {
+    private static void startClockTimer() {
         synchronized (GridKernal.class) {
             if (countGrid == 0)
                 U.startClockTimer();
@@ -1106,8 +1106,10 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     /**
      * Stops clock timer if all nodes into JVM were stopped.
      */
-    private void stopClockTimer() {
+    private static void stopClockTimer() {
         synchronized (GridKernal.class) {
+            assert countGrid > 0 : countGrid;
+
             --countGrid;
 
             if (countGrid == 0)

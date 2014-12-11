@@ -2007,14 +2007,14 @@ public abstract class GridUtils {
     public static void startClockTimer() {
         timer = new Thread(new Runnable() {
             @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-            @Override
-            public void run() {
+            @Override public void run() {
                 while (true) {
                     curTimeMillis = System.currentTimeMillis();
 
                     try {
                         Thread.sleep(10);
-                    } catch (InterruptedException ignored) {
+                    }
+                    catch (InterruptedException ignored) {
                         U.log(null, "Timer thread has been interrupted.");
 
                         break;
@@ -2034,8 +2034,11 @@ public abstract class GridUtils {
      * Stops clock timer.
      */
     public static void stopClockTimer(){
-        if (timer != null && !timer.isInterrupted())
+        if (timer != null) {
             timer.interrupt();
+
+            timer = null;
+        }
     }
 
     /**
