@@ -2002,7 +2002,7 @@ public abstract class GridUtils {
     }
 
     /**
-     * Starts clock timer
+     * Starts clock timer.
      */
     public static void startClockTimer() {
         if (timer == null || timer.isInterrupted()) {
@@ -2033,7 +2033,7 @@ public abstract class GridUtils {
     }
 
     /**
-     * Stops clock timer
+     * Stops clock timer.
      */
     public static void stopClockTimer(){
         if (timer != null && !timer.isInterrupted())
