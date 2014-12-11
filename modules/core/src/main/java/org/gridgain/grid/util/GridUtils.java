@@ -2005,31 +2005,29 @@ public abstract class GridUtils {
      * Starts clock timer.
      */
     public static void startClockTimer() {
-        if (timer == null || timer.isInterrupted()) {
-            timer = new Thread(new Runnable() {
-                @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-                @Override
-                public void run() {
-                    while (true) {
-                        curTimeMillis = System.currentTimeMillis();
+        timer = new Thread(new Runnable() {
+            @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
+            @Override
+            public void run() {
+                while (true) {
+                    curTimeMillis = System.currentTimeMillis();
 
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException ignored) {
-                            U.log(null, "Timer thread has been interrupted.");
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException ignored) {
+                        U.log(null, "Timer thread has been interrupted.");
 
-                            break;
-                        }
+                        break;
                     }
                 }
-            }, "gridgain-clock");
+            }
+        }, "gridgain-clock");
 
-            timer.setDaemon(true);
+        timer.setDaemon(true);
 
-            timer.setPriority(10);
+        timer.setPriority(10);
 
-            timer.start();
-        }
+        timer.start();
     }
 
     /**
