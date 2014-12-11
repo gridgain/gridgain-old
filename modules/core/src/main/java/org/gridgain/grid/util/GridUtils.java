@@ -252,7 +252,7 @@ public abstract class GridUtils {
     private static InetAddress locHost;
 
     /** */
-    private static volatile long curTimeMillis = System.currentTimeMillis();
+    static volatile long curTimeMillis = System.currentTimeMillis();
 
     /** Primitive class map. */
     private static final Map<String, Class<?>> primitiveMap = new HashMap<>(16, .5f);
