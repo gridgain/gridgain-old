@@ -23,10 +23,10 @@ import java.util.*;
 import static org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
 
 /**
- * Task for remove SCAN or SQL query result future.
+ * Task for cleanup not needed SCAN or SQL queries result futures from node local.
  */
 @GridInternal
-public class VisorRemoveQueryFutureTask extends VisorMultiNodeTask<Map<UUID, Collection<String>>, Void, Void> {
+public class VisorQueryCleanupTask extends VisorMultiNodeTask<Map<UUID, Collection<String>>, Void, Void> {
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -57,7 +57,7 @@ public class VisorRemoveQueryFutureTask extends VisorMultiNodeTask<Map<UUID, Col
 
             for (GridNode node : g.nodes())
                 if (nodeIds.contains(node.id()))
-                    map.put(new VisorRemoveQueryFutureJob(taskArg.get(node.id())), node);
+                    map.put(new VisorQueryCleanupJob(taskArg.get(node.id())), node);
 
             return map;
         }
@@ -73,9 +73,9 @@ public class VisorRemoveQueryFutureTask extends VisorMultiNodeTask<Map<UUID, Col
     }
 
     /**
-     * Job for remove SCAN or SQL query result future.
+     * Job for cleanup not needed SCAN or SQL queries result futures from node local.
      */
-    private static class VisorRemoveQueryFutureJob extends VisorJob<Collection<String>, Void> {
+    private static class VisorQueryCleanupJob extends VisorJob<Collection<String>, Void> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -84,27 +84,23 @@ public class VisorRemoveQueryFutureTask extends VisorMultiNodeTask<Map<UUID, Col
          *
          * @param arg Job argument.
          */
-        protected VisorRemoveQueryFutureJob(Collection<String> arg) {
+        protected VisorQueryCleanupJob(Collection<String> arg) {
             super(arg);
         }
 
         /** {@inheritDoc} */
         @Override protected Void run(Collection<String> qryIds) throws GridException {
-            GridNodeLocalMap<String, VisorFutureResultSetHolder> stor = g.nodeLocalMap();
+            GridNodeLocalMap<String, VisorFutureResultSetHolder> locMap = g.nodeLocalMap();
 
-            for (String qryId : qryIds) {
-                VisorFutureResultSetHolder holder = stor.remove(qryId);
-
-                if (holder != null)
-                    holder.future().cancel();
-            }
+            for (String qryId : qryIds)
+                locMap.remove(qryId);
 
             return null;
         }
 
         /** {@inheritDoc} */
         @Override public String toString() {
-            return S.toString(VisorRemoveQueryFutureJob.class, this);
+            return S.toString(VisorQueryCleanupJob.class, this);
         }
     }
 }
