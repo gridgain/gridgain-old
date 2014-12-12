@@ -214,7 +214,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
     public static final boolean DFLT_TCP_NODELAY = true;
 
     /** Default received messages threshold for sending ack. */
-    public static final int DFLT_ACK_SND_THRESHOLD = 4;
+    public static final int DFLT_ACK_SND_THRESHOLD = 16;
 
     /** Default socket write timeout. */
     public static final long DFLT_SOCK_WRITE_TIMEOUT = GridNioServer.DFLT_SES_WRITE_TIMEOUT;
