@@ -10,6 +10,7 @@
 package org.gridgain.grid.util.nio;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.thread.*;
 import org.gridgain.grid.util.*;
@@ -328,7 +329,7 @@ public class GridNioServer<T> {
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
 
-        send0(impl, fut);
+        send0(impl, fut, false);
 
         return fut;
     }
@@ -345,7 +346,7 @@ public class GridNioServer<T> {
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
 
-        send0(impl, fut);
+        send0(impl, fut, false);
 
         return fut;
     }
@@ -353,23 +354,91 @@ public class GridNioServer<T> {
     /**
      * @param ses Session.
      * @param fut Future.
+     * @param sys System message flag.
      */
-    private void send0(GridSelectorNioSessionImpl ses, NioOperationFuture<?> fut) {
+    private void send0(GridSelectorNioSessionImpl ses, NioOperationFuture<?> fut, boolean sys) {
         assert ses != null;
         assert fut != null;
 
-        int msgCnt = ses.offerFuture(fut);
+        int msgCnt = sys ? ses.offerSystemFuture(fut) : ses.offerFuture(fut);
 
         if (ses.closed()) {
-            NioOperationFuture<?> fut0;
-
-            // Cleanup as session.close() may have been already finished.
-            while ((fut0 = (NioOperationFuture<?>)ses.pollFuture()) != null)
-                fut0.connectionClosed();
+            if (ses.removeFuture(fut))
+                fut.connectionClosed();
         }
         else if (msgCnt == 1)
             // Change from 0 to 1 means that worker thread should be waken up.
             clientWorkers.get(ses.selectorIndex()).offer(fut);
+    }
+
+    /**
+     * Adds message at the front of the queue without acquiring back pressure semaphore.
+     *
+     * @param ses Session.
+     * @param msg Message.
+     * @return Future.
+     */
+    public GridNioFuture<?> sendSystem(GridNioSession ses, GridTcpCommunicationMessageAdapter msg) {
+        return sendSystem(ses, msg, null);
+    }
+
+    /**
+     * Adds message at the front of the queue without acquiring back pressure semaphore.
+     *
+     * @param ses Session.
+     * @param msg Message.
+     * @param lsnr Future listener notified from the session thread.
+     * @return Future.
+     */
+    public GridNioFuture<?> sendSystem(GridNioSession ses,
+        GridTcpCommunicationMessageAdapter msg,
+        @Nullable GridInClosure<? super GridNioFuture<?>> lsnr) {
+        assert ses instanceof GridSelectorNioSessionImpl;
+
+        GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
+
+        NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, NioOperation.REQUIRE_WRITE, msg);
+
+        if (lsnr != null) {
+            fut.listenAsync(lsnr);
+
+            assert !fut.isDone();
+        }
+
+        send0(impl, fut, true);
+
+        return fut;
+    }
+
+    /**
+     * @param ses Session.
+     */
+    public void resend(GridNioSession ses) {
+        assert ses instanceof GridSelectorNioSessionImpl;
+
+        GridNioRecoveryDescriptor recoveryDesc = ses.recoveryDescriptor();
+
+        if (recoveryDesc != null && !recoveryDesc.messagesFutures().isEmpty()) {
+            Deque<GridNioFuture<?>> futs = recoveryDesc.messagesFutures();
+
+            if (log.isDebugEnabled())
+                log.debug("Resend messages [rmtNode=" + recoveryDesc.node().id() + ", msgCnt=" + futs.size() + ']');
+
+            GridSelectorNioSessionImpl ses0 = (GridSelectorNioSessionImpl)ses;
+
+            GridNioFuture<?> fut0 = futs.iterator().next();
+
+            for (GridNioFuture<?> fut : futs) {
+                fut.messageThread(true);
+
+                ((NioOperationFuture)fut).resetMessage(ses0);
+            }
+
+            ses0.resend(futs);
+
+            // Wake up worker.
+            clientWorkers.get(ses0.selectorIndex()).offer(((NioOperationFuture)fut0));
+        }
     }
 
     /**
@@ -384,7 +453,8 @@ public class GridNioServer<T> {
         GridSelectorNioSessionImpl impl = (GridSelectorNioSessionImpl)ses;
 
         if (impl.closed())
-            return new GridNioFinishedFuture(new IOException("Failed to send message (connection was closed): " + ses));
+            return new GridNioFinishedFuture(new IOException("Failed to pause/resume reads " +
+                "(connection was closed): " + ses));
 
         NioOperationFuture<?> fut = new NioOperationFuture<Void>(impl, op);
 
@@ -405,7 +475,7 @@ public class GridNioServer<T> {
         try {
             ch.configureBlocking(false);
 
-            NioOperationFuture<GridNioSession> req = new NioOperationFuture<>(ch, NioOperation.REGISTER, false, meta);
+            NioOperationFuture<GridNioSession> req = new NioOperationFuture<>(ch, false, meta);
 
             offerBalanced(req);
 
@@ -1312,9 +1382,16 @@ public class GridNioServer<T> {
                     readBuf.order(order);
                 }
 
-                final GridSelectorNioSessionImpl ses = new GridSelectorNioSessionImpl(idx, filterChain,
-                    (InetSocketAddress)sockCh.getLocalAddress(), (InetSocketAddress)sockCh.getRemoteAddress(),
-                    req.accepted(), sndQueueLimit, writeBuf, readBuf);
+                final GridSelectorNioSessionImpl ses = new GridSelectorNioSessionImpl(
+                    log,
+                    idx,
+                    filterChain,
+                    (InetSocketAddress)sockCh.getLocalAddress(),
+                    (InetSocketAddress)sockCh.getRemoteAddress(),
+                    req.accepted(),
+                    sndQueueLimit,
+                    writeBuf,
+                    readBuf);
 
                 Map<Integer, ?> meta = req.meta();
 
@@ -1326,6 +1403,9 @@ public class GridNioServer<T> {
                 SelectionKey key = sockCh.register(selector, SelectionKey.OP_READ, ses);
 
                 ses.key(key);
+
+                if (!ses.accepted())
+                    resend(ses);
 
                 sessions.add(ses);
 
@@ -1417,11 +1497,27 @@ public class GridNioServer<T> {
                 // Since ses is in closed state, no write requests will be added.
                 NioOperationFuture<?> fut = ses.removeMeta(NIO_OPERATION.ordinal());
 
-                if (fut != null)
-                    fut.connectionClosed();
+                GridNioRecoveryDescriptor recovery = ses.recoveryDescriptor();
 
-                while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null)
-                    fut.connectionClosed();
+                if (recovery != null) {
+                    try {
+                        // Poll will update recovery data.
+                        while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null) {
+                            if (fut.skipRecovery())
+                                fut.connectionClosed();
+                        }
+                    }
+                    finally {
+                        recovery.release();
+                    }
+                }
+                else {
+                    if (fut != null)
+                        fut.connectionClosed();
+
+                    while ((fut = (NioOperationFuture<?>)ses.pollFuture()) != null)
+                        fut.connectionClosed();
+                }
 
                 return true;
             }
@@ -1668,19 +1764,22 @@ public class GridNioServer<T> {
          * @param sockCh Socket channel to register on selector.
          */
         NioOperationFuture(SocketChannel sockCh) {
-            this(sockCh, NioOperation.REGISTER, true, null);
+            this(sockCh, true, null);
         }
 
         /**
          * @param sockCh Socket channel.
-         * @param op Operation.
          * @param accepted {@code True} if socket has been accepted.
          * @param meta Optional meta.
          */
-        NioOperationFuture(SocketChannel sockCh, NioOperation op, boolean accepted,
-            @Nullable Map<Integer, ?> meta) {
+        NioOperationFuture(
+            SocketChannel sockCh,
+            boolean accepted,
+            @Nullable Map<Integer, ?> meta
+        ) {
+            op = NioOperation.REGISTER;
+
             this.sockCh = sockCh;
-            this.op = op;
             this.accepted = accepted;
             this.meta = meta;
         }
@@ -1760,6 +1859,17 @@ public class GridNioServer<T> {
         }
 
         /**
+         * @param ses New session instance.
+         */
+        private void resetMessage(GridSelectorNioSessionImpl ses) {
+            assert commMsg != null;
+
+            commMsg = commMsg.clone();
+
+            this.ses = ses;
+        }
+
+        /**
          * @return Socket channel for register request.
          */
         private SocketChannel socketChannel() {
@@ -1795,6 +1905,11 @@ public class GridNioServer<T> {
             assert ses != null;
 
             onDone(new IOException("Failed to send message (connection was closed): " + ses));
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean skipRecovery() {
+            return commMsg != null && commMsg.skipRecovery();
         }
 
         /** {@inheritDoc} */
@@ -1835,9 +1950,9 @@ public class GridNioServer<T> {
         /** {@inheritDoc} */
         @Override public GridNioFuture<?> onSessionWrite(GridNioSession ses, Object msg) {
             if (directMode) {
-                boolean sslSystem = sslFilter != null && msg instanceof ByteBuffer;
+                boolean sslSys = sslFilter != null && msg instanceof ByteBuffer;
 
-                if (sslSystem) {
+                if (sslSys) {
                     ConcurrentLinkedDeque8<ByteBuffer> queue = ses.meta(BUF_SSL_SYSTEM_META_KEY);
 
                     queue.offer((ByteBuffer)msg);

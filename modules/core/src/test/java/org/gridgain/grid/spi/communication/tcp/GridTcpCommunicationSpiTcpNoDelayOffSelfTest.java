@@ -9,15 +9,12 @@
 
 package org.gridgain.grid.spi.communication.tcp;
 
-import org.gridgain.testframework.junits.spi.*;
-
 /**
  *
  */
-@GridSpiTest(spi = GridTcpCommunicationSpi.class, group = "Communication SPI")
-public class GridTcpCommunicationSpiShmemSelfTest extends GridTcpCommunicationSpiAbstractTest {
-    /** */
-    public GridTcpCommunicationSpiShmemSelfTest() {
-        super(false);
+public class GridTcpCommunicationSpiTcpNoDelayOffSelfTest extends GridTcpCommunicationSpiTcpSelfTest {
+    /** {@inheritDoc} */
+    @Override protected boolean tcpNoDelay() {
+        return false;
     }
 }
