@@ -12,6 +12,7 @@ package org.gridgain.grid.kernal.visor.cmd;
 import org.gridgain.grid.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.logger.*;
 import org.gridgain.grid.resources.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
@@ -25,11 +26,15 @@ public abstract class VisorJob<A, R> extends GridComputeJobAdapter {
     @GridInstanceResource
     protected GridEx g;
 
+    @GridLoggerResource
+    @Deprecated
+    protected GridLogger log;
+
     /** Job start time. */
-    protected long start;
+    protected transient long start;
 
     /** Debug flag. */
-    protected boolean debug;
+    protected transient boolean debug;
 
     /**
      * Create job with specified argument.
