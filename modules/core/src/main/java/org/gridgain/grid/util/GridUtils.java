@@ -2023,8 +2023,6 @@ public abstract class GridUtils {
                                 Thread.sleep(10);
                             }
                             catch (InterruptedException ignored) {
-                                U.log(null, "Timer thread has been interrupted.");
-
                                 break;
                             }
                         }
