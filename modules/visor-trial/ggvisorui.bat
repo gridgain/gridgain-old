@@ -133,7 +133,10 @@ set VISOR_PLUGINS_DIR=%GRIDGAIN_HOME%\bin\include\visorui\plugins
 
 if %ERRORLEVEL% neq 0 (
     echo Visor exit with error
+    if not "%NO_PAUSE%" == "1" pause
     exit /b %ERRORLEVEL%
 )
+
+if not "%NO_PAUSE%" == "1" pause
 
 goto :eof

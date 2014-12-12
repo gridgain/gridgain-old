@@ -34,7 +34,7 @@ public final class GridConfigurationFinder {
      * Ensure singleton.
      */
     private GridConfigurationFinder() {
-        // no-op
+        // No-op.
     }
 
     /**
