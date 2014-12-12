@@ -630,6 +630,8 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             nodeLoc = new GridNodeLocalMapImpl(ctx);
 
+            U.onGridStart();
+
             // Set context into rich adapter.
             setKernalContext(ctx);
 
@@ -2109,6 +2111,8 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                     }
                 }
             }
+
+            U.onGridStop();
         }
         else {
             // Proper notification.
