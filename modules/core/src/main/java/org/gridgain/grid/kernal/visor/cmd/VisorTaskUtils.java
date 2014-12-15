@@ -398,6 +398,7 @@ public class VisorTaskUtils {
      * @param env Environment.
      * @param args A string array containing the program and its arguments.
      * @return Started process.
+     * @throws IOException If failed to start process.
      */
     public static Process openInConsole(@Nullable File workFolder, @Nullable Map<String, String> env, String... args)
         throws IOException {
