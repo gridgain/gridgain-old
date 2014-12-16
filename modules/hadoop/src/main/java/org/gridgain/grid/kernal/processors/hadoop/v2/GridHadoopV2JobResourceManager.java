@@ -44,8 +44,8 @@ public class GridHadoopV2JobResourceManager {
     /** Class path list. */
     private URL[] clsPath;
 
-    /** List of local resources. */
-    private final Collection<File> rsrcList = new ArrayList<>();
+    /** Set of local resources. */
+    private final Collection<File> rsrcSet = new HashSet<>();
 
     /** Staging directory to delivery job jar and config to the work nodes. */
     private Path stagingDir;
@@ -121,8 +121,8 @@ public class GridHadoopV2JobResourceManager {
 
                 clsPathUrls.add(jarJobFile.toURI().toURL());
 
-                rsrcList.add(jarJobFile);
-                rsrcList.add(new File(jobLocDir, "job.xml"));
+                rsrcSet.add(jarJobFile);
+                rsrcSet.add(new File(jobLocDir, "job.xml"));
 
                 processFiles(jobLocDir, ctx.getCacheFiles(), download, false, null, MRJobConfig.CACHE_LOCALFILES);
                 processFiles(jobLocDir, ctx.getCacheArchives(), download, true, null, MRJobConfig.CACHE_LOCALARCHIVES);
@@ -184,7 +184,7 @@ public class GridHadoopV2JobResourceManager {
 
             res.add(locName);
 
-            rsrcList.add(dstPath);
+            rsrcSet.add(dstPath);
 
             if (clsPathUrls != null)
                 clsPathUrls.add(dstPath.toURI().toURL());
@@ -249,7 +249,7 @@ public class GridHadoopV2JobResourceManager {
             if (!path.mkdir())
                 throw new IOException("Failed to create directory: " + path);
 
-            for (File resource : rsrcList) {
+            for (File resource : rsrcSet) {
                 File symLink = new File(path, resource.getName());
 
                 try {
