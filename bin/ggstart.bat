@@ -1,5 +1,18 @@
 ::
-:: @bat.file.header
+:: Copyright (C) GridGain Systems. All Rights Reserved.
+::
+:: Licensed under the Apache License, Version 2.0 (the "License");
+:: you may not use this file except in compliance with the License.
+:: You may obtain a copy of the License at
+
+::    http://www.apache.org/licenses/LICENSE-2.0
+:: 
+:: Unless required by applicable law or agreed to in writing, software
+:: distributed under the License is distributed on an "AS IS" BASIS,
+:: WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+:: See the License for the specific language governing permissions and
+:: limitations under the License.
+
 :: _________        _____ __________________        _____
 :: __  ____/___________(_)______  /__  ____/______ ____(_)_______
 :: _  / __  __  ___/__  / _  __  / _  / __  _  __ `/__  / __  __ \
@@ -46,7 +59,7 @@ goto error_finish
 :: Check GRIDGAIN_HOME.
 :checkGridGainHome1
 if defined GRIDGAIN_HOME goto checkGridGainHome2
-    pushd "%~dp0"/../.. &:: Will be replaced by pushd "%~dp0"/..
+    pushd "%~dp0"/..
     set GRIDGAIN_HOME=%CD%
     popd
 
@@ -75,7 +88,7 @@ if exist "%GRIDGAIN_HOME%\config" goto checkGridGainHome4
 ::
 :: Set SCRIPTS_HOME - base path to scripts.
 ::
-set SCRIPTS_HOME=%GRIDGAIN_HOME%\os\bin &:: Will be replaced by SCRIPTS_HOME=${GRIDGAIN_HOME}\bin in release.
+set SCRIPTS_HOME=%GRIDGAIN_HOME%\bin
 
 :: Remove trailing spaces
 for /l %%a in (1,1,31) do if /i "%SCRIPTS_HOME:~-1%" == " " set SCRIPTS_HOME=%SCRIPTS_HOME:~0,-1%
@@ -96,7 +109,7 @@ if "%OS%" == "Windows_NT" set PROG_NAME=%~nx0%
 :: Set GRIDGAIN_LIBS
 ::
 call "%SCRIPTS_HOME%\include\setenv.bat"
-call "%SCRIPTS_HOME%\include\target-classpath.bat" &:: Will be removed in release.
+
 set CP=%GRIDGAIN_LIBS%
 
 ::
@@ -171,7 +184,7 @@ if "%JVM_OPTS%" == "" set JVM_OPTS=-Xms1g -Xmx1g -server -XX:+AggressiveOpts -XX
 :: Assertions are disabled by default since version 3.5.
 :: If you want to enable them - set 'ENABLE_ASSERTIONS' flag to '1'.
 ::
-set ENABLE_ASSERTIONS=1
+set ENABLE_ASSERTIONS=0
 
 ::
 :: Set '-ea' options if assertions are enabled.
@@ -194,11 +207,11 @@ if "%MAIN_CLASS%" == "" set MAIN_CLASS=org.gridgain.grid.startup.cmdline.GridCom
 
 if "%INTERACTIVE%" == "1" (
     "%JAVA_HOME%\bin\java.exe" %JVM_OPTS% %QUIET% %RESTART_SUCCESS_OPT% %JMX_MON% ^
-    -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="%GRIDGAIN_HOME%" -DGRIDGAIN_PROG_NAME="%PROG_NAME%" %JVM_XOPTS% ^
+     -DGRIDGAIN_HOME="%GRIDGAIN_HOME%" -DGRIDGAIN_PROG_NAME="%PROG_NAME%" %JVM_XOPTS% ^
     -cp "%CP%" %MAIN_CLASS%
 ) else (
     "%JAVA_HOME%\bin\java.exe" %JVM_OPTS% %QUIET% %RESTART_SUCCESS_OPT% %JMX_MON% ^
-    -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="%GRIDGAIN_HOME%" -DGRIDGAIN_PROG_NAME="%PROG_NAME%" %JVM_XOPTS% ^
+     -DGRIDGAIN_HOME="%GRIDGAIN_HOME%" -DGRIDGAIN_PROG_NAME="%PROG_NAME%" %JVM_XOPTS% ^
     -cp "%CP%" %MAIN_CLASS% "%CONFIG%"
 )
 
