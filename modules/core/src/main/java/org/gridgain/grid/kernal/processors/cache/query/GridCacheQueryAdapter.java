@@ -452,7 +452,8 @@ public class GridCacheQueryAdapter<T> implements GridCacheQuery<T> {
         switch (cacheMode) {
             case LOCAL:
                 if (prj != null)
-                    U.warn(log, "");
+                    U.warn(log, "Ignoring query projection because it's executed over LOCAL cache " +
+                        "(only local node will be queried): " + this);
 
                 return Collections.singletonList(cctx.localNode());
 
@@ -464,7 +465,7 @@ public class GridCacheQueryAdapter<T> implements GridCacheQuery<T> {
 
                 return mode == PARTITIONED_ONLY || mode == NEAR_PARTITIONED ?
                     Collections.singletonList(cctx.localNode()) :
-                    Collections.singletonList(F.rand(nodes(cctx, prj)));
+                    Collections.singletonList(F.rand(nodes(cctx, null)));
 
             case PARTITIONED:
                 return nodes(cctx, prj);
