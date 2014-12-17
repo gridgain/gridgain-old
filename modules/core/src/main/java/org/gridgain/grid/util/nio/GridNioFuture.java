@@ -104,4 +104,9 @@ public interface GridNioFuture<R> {
      * @return {@code True} if future was created in thread that was processing message.
      */
     public boolean messageThread();
+
+    /**
+     * @return {@code True} if skip recovery for this operation.
+     */
+    public boolean skipRecovery();
 }

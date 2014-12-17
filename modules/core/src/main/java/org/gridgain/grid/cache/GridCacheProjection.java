@@ -476,9 +476,9 @@ public interface GridCacheProjection<K, V> extends Iterable<GridCacheEntry<K, V>
 
     /**
      * Retrieves value mapped to the specified key from cache. Value will only be returned if
-     * its entry passed the optional filter provided. Filter check is atomic, and therefore the
+     * its entry passed the projection filter. Filter check is atomic, and therefore the
      * returned value is guaranteed to be consistent with the filter. The return value of {@code null}
-     * means entry did not pass the provided filter or cache has no mapping for the
+     * means entry did not pass the projection filter or cache has no mapping for the
      * key.
      * <p>
      * If the value is not present in cache, then it will be looked up from swap storage. If

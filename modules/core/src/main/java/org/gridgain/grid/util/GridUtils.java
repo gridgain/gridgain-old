@@ -252,7 +252,7 @@ public abstract class GridUtils {
     private static InetAddress locHost;
 
     /** */
-    private static volatile long curTimeMillis = System.currentTimeMillis();
+    static volatile long curTimeMillis = System.currentTimeMillis();
 
     /** Primitive class map. */
     private static final Map<String, Class<?>> primitiveMap = new HashMap<>(16, .5f);
@@ -280,6 +280,15 @@ public abstract class GridUtils {
 
     /** GridGain Work Directory. */
     public static final String GRIDGAIN_WORK_DIR = System.getenv(GG_WORK_DIR);
+
+    /** Clock timer. */
+    private static Thread timer;
+
+    /** Grid counter. */
+    private static int gridCnt;
+
+    /** Mutex. */
+    private static final Object mux = new Object();
 
     /**
      * Initializes enterprise check.
@@ -494,30 +503,6 @@ public abstract class GridUtils {
                 throw new GridRuntimeException(e);
             }
         }
-
-        Thread timer = new Thread(new Runnable() {
-            @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
-            @Override public void run() {
-                while (true) {
-                    curTimeMillis = System.currentTimeMillis();
-
-                    try {
-                        Thread.sleep(10);
-                    }
-                    catch (InterruptedException ignored) {
-                        U.log(null, "Timer thread has been interrupted.");
-
-                        break;
-                    }
-                }
-            }
-        }, "gridgain-clock");
-
-        timer.setDaemon(true);
-
-        timer.setPriority(10);
-
-        timer.start();
 
         PORTABLE_CLS.add(Byte.class);
         PORTABLE_CLS.add(Short.class);
@@ -2023,6 +2008,56 @@ public abstract class GridUtils {
     }
 
     /**
+     * Starts clock timer if grid is first.
+     */
+    public static void onGridStart() {
+        synchronized (mux) {
+            if (gridCnt == 0) {
+                timer = new Thread(new Runnable() {
+                    @SuppressWarnings({"BusyWait", "InfiniteLoopStatement"})
+                    @Override public void run() {
+                        while (true) {
+                            curTimeMillis = System.currentTimeMillis();
+
+                            try {
+                                Thread.sleep(10);
+                            }
+                            catch (InterruptedException ignored) {
+                                break;
+                            }
+                        }
+                    }
+                }, "gridgain-clock");
+
+                timer.setDaemon(true);
+
+                timer.setPriority(10);
+
+                timer.start();
+            }
+
+            ++gridCnt;
+        }
+    }
+
+    /**
+     * Stops clock timer if all nodes into JVM were stopped.
+     */
+    public static void onGridStop(){
+        synchronized (mux) {
+            assert gridCnt > 0 : gridCnt;
+
+            --gridCnt;
+
+            if (gridCnt == 0 && timer != null) {
+                timer.interrupt();
+
+                timer = null;
+            }
+        }
+    }
+
+    /**
      * Copies input byte stream to output byte stream.
      *
      * @param in Input byte stream.
@@ -2441,10 +2476,17 @@ public abstract class GridUtils {
      */
     @SuppressWarnings({"UnusedCatchParameter"})
     @Nullable public static URL resolveGridGainUrl(String path, boolean metaInf) {
-        File f = resolveGridGainPath(path);
+        File ent = resolveGridGainPath(path);
+        File os = resolveGridGainPath("os/" + path);
 
-        if (f == null)
-            f = resolveGridGainPath("os/" + path);
+        File f = null;
+
+        if (ent != null && os != null)
+            f = GridProductImpl.ENT ? ent : os;
+        else if (ent != null)
+            f = ent;
+        else if (os != null)
+            f = os;
 
         if (f != null) {
             try {

@@ -13,16 +13,11 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.affinity.consistenthash.*;
 import org.gridgain.grid.events.*;
-import org.gridgain.grid.kernal.*;
-import org.gridgain.grid.kernal.processors.cache.*;
-import org.gridgain.grid.kernal.processors.cache.distributed.dht.preloader.*;
-import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.discovery.tcp.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
 import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.common.*;
 import org.jetbrains.annotations.*;
@@ -35,9 +30,6 @@ import java.util.concurrent.*;
 public class GridCacheDhtPreloadMultiThreadedSelfTest extends GridCommonAbstractTest {
     /** IP finder. */
     private static final GridTcpDiscoveryIpFinder IP_FINDER = new GridTcpDiscoveryVmIpFinder(true);
-
-    /** */
-    private boolean cacheEnabled = true;
 
     /**
      * Creates new test.
@@ -160,16 +152,12 @@ public class GridCacheDhtPreloadMultiThreadedSelfTest extends GridCommonAbstract
 
         cfg.setGridName(gridName);
 
-        if (cacheEnabled) {
-            for (GridCacheConfiguration cCfg : cfg.getCacheConfiguration()) {
-                if (cCfg.getCacheMode() == GridCacheMode.PARTITIONED) {
-                    cCfg.setAffinity(new GridCacheConsistentHashAffinityFunction(2048, null));
-                    cCfg.setBackups(1);
-                }
+        for (GridCacheConfiguration cCfg : cfg.getCacheConfiguration()) {
+            if (cCfg.getCacheMode() == GridCacheMode.PARTITIONED) {
+                cCfg.setAffinity(new GridCacheConsistentHashAffinityFunction(2048, null));
+                cCfg.setBackups(1);
             }
         }
-        else
-            cfg.setCacheConfiguration();
 
         ((GridTcpDiscoverySpi)cfg.getDiscoverySpi()).setIpFinder(IP_FINDER);
 

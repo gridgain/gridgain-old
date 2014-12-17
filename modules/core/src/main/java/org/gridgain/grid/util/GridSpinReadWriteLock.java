@@ -165,7 +165,7 @@ public class GridSpinReadWriteLock {
             assert cur > 0;
 
             if (compareAndSet(STATE_OFFS, cur, cur - 1)) {
-                readLockEntryCnt.set(0);
+                readLockEntryCnt.remove();
 
                 return;
             }

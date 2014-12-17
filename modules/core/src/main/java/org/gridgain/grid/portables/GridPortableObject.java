@@ -84,12 +84,10 @@ import java.util.*;
  * <h1 class="header">Building Portable Objects</h1>
  * GridGain comes with {@link GridPortableBuilder} which allows to build portable objects dynamically:
  * <pre name=code class=java>
- * GridPortableBuilder builder = GridGain.grid().portables().builder();
+ * GridPortableBuilder builder = GridGain.grid().portables().builder("org.project.MyObject");
  *
- * builder.typeId("MyObject");
- *
- * builder.stringField("fieldA", "A");
- * build.intField("fieldB", "B");
+ * builder.setField("fieldA", "A");
+ * builder.setField("fieldB", "B");
  *
  * GridPortableObject portableObj = builder.build();
  * </pre>
@@ -153,7 +151,8 @@ public interface GridPortableObject extends Serializable, Cloneable {
      * @param fields Fields to modify in copy.
      * @return Copy of this portable object.
      * @throws GridPortableException In case of error.
-     * @deprecated Use {@code createBuilder()} instead.
+     * @deprecated Use {@link GridPortableBuilder} instead.
+     * @see GridPortableBuilder
      */
     @Deprecated
     public GridPortableObject copy(@Nullable Map<String, Object> fields) throws GridPortableException;

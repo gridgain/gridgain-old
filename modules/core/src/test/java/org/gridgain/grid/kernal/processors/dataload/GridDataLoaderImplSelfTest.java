@@ -11,8 +11,9 @@ package org.gridgain.grid.kernal.processors.dataload;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.affinity.consistenthash.*;
 import org.gridgain.grid.dataload.*;
+import org.gridgain.grid.marshaller.*;
+import org.gridgain.grid.marshaller.optimized.*;
 import org.gridgain.grid.spi.discovery.tcp.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
@@ -20,6 +21,8 @@ import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.junits.common.*;
 
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.*;
 
 import static org.gridgain.grid.cache.GridCacheMode.*;
@@ -31,6 +34,9 @@ import static org.gridgain.grid.cache.GridCacheWriteSynchronizationMode.*;
 public class GridDataLoaderImplSelfTest extends GridCommonAbstractTest {
     /** IP finder. */
     private static final GridTcpDiscoveryIpFinder IP_FINDER = new GridTcpDiscoveryVmIpFinder(true);
+
+    /** Number of keys to load via data loader. */
+    private static final int KEYS_COUNT = 1000;
 
     /** Started grid counter. */
     private static int cnt;
@@ -101,6 +107,55 @@ public class GridDataLoaderImplSelfTest extends GridCommonAbstractTest {
     }
 
     /**
+     * Data loader should correctly load entries from HashMap in case of grids with more than one node
+     *  and with GridOptimizedMarshaller that requires serializable.
+     *
+     * @throws Exception If failed.
+     */
+    public void testAddDataFromMap() throws Exception {
+        try {
+            cnt = 0;
+
+            startGrids(2);
+
+            Grid g0 = grid(0);
+
+            GridMarshaller marsh = g0.configuration().getMarshaller();
+
+            if (marsh instanceof GridOptimizedMarshaller)
+                assertTrue(((GridOptimizedMarshaller)marsh).isRequireSerializable());
+            else
+                fail("Expected GridOptimizedMarshaller, but found: " + marsh.getClass().getName());
+
+            GridDataLoader<Integer, String> dataLdr = g0.dataLoader(null);
+
+            Map<Integer, String> map = U.newHashMap(KEYS_COUNT);
+
+            for (int i = 0; i < KEYS_COUNT; i ++)
+                map.put(i, String.valueOf(i));
+
+            dataLdr.addData(map);
+
+            dataLdr.close();
+
+            Random rnd = new Random();
+
+            GridCache<Integer, String> c = g0.cache(null);
+
+            for (int i = 0; i < KEYS_COUNT; i ++) {
+                Integer k = rnd.nextInt(KEYS_COUNT);
+
+                String v = c.get(k);
+
+                assertEquals(k.toString(), v);
+            }
+        }
+        finally {
+            G.stopAll(true);
+        }
+    }
+
+    /**
      * Gets cache configuration.
      *
      * @return Cache configuration.
@@ -113,5 +168,40 @@ public class GridDataLoaderImplSelfTest extends GridCommonAbstractTest {
         cacheCfg.setWriteSynchronizationMode(FULL_SYNC);
 
         return cacheCfg;
+    }
+
+    /**
+     *
+     */
+    private static class TestObject implements Serializable {
+        /** */
+        private int val;
+
+        /**
+         */
+        private TestObject() {
+            // No-op.
+        }
+
+        /**
+         * @param val Value.
+         */
+        private TestObject(int val) {
+            this.val = val;
+        }
+
+        public Integer val() {
+            return val;
+        }
+
+        /** {@inheritDoc} */
+        @Override public int hashCode() {
+            return val;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean equals(Object obj) {
+            return obj instanceof TestObject && ((TestObject)obj).val == val;
+        }
     }
 }

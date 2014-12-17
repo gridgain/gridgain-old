@@ -618,7 +618,7 @@ object visor extends VisorTag {
                     mem.remove(k)
                 }
                 catch {
-                    case ignored: Throwable => // no-op
+                    case ignored: Throwable => // No-op.
                 }
         })
     }

@@ -1685,6 +1685,15 @@ public class GridCacheContext<K, V> implements Externalizable {
     }
 
     /**
+     * @return Keep portable flag.
+     */
+    public boolean keepPortable() {
+        GridCacheProjectionImpl<K, V> prj = projectionPerCall();
+
+        return prj != null && prj.isKeepPortable();
+    }
+
+    /**
      * @return {@code True} if OFFHEAP_TIERED memory mode is enabled.
      */
     public boolean offheapTiered() {
@@ -1750,34 +1759,31 @@ public class GridCacheContext<K, V> implements Externalizable {
         if (col instanceof ArrayList)
             return unwrapPortables((ArrayList<Object>)col);
 
-        int idx = 0;
+        Collection<Object> col0 = new ArrayList<>(col.size());
 
-        for (Object obj : col) {
-            Object unwrapped = unwrapPortable(obj);
+        for (Object obj : col)
+            col0.add(unwrapPortable(obj));
 
-            if (obj != unwrapped) {
-                Collection<Object> unwrappedCol = new ArrayList<>(col.size());
+        return col0;
+    }
 
-                int idx0 = 0;
+    /**
+     * Unwraps map.
+     *
+     * @param map Map to unwrap.
+     * @param keepPortable Keep portable flag.
+     * @return Unwrapped collection.
+     */
+    public Map<Object, Object> unwrapPortablesIfNeeded(Map<Object, Object> map, boolean keepPortable) {
+        if (keepPortable || !config().isPortableEnabled())
+            return map;
 
-                for (Object obj0 : col) {
-                    if (idx0 < idx)
-                        unwrappedCol.add(obj0);
-                    else if (idx == idx0)
-                        unwrappedCol.add(unwrapped);
-                    else
-                        unwrappedCol.add(unwrapPortable(obj0));
+        Map<Object, Object> map0 = U.newHashMap(map.size());
 
-                    idx0++;
-                }
+        for (Map.Entry<Object, Object> e : map.entrySet())
+            map0.put(unwrapPortable(e.getKey()), unwrapPortable(e.getValue()));
 
-                return unwrappedCol;
-            }
-
-            idx++;
-        }
-
-        return col;
+        return map0;
     }
 
     /**
@@ -1787,9 +1793,7 @@ public class GridCacheContext<K, V> implements Externalizable {
      * @return Unwrapped list.
      */
     private ArrayList<Object> unwrapPortables(ArrayList<Object> col) {
-        int size = col.size();
-
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < col.size(); i++) {
             Object o = col.get(i);
 
             Object unwrapped = unwrapPortable(o);
@@ -1808,9 +1812,13 @@ public class GridCacheContext<K, V> implements Externalizable {
      * @param keepPortable Keep portable flag.
      * @return Unwrapped object.
      */
-    @SuppressWarnings("IfMayBeConditional")
     public Object unwrapPortableIfNeeded(Object o, boolean keepPortable) {
-        if (keepPortable || !config().isPortableEnabled())
+        assert !portableEnabled() || o == null || U.isPortableOrCollectionType(o.getClass());
+
+        if (o == null)
+            return null;
+
+        if (keepPortable || !portableEnabled())
             return o;
 
         return unwrapPortable(o);
@@ -1844,12 +1852,12 @@ public class GridCacheContext<K, V> implements Externalizable {
 
             return unwrapped ? F.t(key, val) : o;
         }
-        else {
-            if (o instanceof Collection)
-                return unwrapPortablesIfNeeded((Collection<Object>)o, false);
-            else if (o instanceof GridPortableObject)
-                return ((GridPortableObject)o).deserialize();
-        }
+        else if (o instanceof Collection)
+            return unwrapPortablesIfNeeded((Collection<Object>)o, false);
+        else if (o instanceof Map)
+            return unwrapPortablesIfNeeded((Map<Object, Object>)o, false);
+        else if (o instanceof GridPortableObject)
+            return ((GridPortableObject)o).deserialize();
 
         return o;
     }
@@ -1921,9 +1929,6 @@ public class GridCacheContext<K, V> implements Externalizable {
             GridBiTuple<String, String> t = stash.get();
 
             GridKernal grid = GridGainEx.gridx(t.get1());
-
-            if (grid == null)
-                throw new IllegalStateException("Failed to find grid for name: " + t.get1());
 
             GridCacheAdapter<K, V> cache = grid.internalCache(t.get2());
 

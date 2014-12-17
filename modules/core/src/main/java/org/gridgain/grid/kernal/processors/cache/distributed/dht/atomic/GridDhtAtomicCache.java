@@ -21,7 +21,6 @@ import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.kernal.processors.timeout.*;
 import org.gridgain.grid.kernal.processors.version.*;
 import org.gridgain.grid.lang.*;
-import org.gridgain.grid.portables.*;
 import org.gridgain.grid.product.*;
 import org.gridgain.grid.security.*;
 import org.gridgain.grid.util.*;
@@ -771,8 +770,10 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                                 success = false;
                             }
                             else {
-                                if (ctx.portableEnabled() && deserializePortable && v instanceof GridPortableObject)
-                                    v = ((GridPortableObject)v).deserialize();
+                                if (ctx.portableEnabled() && deserializePortable) {
+                                    key = (K)ctx.unwrapPortableIfNeeded(key, false);
+                                    v = (V)ctx.unwrapPortableIfNeeded(v, false);
+                                }
 
                                 locVals.put(key, v);
                             }

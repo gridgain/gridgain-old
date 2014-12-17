@@ -14,8 +14,10 @@ import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.resources.*;
-import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
+
+import static org.gridgain.grid.kernal.visor.cmd.VisorTaskUtils.*;
 
 import java.util.*;
 
@@ -32,6 +34,9 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
     /** Task argument. */
     protected A taskArg;
 
+    /** Task start time. */
+    protected long start;
+
     /**
      * @param arg Task arg.
      * @return New job.
@@ -44,16 +49,30 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         assert arg != null;
         assert arg.get1() != null;
 
+        start = U.currentTimeMillis();
+
+        boolean debug = debugState(g);
+
+        if (debug)
+            logStart(g.log(), getClass(), start);
+
         Set<UUID> nodeIds = arg.get1();
-        taskArg = arg.get2();
 
-        Map<GridComputeJob, GridNode> map = new GridLeanMap<>(nodeIds.size());
+        Map<GridComputeJob, GridNode> map = U.newHashMap(nodeIds.size());
 
-        for (GridNode node : subgrid)
-            if (nodeIds.contains(node.id()))
-                map.put(job(taskArg), node);
+        try {
+            taskArg = arg.get2();
 
-        return map;
+            for (GridNode node : subgrid)
+                if (nodeIds.contains(node.id()))
+                    map.put(job(taskArg), node);
+
+            return map;
+        }
+        finally {
+            if (debug)
+                logMapped(g.log(), getClass(), map.values());
+        }
     }
 
     /** {@inheritDoc} */
@@ -61,5 +80,19 @@ public abstract class VisorMultiNodeTask<A, R, J> implements GridComputeTask<Gri
         List<GridComputeJobResult> rcvd) throws GridException {
         // All Visor tasks should handle exceptions in reduce method.
         return GridComputeJobResultPolicy.WAIT;
+    }
+
+    /** {@inheritDoc} */
+    @Nullable protected abstract R reduce0(List<GridComputeJobResult> results) throws GridException;
+
+    /** {@inheritDoc} */
+    @Nullable @Override public final R reduce(List<GridComputeJobResult> results) throws GridException {
+        try {
+            return reduce0(results);
+        }
+        finally {
+            if (debugState(g))
+                logFinish(g.log(), getClass(), start);
+        }
     }
 }

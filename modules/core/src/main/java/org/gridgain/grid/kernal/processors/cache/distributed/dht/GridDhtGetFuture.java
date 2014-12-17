@@ -262,7 +262,7 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
      * @return Future for local get.
      */
     @SuppressWarnings( {"unchecked", "IfMayBeConditional"})
-    private GridFuture<Collection<GridCacheEntryInfo<K, V>>> getAsync(final LinkedHashMap<? extends  K, Boolean> keys) {
+    private GridFuture<Collection<GridCacheEntryInfo<K, V>>> getAsync(final LinkedHashMap<? extends K, Boolean> keys) {
         if (F.isEmpty(keys))
             return new GridFinishedFuture<Collection<GridCacheEntryInfo<K, V>>>(cctx.kernalContext(),
                 Collections.<GridCacheEntryInfo<K, V>>emptyList());
