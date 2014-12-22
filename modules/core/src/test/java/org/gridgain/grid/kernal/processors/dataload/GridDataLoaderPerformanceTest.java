@@ -68,14 +68,14 @@ public class GridDataLoaderPerformanceTest extends GridCommonAbstractTest {
 
         cfg.setPeerClassLoadingEnabled(true);
 
-        if (useCache) {
+        //if (useCache) {
             GridCacheConfiguration cc = defaultCacheConfiguration();
 
             cc.setCacheMode(PARTITIONED);
 
             cc.setDistributionMode(PARTITIONED_ONLY);
             cc.setWriteSynchronizationMode(FULL_SYNC);
-            cc.setStartSize(ENTRY_CNT / GRID_CNT);
+            //cc.setStartSize(ENTRY_CNT / GRID_CNT);
             cc.setSwapEnabled(false);
 
             cc.setBackups(1);
@@ -84,9 +84,9 @@ public class GridDataLoaderPerformanceTest extends GridCommonAbstractTest {
 
             cfg.setCacheSanityCheckEnabled(false);
             cfg.setCacheConfiguration(cc);
-        }
-        else
-            cfg.setCacheConfiguration();
+        //}
+        //else
+        //    cfg.setCacheConfiguration();
 
         return cfg;
     }
@@ -138,7 +138,7 @@ public class GridDataLoaderPerformanceTest extends GridCommonAbstractTest {
         try {
             useCache = true;
 
-            startGridsMultiThreaded(GRID_CNT);
+            //startGridsMultiThreaded(GRID_CNT);
 
             useCache = false;
 
@@ -175,7 +175,7 @@ public class GridDataLoaderPerformanceTest extends GridCommonAbstractTest {
 
             t.start();
 
-            int threadNum = 2;//Runtime.getRuntime().availableProcessors();
+            int threadNum = 1;//Runtime.getRuntime().availableProcessors();
 
             multithreaded(new Callable<Object>() {
                 @SuppressWarnings("InfiniteLoopStatement")
