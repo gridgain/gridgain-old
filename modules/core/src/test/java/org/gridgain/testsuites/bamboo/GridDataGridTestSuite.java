@@ -321,6 +321,9 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheMultinodeUpdateAtomicSelfTest.class);
         suite.addTestSuite(GridCacheMultinodeUpdateAtomicNearEnabledSelfTest.class);
 
+        // TODO GG-9630.
+        // suite.addTestSuite(GridCacheVersionMultinodeTest.class);
+
         return suite;
     }
 }
