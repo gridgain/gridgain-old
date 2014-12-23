@@ -185,6 +185,7 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTest(new TestSuite(GridCachePartitionedUnloadEventsSelfTest.class));
         suite.addTest(new TestSuite(GridCachePartitionedAffinityHashIdResolverSelfTest.class));
         suite.addTest(new TestSuite(GridCacheColocatedOptimisticTransactionSelfTest.class));
+        suite.addTest(new TestSuite(GridCacheNearPartitionedClearSelfTest.class));
         suite.addTestSuite(GridCacheAtomicMessageCountSelfTest.class);
 
         suite.addTest(new TestSuite(GridCacheDhtExpiredEntriesPreloadSelfTest.class));
@@ -192,6 +193,7 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTest(new TestSuite(GridCacheAtomicExpiredEntriesPreloadSelfTest.class));
 
         suite.addTest(new TestSuite(GridCacheReturnValueTransferSelfTest.class));
+        suite.addTest(new TestSuite(GridCacheOffHeapUpdateSelfTest.class));
 
         // TODO: GG-7242, GG-7243: Enabled when fixed.
 //        suite.addTest(new TestSuite(GridCacheDhtRemoveFailureTest.class));
@@ -318,6 +320,9 @@ public class GridDataGridTestSuite extends TestSuite {
         // suite.addTestSuite(GridCacheMultinodeUpdateNearEnabledNoBackupsSelfTest.class);
         suite.addTestSuite(GridCacheMultinodeUpdateAtomicSelfTest.class);
         suite.addTestSuite(GridCacheMultinodeUpdateAtomicNearEnabledSelfTest.class);
+
+        // TODO GG-9630.
+        // suite.addTestSuite(GridCacheVersionMultinodeTest.class);
 
         return suite;
     }

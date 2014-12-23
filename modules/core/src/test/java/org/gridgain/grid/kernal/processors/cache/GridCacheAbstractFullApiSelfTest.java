@@ -12,6 +12,7 @@ package org.gridgain.grid.kernal.processors.cache;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.events.*;
+import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.spi.swapspace.inmemory.*;
 import org.gridgain.grid.util.lang.*;
@@ -2992,6 +2993,107 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testRemoveAfterClear() throws Exception {
+        GridEx grid = grid(0);
+
+        GridCacheDistributionMode distroMode = grid.cache(null).configuration().getDistributionMode();
+
+        if (distroMode == GridCacheDistributionMode.NEAR_ONLY || distroMode == GridCacheDistributionMode.CLIENT_ONLY) {
+            if (gridCount() < 2)
+                return;
+
+            grid = grid(1);
+        }
+
+        GridCacheProjection<Integer, Integer> cache = grid.cache(null)
+            .projection(Integer.class, Integer.class);
+
+        int key = 0;
+
+        List<Integer> keys = new ArrayList<>();
+
+        for (int k = 0; k < 2; k++) {
+            while (!grid.cache(null).affinity().isPrimary(grid.localNode(), key))
+                key++;
+
+            keys.add(key);
+
+            key++;
+        }
+
+        System.out.println(keys);
+
+        for (Integer k : keys)
+            cache.put(k, k);
+
+        cache.clear(keys.get(0));
+        cache.clear(keys.get(1));
+
+        for (int g = 0; g < gridCount(); g++) {
+            Grid grid0 = grid(g);
+
+            grid0.cache(null).projection(Integer.class, Integer.class).removeAll();
+
+            assertTrue(grid0.cache(null).isEmpty());
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRemoveFilteredAfterClear() throws Exception {
+        GridEx grid = grid(0);
+
+        GridCacheDistributionMode distroMode = grid.cache(null).configuration().getDistributionMode();
+
+        if (distroMode == GridCacheDistributionMode.NEAR_ONLY || distroMode == GridCacheDistributionMode.CLIENT_ONLY) {
+            if (gridCount() < 2)
+                return;
+
+            grid = grid(1);
+        }
+
+        GridCacheProjection<Integer, Integer> cache = grid.cache(null);
+
+        List<Integer> keys = new ArrayList<>();
+
+        int key = 0;
+
+        for (int k = 0; k < 2; k++) {
+            while (!grid.cache(null).affinity().isPrimary(grid.localNode(), key))
+                key++;
+
+            keys.add(key);
+
+            key++;
+        }
+
+        System.out.println(keys);
+
+        for (Integer k : keys)
+            cache.put(k, k + 1);
+
+        cache.clear(keys.get(0));
+        cache.clear(keys.get(1));
+
+        for (int g = 0; g < gridCount(); g++) {
+            Grid grid0 = grid(g);
+
+            grid0.cache(null).removeAll(new GridPredicate<GridCacheEntry<Object, Object>>() {
+                @Override public boolean apply(GridCacheEntry<Object, Object> e) {
+                    Object val = e.peek();
+
+                    return val instanceof Integer && (Integer)val > 0;
+                }
+            });
+
+            assertTrue(grid0.cache(null).isEmpty());
+        }
+    }
+
+    /**
      * @throws Exception In case of error.
      */
     public void testClear() throws Exception {
@@ -3868,7 +3970,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         assert cache.peek(key, F.asList(DB)) == 1;
         assert cache.peek(key, F.asList(TX, GLOBAL)) == 1;
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assert cache.peek(key, F.asList(TX, NEAR_ONLY)) == 1;
             assert cache.peek(key, F.asList(TX, PARTITIONED_ONLY)) == 1;
         }
@@ -3880,7 +3982,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         assert entry.peek(F.asList(DB)) == 1;
         assert entry.peek(F.asList(TX, GLOBAL)) == 1;
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assert entry.peek(F.asList(TX, NEAR_ONLY)) == 1;
             assert entry.peek(F.asList(TX, PARTITIONED_ONLY)) == 1;
         }
@@ -3891,7 +3993,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
 
         assert cache.peek("wrongKey", F.asList(TX, GLOBAL, SWAP, DB)) == null;
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assert cache.peek("wrongKey", F.asList(TX, NEAR_ONLY, SWAP, DB)) == null;
             assert cache.peek("wrongKey", F.asList(TX, PARTITIONED_ONLY, SWAP, DB)) == null;
         }
@@ -3910,7 +4012,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
 
             assert cache.peek(key, F.asList(GLOBAL)) == 1;
 
-            if (!partitionedMode()) {
+            if (cacheMode() == LOCAL) {
                 assert cache.peek(key, F.asList(NEAR_ONLY)) == 1;
                 assert cache.peek(key, F.asList(PARTITIONED_ONLY)) == 1;
             }
@@ -3922,7 +4024,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
 
             assertEquals((Integer)1, entry.peek(F.asList(GLOBAL)));
 
-            if (!partitionedMode()) {
+            if (cacheMode() == LOCAL) {
                 assertEquals((Integer)1, entry.peek(F.asList(NEAR_ONLY)));
                 assertEquals((Integer)1, entry.peek(F.asList(PARTITIONED_ONLY)));
             }
@@ -3939,7 +4041,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
 
         assertEquals((Integer)2, cache.peek(key, F.asList(GLOBAL)));
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assertEquals((Integer)2, cache.peek(key, F.asList(NEAR_ONLY)));
             assertEquals((Integer)2, cache.peek(key, F.asList(PARTITIONED_ONLY)));
         }
@@ -3950,7 +4052,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
 
         assertEquals((Integer)2, entry.peek(F.asList(GLOBAL)));
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assertEquals((Integer)2, entry.peek(F.asList(NEAR_ONLY)));
             assertEquals((Integer)2, entry.peek(F.asList(PARTITIONED_ONLY)));
         }
@@ -3964,7 +4066,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         assertNull(cache.peek(key, F.asList(SMART)));
         assertNull(cache.peek(key, F.asList(TX, GLOBAL)));
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assertNull(cache.peek(key, F.asList(TX, NEAR_ONLY)));
             assertNull(cache.peek(key, F.asList(TX, PARTITIONED_ONLY)));
         }
@@ -3976,7 +4078,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         assertNull(entry.peek(F.asList(SMART)));
         assertNull(entry.peek(F.asList(TX, GLOBAL)));
 
-        if (!partitionedMode()) {
+        if (cacheMode() == LOCAL) {
             assertNull(entry.peek(F.asList(TX, NEAR_ONLY)));
             assertNull(entry.peek(F.asList(TX, PARTITIONED_ONLY)));
         }

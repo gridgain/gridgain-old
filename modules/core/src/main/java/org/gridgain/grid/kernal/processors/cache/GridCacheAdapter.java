@@ -712,8 +712,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                 if (peek != null) {
                     V v = peek.get();
 
-                    if (ctx.portableEnabled() && !ctx.keepPortable() && v instanceof GridPortableObject)
-                        v = ((GridPortableObject)v).deserialize();
+                    if (ctx.portableEnabled())
+                        v = (V)ctx.unwrapPortableIfNeeded(v, ctx.keepPortable());
 
                     return F.t(ctx.cloneOnFlag(v));
                 }
@@ -728,7 +728,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                     V v = peek.get();
 
                     if (ctx.portableEnabled() && !ctx.keepPortable() && v instanceof GridPortableObject)
-                        v = ((GridPortableObject)v).deserialize();
+                        v = (V)ctx.unwrapPortableIfNeeded(v, ctx.keepPortable());
 
                     return F.t(ctx.cloneOnFlag(v));
                 }
@@ -1834,8 +1834,6 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                     if (key == null)
                         continue;
 
-                    K key0 = null;
-
                     while (true) {
                         GridCacheEntryEx<K, V> entry;
 
@@ -1844,12 +1842,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
 
                             cached = null;
                         }
-                        else {
-                            if (key0 == null)
-                                key0 = ctx.portableEnabled() ? (K)ctx.marshalToPortable(key) : key;
-
-                            entry = entryEx(key0);
-                        }
+                        else
+                            entry = entryEx(key);
 
                         try {
                             V val = entry.innerGet(null,
@@ -1876,8 +1870,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                             else {
                                 val = ctx.cloneOnFlag(val);
 
-                                if (ctx.portableEnabled() && deserializePortable && val instanceof GridPortableObject)
-                                    val = ((GridPortableObject)val).deserialize();
+                                if (ctx.portableEnabled() && deserializePortable)
+                                    val = (V)ctx.unwrapPortableIfNeeded(val, false);
 
                                 map.put(key, val);
 
@@ -3421,7 +3415,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
         final long topVer = ctx.affinity().affinityTopologyVersion();
 
         if (ctx.store().isLocalStore()) {
-            try (final GridDataLoader<K, V> ldr = ctx.kernalContext().<K, V>dataLoad().dataLoader(ctx.namex())) {
+            try (final GridDataLoader<K, V> ldr = ctx.kernalContext().<K, V>dataLoad().dataLoader(ctx.namex(), false)) {
                 ldr.updater(new GridDrDataLoadCacheUpdater<K, V>());
 
                 final Collection<Map.Entry<K, V>> col = new ArrayList<>(ldr.perNodeBufferSize());
@@ -3590,8 +3584,8 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
 
         V val = unswapped.value();
 
-        if (ctx.portableEnabled() && deserializePortable && val instanceof GridPortableObject)
-            return (V)((GridPortableObject)val).deserialize();
+        if (ctx.portableEnabled())
+            return (V)ctx.unwrapPortableIfNeeded(val, !deserializePortable);
         else
             return ctx.cloneOnFlag(val);
     }
@@ -4657,6 +4651,14 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
     public GridFuture<Map<K, V>> getAllAsync(@Nullable Collection<? extends K> keys,
         boolean deserializePortable, @Nullable GridPredicate<GridCacheEntry<K, V>> filter) {
         String taskName = ctx.kernalContext().job().currentTaskName();
+
+        if (ctx.portableEnabled() && !F.isEmpty(keys)) {
+            keys = F.viewReadOnly(keys, new C1<K, K>() {
+                @Override public K apply(K k) {
+                    return (K)ctx.marshalToPortable(k);
+                }
+            });
+        }
 
         return getAllAsync(keys, ctx.hasFlag(GET_PRIMARY), /*skip tx*/false, null, null, taskName,
             deserializePortable, filter);

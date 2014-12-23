@@ -20,7 +20,7 @@ import org.gridgain.grid.GridGainState._
 import org.gridgain.grid.{GridGain => G}
 import org.gridgain.grid.util.{GridUtils => U}
 import org.gridgain.grid.util.scala.impl
-import org.gridgain.grid.startup.cmdline.GridAboutDialog
+import org.gridgain.grid.startup.cmdline.{GridCommandLineStartup, GridAboutDialog}
 import org.gridgain.visor.visor
 import scala.tools.jline.console.ConsoleReader
 import scala.tools.jline.console.completer.Completer
@@ -177,7 +177,7 @@ object VisorConsole extends App {
      */
     private def customizeUI() {
         def urlIcon(iconPath: String) = {
-            val dockIconUrl = getClass.getResource(iconPath)
+            val dockIconUrl = classOf[GridCommandLineStartup].getResource(iconPath)
 
             assert(dockIconUrl != null, "Unknown icon path: " + iconPath)
 
@@ -190,11 +190,11 @@ object VisorConsole extends App {
 
             val osxApp = appCls.getDeclaredMethod("getApplication").invoke(null)
 
-            val dockIco = new ImageIcon(urlIcon("ggcube_128x128.png"))
+            val dockIco = new ImageIcon(urlIcon("ggcube_node_128x128.png"))
 
             appCls.getDeclaredMethod("setDockIconImage", classOf[Image]).invoke(osxApp, dockIco.getImage)
 
-            val bannerIconUrl = urlIcon("ggcube_48x48.png")
+            val bannerIconUrl = urlIcon("ggcube_node_48x48.png")
 
             val aboutHndProxy = java.lang.reflect.Proxy.newProxyInstance(
                 appCls.getClassLoader,

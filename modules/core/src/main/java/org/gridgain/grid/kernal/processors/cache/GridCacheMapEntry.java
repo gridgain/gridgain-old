@@ -207,6 +207,8 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
         if (!isOffHeapValuesOnly()) {
             this.val = val;
             this.valBytes = isStoreValueBytes() ? valBytes : null;
+
+            valPtr = 0;
         }
         else {
             try {
@@ -273,6 +275,14 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
         if (!isOffHeapValuesOnly()) {
             if (valBytes != null)
                 return GridCacheValueBytes.marshaled(valBytes);
+
+            try {
+                if (valPtr != 0 && cctx.offheapTiered())
+                    return offheapValueBytes();
+            }
+            catch (GridException e) {
+                throw new GridRuntimeException(e);
+            }
         }
         else {
             if (valPtr != 0) {
@@ -511,6 +521,10 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                         // Set unswapped value.
                         update(val, e.valueBytes(), e.expireTime(), e.ttl(), e.version());
 
+                        // Must update valPtr again since update() will reset it.
+                        if (cctx.offheapTiered() && e.offheapPointer() > 0)
+                            valPtr = e.offheapPointer();
+
                         return val;
                     }
                     else
@@ -526,16 +540,15 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
      * @throws GridException If failed.
      */
     private void swap() throws GridException {
-        if (cctx.isSwapOrOffheapEnabled() && !deletedUnlocked() && hasValueUnlocked()) {
+        if (cctx.isSwapOrOffheapEnabled() && !deletedUnlocked() && hasValueUnlocked() && !detached()) {
             assert Thread.holdsLock(this);
 
             long expireTime = expireTimeExtras();
 
             if (expireTime > 0 && U.currentTimeMillis() >= expireTime) { // Don't swap entry if it's expired.
-                if (cctx.offheapTiered() && valPtr > 0) {
-                    boolean rmv = cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
-
-                    assert rmv;
+                // Entry might have been updated.
+                if (cctx.offheapTiered()) {
+                    cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     valPtr = 0;
                 }
@@ -941,8 +954,13 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                         // Update indexes before actual write to entry.
                         updateIndex(ret, null, expTime, nextVer, prevVal);
 
+                    boolean hadValPtr = valPtr != 0;
+
                     // Don't change version for read-through.
                     update(ret, null, expTime, ttl, nextVer);
+
+                    if (hadValPtr && cctx.offheapTiered())
+                        cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     if (cctx.deferredDelete() && deletedUnlocked() && !isInternal() && !detached())
                         deletedUnlocked(false);
@@ -1307,19 +1325,29 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                 // can be updated without actually holding entry lock.
                 clearIndex(old);
 
+                boolean hasValPtr = valPtr != 0;
+
                 update(null, null, 0, 0, newVer);
 
-                if (cctx.offheapTiered() && valPtr > 0) {
+                if (cctx.offheapTiered() && hasValPtr) {
                     boolean rmv = cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     assert rmv;
-
-                    valPtr = 0;
                 }
 
                 if (cctx.deferredDelete() && !detached() && !isInternal()) {
-                    if (!deletedUnlocked())
+                    if (!deletedUnlocked()) {
                         deletedUnlocked(true);
+
+                        if (tx != null) {
+                            GridCacheMvcc<K> mvcc = mvccExtras();
+
+                            if (mvcc == null || mvcc.isEmpty(tx.xidVersion()))
+                                clearReaders();
+                            else
+                                clearReader(tx.originatingNodeId());
+                        }
+                    }
 
                     enqueueVer = newVer;
                 }
@@ -1972,15 +2000,15 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
                 enqueueVer = newVer;
 
+                boolean hasValPtr = valPtr != 0;
+
                 // Clear value on backup. Entry will be removed from cache when it got evicted from queue.
                 update(null, null, 0, 0, newVer);
 
-                if (cctx.offheapTiered() && valPtr != 0) {
+                if (cctx.offheapTiered() && hasValPtr) {
                     boolean rmv = cctx.swap().removeOffheap(key, getOrMarshalKeyBytes());
 
                     assert rmv;
-
-                    valPtr = 0;
                 }
 
                 clearReaders();
@@ -2090,6 +2118,13 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
      *
      */
     protected void clearReaders() {
+        // No-op.
+    }
+
+    /**
+     * @param nodeId Node ID to clear.
+     */
+    protected void clearReader(UUID nodeId) throws GridCacheEntryRemovedException {
         // No-op.
     }
 

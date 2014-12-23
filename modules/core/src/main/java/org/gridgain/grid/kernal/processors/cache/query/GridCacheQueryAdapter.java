@@ -22,6 +22,7 @@ import org.jetbrains.annotations.*;
 
 import java.util.*;
 
+import static org.gridgain.grid.cache.GridCacheDistributionMode.*;
 import static org.gridgain.grid.kernal.processors.cache.query.GridCacheQueryType.*;
 
 /**
@@ -446,18 +447,48 @@ public class GridCacheQueryAdapter<T> implements GridCacheQuery<T> {
      * @return Nodes to execute on.
      */
     private Collection<GridNode> nodes() {
-        Collection<GridNode> nodes = CU.allNodes(cctx);
+        GridCacheMode cacheMode = cctx.config().getCacheMode();
 
-        if (prj == null) {
-            if (cctx.isReplicated())
+        switch (cacheMode) {
+            case LOCAL:
+                if (prj != null)
+                    U.warn(log, "Ignoring query projection because it's executed over LOCAL cache " +
+                        "(only local node will be queried): " + this);
+
                 return Collections.singletonList(cctx.localNode());
 
-            return nodes;
-        }
+            case REPLICATED:
+                if (prj != null)
+                    return nodes(cctx, prj);
 
-        return F.view(nodes, new P1<GridNode>() {
-            @Override public boolean apply(GridNode e) {
-                return prj.node(e.id()) != null;
+                GridCacheDistributionMode mode = cctx.config().getDistributionMode();
+
+                return mode == PARTITIONED_ONLY || mode == NEAR_PARTITIONED ?
+                    Collections.singletonList(cctx.localNode()) :
+                    Collections.singletonList(F.rand(nodes(cctx, null)));
+
+            case PARTITIONED:
+                return nodes(cctx, prj);
+
+            default:
+                throw new IllegalStateException("Unknown cache distribution mode: " + cacheMode);
+        }
+    }
+
+    /**
+     * @param cctx Cache context.
+     * @param prj Projection (optional).
+     * @return Collection of data nodes in provided projection (if any).
+     */
+    private static Collection<GridNode> nodes(final GridCacheContext<?, ?> cctx, @Nullable final GridProjection prj) {
+        assert cctx != null;
+
+        return F.view(CU.allNodes(cctx), new P1<GridNode>() {
+            @Override public boolean apply(GridNode n) {
+                GridCacheDistributionMode mode = U.distributionMode(n, cctx.name());
+
+                return (mode == PARTITIONED_ONLY || mode == NEAR_PARTITIONED) &&
+                    (prj == null || prj.node(n.id()) != null);
             }
         });
     }
