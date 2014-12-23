@@ -170,7 +170,7 @@ public class GridHadoopMapReduceTest extends GridHadoopAbstractWordCountTest {
             }
         }
 
-        final GridGgfsPath statPath = new GridGgfsPath("/users/anonymous/" + jobId + "/performance");
+        final GridGgfsPath statPath = new GridGgfsPath("/user/anonymous/" + jobId + "/performance");
 
         GridTestUtils.waitForCondition(new GridAbsPredicate() {
             @Override public boolean apply() {
