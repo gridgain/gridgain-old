@@ -62,4 +62,15 @@
         <name>dfs.client.block.write.replace-datanode-on-failure.policy</name>
         <value>NEVER</value>
     </property>
+
+    <!--
+        Allow to write the job statistics into GGFS. By default data is placed into the file
+        /user/<user_name>/<job_id>/performance
+    -->
+    <!--
+    <property>
+        <name>gridgain.counters.writer</name>
+        <value>org.gridgain.grid.kernal.processors.hadoop.counter.GridHadoopFSCounterWriter</value>
+    </property>
+    -->
 </configuration>
