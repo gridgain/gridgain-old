@@ -122,12 +122,22 @@ if "%JVM_OPTS_VISOR%" == "" set JVM_OPTS_VISOR=-Xms1g -Xmx1g
 set VISOR_PLUGINS_DIR=%GRIDGAIN_HOME%\bin\include\visorui\plugins
 
 ::
+:: Set main class to start Visor.
+::
+if "%MAIN_CLASS_VISOR%" == "" set MAIN_CLASS_VISOR=org.gridgain.visor.gui.VisorGuiLauncher
+
+::
+:: Program args.
+::
+if "%ARGS%" == "" set ARGS=%*
+
+::
 :: Starts Visor Dashboard.
 ::
 "%JAVA_HOME%\bin\java.exe" %JVM_OPTS_VISOR% -DGRIDGAIN_PROG_NAME="%PROG_NAME%" ^
--DGRIDGAIN_PERFORMANCE_SUGGESTIONS_DISABLED=true %QUIET% %JVM_XOPTS% ^
+-DGRIDGAIN_PERFORMANCE_SUGGESTIONS_DISABLED=true %QUIET% ^
 -Dpf4j.pluginsDir="%VISOR_PLUGINS_DIR%" ^
--cp "%CP%" org.gridgain.visor.gui.VisorGuiLauncher
+-cp "%CP%" %MAIN_CLASS_VISOR% %ARGS%
 
 :error_finish
 
