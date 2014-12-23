@@ -32,8 +32,8 @@ public class GridGgfsServerManagerIpcEndpointRegistrationOnWindowsSelfTest
             @Override public Object call() throws Exception {
                 GridConfiguration cfg = gridConfiguration();
 
-                cfg.setGgfsConfiguration(gridGgfsConfiguration(
-                    "{type:'shmem', port:" + GridIpcSharedMemoryServerEndpoint.DFLT_IPC_PORT + "}"));
+                cfg.setGgfsConfiguration(gridGgfsConfiguration("shmem", GridIpcSharedMemoryServerEndpoint.DFLT_IPC_PORT,
+                    null));
 
                 return G.start(cfg);
             }

@@ -21,7 +21,6 @@ import org.gridgain.grid.util.ipc.loopback.*;
 import org.gridgain.grid.util.ipc.shmem.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
-import org.gridgain.testframework.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
@@ -51,7 +50,7 @@ public abstract class GridGgfsServerManagerIpcEndpointRegistrationAbstractSelfTe
         GridConfiguration cfg = gridConfiguration();
 
         cfg.setGgfsConfiguration(
-            gridGgfsConfiguration("{type:'tcp', port:" + DFLT_IPC_PORT + "}")
+            gridGgfsConfiguration("tcp", DFLT_IPC_PORT, null)
         );
 
         G.start(cfg);
@@ -70,9 +69,8 @@ public abstract class GridGgfsServerManagerIpcEndpointRegistrationAbstractSelfTe
         GridConfiguration cfg = gridConfiguration();
 
         cfg.setGgfsConfiguration(
-            gridGgfsConfiguration("{type:'tcp', port:" + DFLT_IPC_PORT + ", host:'127.0.0.1'}"),
-            gridGgfsConfiguration("{type:'tcp', port:" + (DFLT_IPC_PORT + 1) + ", host:'" +
-                U.getLocalHost().getHostName() + "'}"));
+            gridGgfsConfiguration("tcp", DFLT_IPC_PORT, "127.0.0.1"),
+            gridGgfsConfiguration("tcp", DFLT_IPC_PORT + 1, U.getLocalHost().getHostName()));
 
         G.start(cfg);
 
@@ -142,10 +140,27 @@ public abstract class GridGgfsServerManagerIpcEndpointRegistrationAbstractSelfTe
     /**
      * Creates test-purposed GridGgfsConfiguration.
      *
-     * @param endpointCfg Optional REST endpoint configuration.
+     * @param endPntType End point type.
+     * @param endPntPort End point port.
+     * @param endPntHost End point host.
      * @return test-purposed GridGgfsConfiguration.
      */
-    protected GridGgfsConfiguration gridGgfsConfiguration(@Nullable String endpointCfg) throws GridException {
+    protected GridGgfsConfiguration gridGgfsConfiguration(@Nullable String endPntType, @Nullable Integer endPntPort,
+        @Nullable String endPntHost) throws GridException {
+        HashMap<String, String> endPntCfg = null;
+
+        if (endPntType != null) {
+            endPntCfg = new HashMap<>();
+
+            endPntCfg.put("type", endPntType);
+
+            if (endPntPort != null)
+                endPntCfg.put("port", String.valueOf(endPntPort));
+
+            if (endPntHost != null)
+                endPntCfg.put("host", endPntHost);
+        }
+
         GridGgfsConfiguration ggfsConfiguration = new GridGgfsConfiguration();
 
         ggfsConfiguration.setDataCacheName("partitioned");
@@ -153,8 +168,8 @@ public abstract class GridGgfsServerManagerIpcEndpointRegistrationAbstractSelfTe
         ggfsConfiguration.setName("ggfs" + UUID.randomUUID());
         ggfsConfiguration.setManagementPort(mgmtPort.getAndIncrement());
 
-        if (endpointCfg != null)
-            ggfsConfiguration.setIpcEndpointConfiguration(GridGgfsTestUtils.jsonToMap(endpointCfg));
+        if (endPntCfg != null)
+            ggfsConfiguration.setIpcEndpointConfiguration(endPntCfg);
 
         return ggfsConfiguration;
     }
