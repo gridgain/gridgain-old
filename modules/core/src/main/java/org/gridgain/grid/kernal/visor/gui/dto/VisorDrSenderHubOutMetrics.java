@@ -58,7 +58,7 @@ public class VisorDrSenderHubOutMetrics implements Serializable {
         metrics.entriesSent(m.entriesSent());
         metrics.bytesSent(m.bytesSent());
 
-        metrics.bytesAcked(m.batchesAcked());
+        metrics.batchesAcked(m.batchesAcked());
         metrics.entriesAcked(m.entriesAcked());
         metrics.bytesAcked(m.bytesAcked());
 
