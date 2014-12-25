@@ -7,7 +7,7 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.dotnet;
+package org.gridgain.grid.interop.dotnet.portables;
 
 import org.gridgain.grid.portables.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -15,11 +15,11 @@ import org.gridgain.grid.util.typedef.internal.*;
 import java.util.*;
 
 /**
- * Mirror of .Net class GridDotNetPortableConfiguration.cs
+ * Mirror of .Net class GridInteropDotNetPortableConfiguration.cs
  */
-public class GridDotNetPortableConfiguration implements GridPortableMarshalAware {
+public class GridInteropDotNetPortableConfiguration implements GridPortableMarshalAware {
     /** */
-    private Collection<GridDotNetPortableTypeConfiguration> typesCfg;
+    private Collection<GridInteropDotNetPortableTypeConfiguration> typesCfg;
 
     /** */
     private Collection<String> types;
@@ -42,7 +42,7 @@ public class GridDotNetPortableConfiguration implements GridPortableMarshalAware
     /**
      * Default constructor.
      */
-    public GridDotNetPortableConfiguration() {
+    public GridInteropDotNetPortableConfiguration() {
         // No-op.
     }
 
@@ -50,12 +50,12 @@ public class GridDotNetPortableConfiguration implements GridPortableMarshalAware
      * Copy constructor.
      * @param cfg configuration to copy.
      */
-    public GridDotNetPortableConfiguration(GridDotNetPortableConfiguration cfg) {
+    public GridInteropDotNetPortableConfiguration(GridInteropDotNetPortableConfiguration cfg) {
         if (cfg.getTypesConfiguration() != null) {
             typesCfg = new ArrayList<>();
 
-            for (GridDotNetPortableTypeConfiguration typeCfg : cfg.getTypesConfiguration())
-                typesCfg.add(new GridDotNetPortableTypeConfiguration(typeCfg));
+            for (GridInteropDotNetPortableTypeConfiguration typeCfg : cfg.getTypesConfiguration())
+                typesCfg.add(new GridInteropDotNetPortableTypeConfiguration(typeCfg));
         }
 
         if (cfg.getTypes() != null)
@@ -71,14 +71,14 @@ public class GridDotNetPortableConfiguration implements GridPortableMarshalAware
     /**
      * @return Type cfgs.
      */
-    public Collection<GridDotNetPortableTypeConfiguration> getTypesConfiguration() {
+    public Collection<GridInteropDotNetPortableTypeConfiguration> getTypesConfiguration() {
         return typesCfg;
     }
 
     /**
      * @param typesCfg New type cfgs.
      */
-    public void setTypesConfiguration(Collection<GridDotNetPortableTypeConfiguration> typesCfg) {
+    public void setTypesConfiguration(Collection<GridInteropDotNetPortableTypeConfiguration> typesCfg) {
         this.typesCfg = typesCfg;
     }
 
@@ -206,6 +206,6 @@ public class GridDotNetPortableConfiguration implements GridPortableMarshalAware
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridDotNetPortableConfiguration.class, this);
+        return S.toString(GridInteropDotNetPortableConfiguration.class, this);
     }
 }

@@ -7,16 +7,16 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.dotnet;
+package org.gridgain.grid.interop.dotnet.portables;
 
 import org.gridgain.grid.portables.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 /**
- * Mirror of .Net class GridDotNetPortableTypeConfiguration.cs
+ * Mirror of .Net class GridInteropDotNetPortableTypeConfiguration.cs
  */
-public class GridDotNetPortableTypeConfiguration implements GridPortableMarshalAware {
+public class GridInteropDotNetPortableTypeConfiguration implements GridPortableMarshalAware {
     /** */
     private String assemblyName;
 
@@ -44,7 +44,7 @@ public class GridDotNetPortableTypeConfiguration implements GridPortableMarshalA
     /**
      * Default constructor.
      */
-    public GridDotNetPortableTypeConfiguration() {
+    public GridInteropDotNetPortableTypeConfiguration() {
         // No-op.
     }
 
@@ -52,7 +52,7 @@ public class GridDotNetPortableTypeConfiguration implements GridPortableMarshalA
      * Copy constructor.
      * @param cfg configuration to copy.
      */
-    public GridDotNetPortableTypeConfiguration(GridDotNetPortableTypeConfiguration cfg) {
+    public GridInteropDotNetPortableTypeConfiguration(GridInteropDotNetPortableTypeConfiguration cfg) {
         assemblyName = cfg.getAssemblyName();
         typeName = cfg.getTypeName();
         nameMapper = cfg.getNameMapper();
@@ -218,7 +218,7 @@ public class GridDotNetPortableTypeConfiguration implements GridPortableMarshalA
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridDotNetPortableTypeConfiguration.class, this);
+        return S.toString(GridInteropDotNetPortableTypeConfiguration.class, this);
     }
 }
 

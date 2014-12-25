@@ -7,19 +7,20 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.dotnet;
+package org.gridgain.grid.interop.dotnet;
 
+import org.gridgain.grid.interop.dotnet.portables.*;
 import org.gridgain.grid.portables.*;
 import org.gridgain.grid.util.typedef.internal.*;
 
 import java.util.*;
 
 /**
- * Mirror of .Net class GridDotNetConfiguration.cs
+ * Mirror of .Net class GridInteropDotNetConfiguration.cs
  */
-public class GridDotNetConfiguration implements GridPortableMarshalAware {
+public class GridInteropDotNetConfiguration implements GridPortableMarshalAware {
     /** */
-    private GridDotNetPortableConfiguration portableCfg;
+    private GridInteropDotNetPortableConfiguration portableCfg;
 
     /** */
     private List<String> assemblies;
@@ -27,7 +28,7 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
     /**
      * Default constructor.
      */
-    public GridDotNetConfiguration() {
+    public GridInteropDotNetConfiguration() {
         // No-op.
     }
 
@@ -35,9 +36,9 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
      * Copy constructor.
      * @param cfg configuration to copy.
      */
-    public GridDotNetConfiguration(GridDotNetConfiguration cfg) {
+    public GridInteropDotNetConfiguration(GridInteropDotNetConfiguration cfg) {
         if (cfg.getPortableConfiguration() != null)
-            portableCfg = new GridDotNetPortableConfiguration(cfg.getPortableConfiguration());
+            portableCfg = new GridInteropDotNetPortableConfiguration(cfg.getPortableConfiguration());
 
         if (cfg.getAssemblies() != null)
             assemblies = new ArrayList<>(cfg.getAssemblies());
@@ -46,14 +47,14 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
     /**
      * @return Configuration.
      */
-    public GridDotNetPortableConfiguration getPortableConfiguration() {
+    public GridInteropDotNetPortableConfiguration getPortableConfiguration() {
         return portableCfg;
     }
 
     /**
      * @param portableCfg Configuration.
      */
-    public void setPortableConfiguration(GridDotNetPortableConfiguration portableCfg) {
+    public void setPortableConfiguration(GridInteropDotNetPortableConfiguration portableCfg) {
         this.portableCfg = portableCfg;
     }
 
@@ -84,12 +85,12 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
     @Override public void readPortable(GridPortableReader reader) throws GridPortableException {
         GridPortableRawReader rawReader = reader.rawReader();
 
-        portableCfg = (GridDotNetPortableConfiguration)rawReader.readObject();
+        portableCfg = (GridInteropDotNetPortableConfiguration)rawReader.readObject();
         assemblies = (List<String>)rawReader.<String>readCollection();
     }
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridDotNetConfiguration.class, this);
+        return S.toString(GridInteropDotNetConfiguration.class, this);
     }
 }

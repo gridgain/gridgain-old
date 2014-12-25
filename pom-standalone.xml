@@ -539,7 +539,7 @@
                                 </group>
                                 <group>
                                     <title>.Net Configuration</title>
-                                    <packages>org.gridgain.grid.dotnet</packages>
+                                    <packages>org.gridgain.grid.interop.dotnet:org.gridgain.grid.interop.dotnet.cache.store:org.gridgain.grid.interop.dotnet.portables</packages>
                                 </group>
                             </groups>
                             <header>

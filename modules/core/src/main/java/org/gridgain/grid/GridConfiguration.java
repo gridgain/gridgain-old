@@ -12,12 +12,12 @@ package org.gridgain.grid;
 import org.gridgain.client.ssl.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.compute.*;
-import org.gridgain.grid.dotnet.*;
 import org.gridgain.grid.dr.hub.receiver.*;
 import org.gridgain.grid.dr.hub.sender.*;
 import org.gridgain.grid.events.*;
 import org.gridgain.grid.ggfs.*;
 import org.gridgain.grid.hadoop.*;
+import org.gridgain.grid.interop.dotnet.*;
 import org.gridgain.grid.kernal.managers.eventstorage.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
@@ -396,7 +396,7 @@ public class GridConfiguration {
     private GridCacheConfiguration[] cacheCfg;
 
     /** Configuration for .Net nodes. */
-    private GridDotNetConfiguration dotNetCfg;
+    private GridInteropDotNetConfiguration dotNetCfg;
 
     /** Flag indicating whether cache sanity check is enabled. */
     private boolean cacheSanityCheckEnabled = DFLT_CACHE_SANITY_CHECK_ENABLED;
@@ -664,7 +664,7 @@ public class GridConfiguration {
         waitForSegOnStart = cfg.isWaitForSegmentOnStart();
         warmupClos = cfg.getWarmupClosure();
         dotNetCfg = cfg.getDotNetConfiguration() == null ?
-            null : new GridDotNetConfiguration(cfg.getDotNetConfiguration());
+            null : new GridInteropDotNetConfiguration(cfg.getDotNetConfiguration());
     }
 
     /**
@@ -3197,7 +3197,7 @@ public class GridConfiguration {
      * Returns configuration for .Net nodes.
      * @return Configuration for .Net nodes.
      */
-    @Nullable public GridDotNetConfiguration getDotNetConfiguration() {
+    @Nullable public GridInteropDotNetConfiguration getDotNetConfiguration() {
         return dotNetCfg;
     }
 
@@ -3205,7 +3205,7 @@ public class GridConfiguration {
      * Sets configuration for .Net nodes.
      * @param dotNetCfg Configuration for .Net nodes
      */
-    public void setDotNetConfiguration(@Nullable GridDotNetConfiguration dotNetCfg) {
+    public void setDotNetConfiguration(@Nullable GridInteropDotNetConfiguration dotNetCfg) {
         this.dotNetCfg = dotNetCfg;
     }
 
