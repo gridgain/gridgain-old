@@ -34,7 +34,8 @@ public class GridInteropDotNetConfiguration implements GridPortableMarshalAware 
 
     /**
      * Copy constructor.
-     * @param cfg configuration to copy.
+     *
+     * @param cfg Configuration to copy.
      */
     public GridInteropDotNetConfiguration(GridInteropDotNetConfiguration cfg) {
         if (cfg.getPortableConfiguration() != null)
