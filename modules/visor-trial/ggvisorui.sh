@@ -14,6 +14,9 @@
 # Starts Visor Dashboard with GridGain on the classpath.
 #
 
+# Remember visor tester command line parameters
+ARGS=$@
+
 #
 # Import common functions.
 #
@@ -106,22 +109,29 @@ VISOR_PLUGINS_DIR="${GRIDGAIN_HOME}/bin/include/visorui/plugins"
 # JVM_OPTS_VISOR="${JVM_OPTS_VISOR} -Dsun.java2d.opengl=True"
 
 #
+# Set main class to start Visor.
+#
+if [ "${MAIN_CLASS}" = "" ]; then
+    MAIN_CLASS=org.gridgain.visor.gui.VisorGuiLauncher
+fi
+
+#
 # Starts Visor Dashboard.
 #
 case $osname in
     Darwin*)
         "$JAVA" ${JVM_OPTS} ${QUIET} ${MAC_OS_OPTS} "${DOCK_OPTS}" -DGRIDGAIN_PERFORMANCE_SUGGESTIONS_DISABLED=true \
         -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
-        -DGRIDGAIN_PROG_NAME="$0" ${JVM_XOPTS} -cp "${CP}" \
+        -DGRIDGAIN_PROG_NAME="$0" -cp "${CP}" \
         -Dpf4j.pluginsDir="${VISOR_PLUGINS_DIR}" \
-        org.gridgain.visor.gui.VisorGuiLauncher
+        ${MAIN_CLASS} ${ARGS}
     ;;
     *)
         "$JAVA" ${JVM_OPTS} ${QUIET} -DGRIDGAIN_PERFORMANCE_SUGGESTIONS_DISABLED=true \
         -DGRIDGAIN_UPDATE_NOTIFIER=false -DGRIDGAIN_HOME="${GRIDGAIN_HOME}" \
-        -DGRIDGAIN_PROG_NAME="$0" -DGRIDGAIN_DEPLOYMENT_MODE_OVERRIDE=ISOLATED ${JVM_XOPTS} -cp "${CP}" \
+        -DGRIDGAIN_PROG_NAME="$0" -DGRIDGAIN_DEPLOYMENT_MODE_OVERRIDE=ISOLATED -cp "${CP}" \
         -Dpf4j.pluginsDir="${VISOR_PLUGINS_DIR}" \
-        org.gridgain.visor.gui.VisorGuiLauncher
+        ${MAIN_CLASS} ${ARGS}
     ;;
 esac
 
