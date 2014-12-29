@@ -204,6 +204,12 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                 }
             }
 
+            /** {@inheritDoc} */
+            @Override public void onUnregister() {
+                if (filter != null && filter instanceof GridCacheContinuousQueryFilterEx)
+                    ((GridCacheContinuousQueryFilterEx)filter).onQueryUnregister();
+            }
+
             private boolean checkProjection(GridCacheContinuousQueryEntry<K, V> e) {
                 GridCacheProjectionImpl.FullFilter<K, V> filter = (GridCacheProjectionImpl.FullFilter<K, V>)prjPred;
 
