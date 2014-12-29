@@ -202,15 +202,15 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
 
             if (col == VAL_COL) {
                 while ((v = WeakValue.unwrap(v)) == null) {
-                    Value offheapVal = getOffheapValue(VAL_COL);
+                    v = getOffheapValue(VAL_COL);
 
-                    if (offheapVal != null) {
-                        setValue(VAL_COL, offheapVal);
+                    if (v != null) {
+                        setValue(VAL_COL, v);
 
                         if (super.getValue(KEY_COL) == null)
                             cache();
 
-                        return offheapVal;
+                        return v;
                     }
 
                     try {
