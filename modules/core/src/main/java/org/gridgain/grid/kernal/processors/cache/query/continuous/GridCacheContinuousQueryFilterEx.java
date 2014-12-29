@@ -15,7 +15,8 @@ import org.gridgain.grid.lang.*;
 /**
  * Extended continuous query filter.
  */
-public interface GridCacheContinuousQueryFilterEx<K, V> extends GridPredicate<GridCacheContinuousQueryEntry<K, V>> {
+public interface GridCacheContinuousQueryFilterEx<K, V> extends
+    GridPredicate<org.gridgain.grid.cache.query.GridCacheContinuousQueryEntry<K, V>> {
     /**
      * Callback for query unregister event.
      */
