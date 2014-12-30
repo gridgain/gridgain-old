@@ -7,14 +7,14 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.kernal.processors.cache;
+package org.gridgain.grid.kernal.processors;
 
 import org.gridgain.grid.cache.*;
 
 /**
  * Stopped node when client operations are executing.
  */
-public class GridCacheAtomicStopTest extends GridCacheAbstractStopTest {
+public class GridAtomicStopSelfTest extends GridAbstractStopSelfTest {
     /** {@inheritDoc} */
     @Override protected GridCacheAtomicityMode atomicityMode() {
         return GridCacheAtomicityMode.ATOMIC;

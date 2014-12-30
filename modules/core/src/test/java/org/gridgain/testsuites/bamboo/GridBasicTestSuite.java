@@ -12,6 +12,7 @@ package org.gridgain.testsuites.bamboo;
 import junit.framework.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.kernal.processors.*;
 import org.gridgain.grid.kernal.processors.affinity.*;
 import org.gridgain.grid.kernal.processors.closure.*;
 import org.gridgain.grid.kernal.processors.continuous.*;
@@ -50,6 +51,8 @@ public class GridBasicTestSuite extends TestSuite {
         suite.addTestSuite(GridAffinityProcessorRendezvousSelfTest.class);
         suite.addTestSuite(GridClosureProcessorSelfTest.class);
         suite.addTestSuite(GridStartStopSelfTest.class);
+        suite.addTestSuite(GridAtomicStopSelfTest.class);
+        suite.addTestSuite(GridTransactionStopSelfTest.class);
         suite.addTestSuite(GridProjectionForCachesSelfTest.class);
         suite.addTestSuite(GridSpiLocalHostInjectionTest.class);
         suite.addTestSuite(GridLifecycleBeanSelfTest.class);

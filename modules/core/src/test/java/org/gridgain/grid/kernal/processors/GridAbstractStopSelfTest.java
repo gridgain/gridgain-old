@@ -7,7 +7,7 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.kernal.processors.cache;
+package org.gridgain.grid.kernal.processors;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.*;
 /**
  * Stopped node when client operations are executing.
  */
-public abstract class GridCacheAbstractStopTest extends GridCommonAbstractTest {
+public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
     /** */
     public static final int CLN_GRD = 0;
 
@@ -41,7 +41,7 @@ public abstract class GridCacheAbstractStopTest extends GridCommonAbstractTest {
     /**
      * Constructs test.
      */
-    public GridCacheAbstractStopTest() {
+    public GridAbstractStopSelfTest() {
         super(/* don't start grid */ false);
     }
 
