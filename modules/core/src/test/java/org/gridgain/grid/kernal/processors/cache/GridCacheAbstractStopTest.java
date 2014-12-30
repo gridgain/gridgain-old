@@ -193,6 +193,9 @@ public abstract class GridCacheAbstractStopTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testExplicitTx() throws Exception {
+        if (atomicityMode() != GridCacheAtomicityMode.TRANSACTIONAL)
+            return;
+
         executeTest(new Callable<Boolean>() {
             /** {@inheritDoc} */
             @Override public Boolean call() throws Exception {
