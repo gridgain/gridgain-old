@@ -15,19 +15,17 @@ import org.gridgain.grid.spi.*;
 import org.gridgain.grid.spi.communication.tcp.*;
 import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.common.*;
 import org.jetbrains.annotations.*;
 
-import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 /**
- * Cancel async cache operations tests.
+ * Stopped node when client operations are executing.
  */
-public class GridCacheStopTest extends GridCommonAbstractTest {
+public abstract class GridCacheAbstractStopTest extends GridCommonAbstractTest {
     /** */
     public static final int CLN_GRD = 0;
 
@@ -40,13 +38,10 @@ public class GridCacheStopTest extends GridCommonAbstractTest {
     /** */
     private AtomicBoolean suspended = new AtomicBoolean(false);
 
-    /** */
-    private List<TestTpcCommunicationSpi> commSpis = new ArrayList<>();
-
     /**
      * Constructs test.
      */
-    public GridCacheStopTest() {
+    public GridCacheAbstractStopTest() {
         super(/* don't start grid */ false);
     }
 
@@ -93,13 +88,11 @@ public class GridCacheStopTest extends GridCommonAbstractTest {
 
         cfg.setCacheConfiguration(cacheCfg);
 
-        commSpis.add(commSpi);
-
         return cfg;
     }
 
     /** {@inheritDoc} */
-    @Override protected void beforeTestsStarted() throws Exception {
+    @Override protected void beforeTest() throws Exception {
         super.beforeTestsStarted();
 
         startGrid(SRV_GRD);
@@ -110,7 +103,9 @@ public class GridCacheStopTest extends GridCommonAbstractTest {
     }
 
     /** {@inheritDoc} */
-    @Override protected void afterTestsStopped() throws Exception {
+    @Override protected void afterTest() throws Exception {
+        suspended.set(false);
+
         super.afterTestsStopped();
 
         stopGrid(SRV_GRD);
@@ -122,26 +117,123 @@ public class GridCacheStopTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testAsyncStop() throws Exception {
-        suspended.set(true);
-
-        GridTestUtils.runAsync(new Callable<Integer>() {
+    public void testPut() throws Exception {
+        executeTest(new Callable<Integer>() {
             /** {@inheritDoc} */
             @Override public Integer call() throws Exception {
-                info("Start put.");
-                Integer put = (Integer) clientCache().put(1, 999);
-                info("Stop put.");
+                info("Start operation.");
+                Integer val = (Integer) clientCache().put(1, 999);
+                info("Stop operation.");
+                return val;
+            }
+        });
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRemove() throws Exception {
+        executeTest(new Callable<Integer>() {
+            /** {@inheritDoc} */
+            @Override public Integer call() throws Exception {
+                info("Start operation.");
+                Integer val = (Integer) clientCache().remove(1);
+                info("Stop operation.");
+                return val;
+            }
+        });
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testPutx() throws Exception {
+        executeTest(new Callable<Boolean>() {
+            /** {@inheritDoc} */
+            @Override public Boolean call() throws Exception {
+                info("Start operation.");
+                Boolean put = clientCache().putx(1, 1);
+                info("Stop operation.");
                 return put;
             }
         });
+    }
 
-        U.sleep(300L);
+    /**
+     * @throws Exception If failed.
+     */
+    public void testReplace() throws Exception {
+        executeTest(new Callable<Boolean>() {
+            /** {@inheritDoc} */
+            @Override public Boolean call() throws Exception {
+                info("Start operation.");
+                Boolean put = clientCache().replace(1, 1, 2);
+                info("Stop operation.");
+                return put;
+            }
+        });
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testPutAsync() throws Exception {
+        executeTest(new Callable<Boolean>() {
+            /** {@inheritDoc} */
+            @Override public Boolean call() throws Exception {
+                info("Start operation.");
+                clientCache().putAsync(1, 1);
+                info("Stop operation.");
+                return true;
+            }
+        });
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testExplicitTx() throws Exception {
+        executeTest(new Callable<Boolean>() {
+            /** {@inheritDoc} */
+            @Override public Boolean call() throws Exception {
+                info("Start operation.");
+                GridCacheTx gridCacheTx = clientCache().txStart();
+                clientCache().put(1, 100);
+                clientCache().get(1);
+                gridCacheTx.commit();
+                info("Stop operation.");
+                return true;
+            }
+        });
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGet() throws Exception {
+        executeTest(new Callable<Integer>() {
+            /** {@inheritDoc} */
+            @Override public Integer call() throws Exception {
+                info("Start operation.");
+                Integer put = (Integer) clientCache().get(1);
+                info("Stop operation.");
+                return put;
+            }
+        });
+    }
+
+    private <T> void executeTest(Callable<T> callable) throws Exception {
+        suspended.set(true);
+
+        GridTestUtils.runAsync(callable);
 
         Thread stopThread = new Thread(new StopRunnable());
 
         stopThread.start();
 
-        stopThread.join(5000L);
+        stopThread.join(10000L);
+
+        suspended.set(false);
 
         assert !stopThread.isAlive();
     }
@@ -204,5 +296,10 @@ public class GridCacheStopTest extends GridCommonAbstractTest {
             stopGrid(CLN_GRD, true);
             info("Grid stopped.");
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override protected long getTestTimeout() {
+        return TimeUnit.DAYS.toMillis(1L);
     }
 }

@@ -1910,12 +1910,17 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             List<GridComponent> comps = ctx.components();
 
+            GridCacheProcessor cacheProcessor = null;
+
             // Callback component in reverse order while kernal is still functional
             // if called in the same thread, at least.
             for (ListIterator<GridComponent> it = comps.listIterator(comps.size()); it.hasPrevious();) {
                 GridComponent comp = it.previous();
 
                 try {
+                    if (cacheProcessor == null && comp instanceof GridCacheProcessor)
+                        cacheProcessor = (GridCacheProcessor) comp;
+
                     comp.onKernalStop(cancel);
                 }
                 catch (Throwable e) {
@@ -1925,7 +1930,26 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                 }
             }
 
-            gw.writeLock();
+            boolean interrupted = false;
+
+            while (true) {
+                try {
+                    if (gw.tryWriteLock(10))
+                        break;
+                    else {
+                        assert cacheProcessor != null;
+
+                        cacheProcessor.cancelUserOperations();
+                    }
+                } catch (InterruptedException e) {
+                    // Preserve interrupt status & ignore.
+                    // Note that interrupted flag is cleared.
+                    interrupted = true;
+                }
+            }
+
+            if (interrupted)
+                Thread.currentThread().interrupt();
 
             try {
                 assert gw.getState() == STARTED || gw.getState() == STARTING;
