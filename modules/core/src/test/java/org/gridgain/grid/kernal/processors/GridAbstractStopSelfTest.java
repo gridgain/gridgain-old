@@ -104,7 +104,7 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
 
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
-        super.beforeTestsStarted();
+        beforeTestsStarted();
 
         startGrid(SRV_GRD);
 
@@ -117,7 +117,7 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
     @Override protected void afterTest() throws Exception {
         suspended.set(false);
 
-        super.afterTestsStopped();
+        afterTestsStopped();
 
         stopGrid(SRV_GRD);
 
@@ -293,7 +293,12 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
         assertNotNull(e);
     }
 
+    /**
+     * @throws Exception If failed.
+     */
     public void testPutBatch() throws Exception {
+        assert !suspended.get();
+
         GridFuture<Void> fut = GridTestUtils.runAsync(new Callable<Void>() {
             /** {@inheritDoc} */
             @Override public Void call() throws Exception {
@@ -311,8 +316,6 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
         stopThread.start();
 
         stopThread.join(10000L);
-
-        suspended.set(false);
 
         assert !stopThread.isAlive();
 
