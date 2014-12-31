@@ -13,4 +13,5 @@ package org.gridgain.grid.kernal.processors;
  * Stopped node when client operations are executing.
  */
 public class GridTransactionStopSelfTest extends GridAbstractStopSelfTest {
+    // No-op.
 }

@@ -22,6 +22,12 @@ import org.jetbrains.annotations.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
+import static org.gridgain.grid.cache.GridCacheAtomicityMode.*;
+import static org.gridgain.grid.cache.GridCacheDistributionMode.*;
+import static org.gridgain.grid.cache.GridCacheMode.*;
+import static org.gridgain.grid.cache.GridCachePreloadMode.*;
+import static org.gridgain.grid.cache.GridCacheWriteSynchronizationMode.*;
+
 /**
  * Stopped node when client operations are executing.
  */
@@ -41,29 +47,30 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
     /**
      * Constructs test.
      */
+    @SuppressWarnings("ConstructorNotProtectedInAbstractClass")
     public GridAbstractStopSelfTest() {
         super(/* don't start grid */ false);
     }
 
     /**
-     *
+     * @return Cache distribution mode.
      */
     protected GridCacheDistributionMode cacheDistributionMode() {
-        return GridCacheDistributionMode.PARTITIONED_ONLY;
+        return PARTITIONED_ONLY;
     }
 
     /**
-     *
+     * @return Cache mode.
      */
     protected GridCacheMode cacheMode(){
-        return GridCacheMode.PARTITIONED;
+        return PARTITIONED;
     }
 
     /**
-     *
+     * @return Cache atomicity mode.
      */
     protected GridCacheAtomicityMode atomicityMode(){
-        return GridCacheAtomicityMode.TRANSACTIONAL;
+        return TRANSACTIONAL;
     }
 
     /** {@inheritDoc} */
@@ -71,18 +78,21 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
         GridConfiguration cfg = super.getConfiguration(gridName);
 
         GridCacheConfiguration cacheCfg = cacheConfiguration(CACHE_NAME);
+
         TestTpcCommunicationSpi commSpi = new TestTpcCommunicationSpi();
 
         commSpi.setLocalPort(GridTestUtils.getNextCommPort(getClass()));
+
         commSpi.setTcpNoDelay(true);
 
         if (gridName.endsWith(String.valueOf(CLN_GRD)))
-            cacheCfg.setDistributionMode(GridCacheDistributionMode.CLIENT_ONLY);
+            cacheCfg.setDistributionMode(CLIENT_ONLY);
 
-        cacheCfg.setPreloadMode(GridCachePreloadMode.SYNC);
-        cacheCfg.setWriteSynchronizationMode(GridCacheWriteSynchronizationMode.FULL_SYNC);
+        cacheCfg.setPreloadMode(SYNC);
+
+        cacheCfg.setWriteSynchronizationMode(FULL_SYNC);
+
         cacheCfg.setBackups(1);
-
 
         cfg.setCommunicationSpi(commSpi);
 
@@ -109,6 +119,7 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
         super.afterTestsStopped();
 
         stopGrid(SRV_GRD);
+
         stopGrid(CLN_GRD);
 
         assert G.allGrids().isEmpty();
@@ -122,8 +133,11 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             /** {@inheritDoc} */
             @Override public Integer call() throws Exception {
                 info("Start operation.");
+
                 Integer val = (Integer) clientCache().put(1, 999);
+
                 info("Stop operation.");
+
                 return val;
             }
         });
@@ -137,8 +151,11 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             /** {@inheritDoc} */
             @Override public Integer call() throws Exception {
                 info("Start operation.");
-                Integer val = (Integer) clientCache().remove(1);
+
+                Integer val = (Integer)clientCache().remove(1);
+
                 info("Stop operation.");
+
                 return val;
             }
         });
@@ -152,8 +169,11 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             /** {@inheritDoc} */
             @Override public Boolean call() throws Exception {
                 info("Start operation.");
+
                 Boolean put = clientCache().putx(1, 1);
+
                 info("Stop operation.");
+
                 return put;
             }
         });
@@ -167,8 +187,11 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             /** {@inheritDoc} */
             @Override public Boolean call() throws Exception {
                 info("Start operation.");
+
                 Boolean put = clientCache().replace(1, 1, 2);
+
                 info("Stop operation.");
+
                 return put;
             }
         });
@@ -182,8 +205,11 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             /** {@inheritDoc} */
             @Override public Boolean call() throws Exception {
                 info("Start operation.");
+
                 clientCache().putAsync(1, 1);
+
                 info("Stop operation.");
+
                 return true;
             }
         });
@@ -193,18 +219,24 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testExplicitTx() throws Exception {
-        if (atomicityMode() != GridCacheAtomicityMode.TRANSACTIONAL)
+        if (atomicityMode() != TRANSACTIONAL)
             return;
 
         executeTest(new Callable<Boolean>() {
             /** {@inheritDoc} */
             @Override public Boolean call() throws Exception {
                 info("Start operation.");
+
                 GridCacheTx gridCacheTx = clientCache().txStart();
+
                 clientCache().put(1, 100);
+
                 clientCache().get(1);
+
                 gridCacheTx.commit();
+
                 info("Stop operation.");
+
                 return true;
             }
         });
@@ -218,17 +250,25 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             /** {@inheritDoc} */
             @Override public Integer call() throws Exception {
                 info("Start operation.");
+
                 Integer put = (Integer) clientCache().get(1);
+
                 info("Stop operation.");
+
                 return put;
             }
         });
     }
 
-    private <T> void executeTest(Callable<T> callable) throws Exception {
+    /**
+     *
+     * @param call Closure executing cache operation.
+     * @throws Exception If failed.
+     */
+    private <T> void executeTest(Callable<T> call) throws Exception {
         suspended.set(true);
 
-        GridTestUtils.runAsync(callable);
+        GridTestUtils.runAsync(call);
 
         Thread stopThread = new Thread(new StopRunnable());
 
@@ -242,7 +282,7 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
     }
 
     /**
-     *
+     * @return Client cache.
      */
     private GridCache<Object, Object> clientCache() {
         return grid(CLN_GRD).cache(CACHE_NAME);
@@ -262,8 +302,6 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
 
         cfg.setDistributionMode(cacheDistributionMode());
 
-        cfg.setBackups(0);
-
         cfg.setName(cacheName);
 
         return cfg;
@@ -280,13 +318,6 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
 
             super.sendMessage(node, msg);
         }
-
-        /**
-         *
-         */
-        public TestTpcCommunicationSpi() {
-            super();
-        }
     }
 
     /**
@@ -296,13 +327,10 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
         /** {@inheritDoc} */
         @Override public void run() {
             info("Stopping grid...");
+
             stopGrid(CLN_GRD, true);
+
             info("Grid stopped.");
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override protected long getTestTimeout() {
-        return TimeUnit.DAYS.toMillis(1L);
     }
 }
