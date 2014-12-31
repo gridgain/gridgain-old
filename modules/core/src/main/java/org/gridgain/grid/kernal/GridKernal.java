@@ -1934,12 +1934,14 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             while (true) {
                 try {
-                    if (gw.tryWriteLock(10))
-                        break;
-                    else {
-                        assert cacheProcessor != null;
-
+                    if (cacheProcessor != null)
                         cacheProcessor.cancelUserOperations();
+
+                    if (gw.tryWriteLock(10)) {
+                        if (cacheProcessor != null)
+                            cacheProcessor.cancelUserOperations();
+
+                        break;
                     }
                 } catch (InterruptedException e) {
                     // Preserve interrupt status & ignore.

@@ -15,6 +15,7 @@ import org.gridgain.grid.spi.*;
 import org.gridgain.grid.spi.communication.tcp.*;
 import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.common.*;
 import org.jetbrains.annotations.*;
@@ -201,16 +202,16 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testPutAsync() throws Exception {
-        executeTest(new Callable<Boolean>() {
+        executeTest(new Callable<Object>() {
             /** {@inheritDoc} */
-            @Override public Boolean call() throws Exception {
+            @Override public Object call() throws Exception {
                 info("Start operation.");
 
-                clientCache().putAsync(1, 1);
+                GridFuture<Object> fut = clientCache().putAsync(1, 1);
 
                 info("Stop operation.");
 
-                return true;
+                return fut.get();
             }
         });
     }
@@ -268,7 +269,7 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
     private <T> void executeTest(Callable<T> call) throws Exception {
         suspended.set(true);
 
-        GridTestUtils.runAsync(call);
+        GridFuture<T> fut = GridTestUtils.runAsync(call);
 
         Thread stopThread = new Thread(new StopRunnable());
 
@@ -279,6 +280,52 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
         suspended.set(false);
 
         assert !stopThread.isAlive();
+
+        Exception e = null;
+
+        try {
+            fut.get();
+        }
+        catch (GridException gridException){
+            e = gridException;
+        }
+
+        assertNotNull(e);
+    }
+
+    public void testPutBatch() throws Exception {
+        GridFuture<Void> fut = GridTestUtils.runAsync(new Callable<Void>() {
+            /** {@inheritDoc} */
+            @Override public Void call() throws Exception {
+                for (int i = 0; i < 1_000_000; i++)
+                    clientCache().put(i, i);
+
+                return null;
+            }
+        });
+
+        Thread stopThread = new Thread(new StopRunnable());
+
+        U.sleep(100);
+
+        stopThread.start();
+
+        stopThread.join(10000L);
+
+        suspended.set(false);
+
+        assert !stopThread.isAlive();
+
+        Exception e = null;
+
+        try {
+            fut.get();
+        }
+        catch (GridException gridException){
+            e = gridException;
+        }
+
+        assertNotNull(e);
     }
 
     /**
