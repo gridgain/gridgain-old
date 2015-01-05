@@ -59,6 +59,9 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     /** Internal flag. */
     private boolean internal;
 
+    /** Keep portable flag. */
+    private boolean keepPortable;
+
     /**
      * Required by {@link Externalizable}.
      */
@@ -67,17 +70,20 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     }
 
     /**
+     * Constructor.
+     *
      * @param cacheName Cache name.
      * @param topic Topic for ordered messages.
      * @param cb Local callback.
      * @param filter Filter.
      * @param prjPred Projection predicate.
      * @param internal If {@code true} then query is notified about internal entries updates.
+     * @param keepPortable Keep portable flag.
      */
     GridCacheContinuousQueryHandler(@Nullable String cacheName, Object topic,
         GridBiPredicate<UUID, Collection<org.gridgain.grid.cache.query.GridCacheContinuousQueryEntry<K, V>>> cb,
         @Nullable GridPredicate<org.gridgain.grid.cache.query.GridCacheContinuousQueryEntry<K, V>> filter,
-        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal) {
+        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal, boolean keepPortable) {
         assert topic != null;
         assert cb != null;
 
@@ -87,6 +93,7 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         this.filter = filter;
         this.prjPred = prjPred;
         this.internal = internal;
+        this.keepPortable = keepPortable;
     }
 
     /** {@inheritDoc} */
@@ -375,6 +382,7 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
             out.writeObject(prjPred);
 
         out.writeBoolean(internal);
+        out.writeBoolean(keepPortable);
     }
 
     /** {@inheritDoc} */
@@ -398,6 +406,7 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
             prjPred = (GridPredicate<GridCacheEntry<K, V>>)in.readObject();
 
         internal = in.readBoolean();
+        keepPortable = in.readBoolean();
     }
 
     /**
@@ -407,7 +416,14 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     private GridCacheContext<K, V> cacheContext(GridKernalContext ctx) {
         assert ctx != null;
 
-        return ctx.cache().<K, V>internalCache(cacheName).context();
+        GridCacheAdapter<K, V> cache = ctx.cache().internalCache(cacheName);
+
+        GridCacheContext<K, V> cctx = cache.context();
+
+        if (keepPortable)
+            cctx.projectionPerCall(cache.<K, V>keepPortable0());
+
+        return cctx;
     }
 
     /**
