@@ -1710,7 +1710,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                     GridDrEntry<K, V> oldEntry = drEntry();
                     GridDrEntry<K, V> newEntry = new GridDrPlainEntry<>(k, (V)writeObj, newTtl, newExpireTime, drVer);
 
-                    drRes = cctx.drResolveConflict(k, oldEntry, newEntry);
+                    drRes = cctx.drResolveConflict(oldEntry, newEntry);
 
                     assert drRes != null;
 

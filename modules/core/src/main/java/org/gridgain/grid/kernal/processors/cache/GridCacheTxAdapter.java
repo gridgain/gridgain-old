@@ -12,16 +12,15 @@ package org.gridgain.grid.kernal.processors.cache;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.dr.*;
-import org.gridgain.grid.dr.cache.receiver.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.*;
-import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.tostring.*;
+import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.io.*;
@@ -30,13 +29,13 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.*;
 
-import static org.gridgain.grid.events.GridEventType.*;
-import static org.gridgain.grid.kernal.processors.cache.GridCacheTxEx.FinalizationStatus.*;
-import static org.gridgain.grid.kernal.processors.cache.GridCacheUtils.*;
 import static org.gridgain.grid.cache.GridCacheTxConcurrency.*;
 import static org.gridgain.grid.cache.GridCacheTxIsolation.*;
 import static org.gridgain.grid.cache.GridCacheTxState.*;
+import static org.gridgain.grid.events.GridEventType.*;
 import static org.gridgain.grid.kernal.processors.cache.GridCacheOperation.*;
+import static org.gridgain.grid.kernal.processors.cache.GridCacheTxEx.FinalizationStatus.*;
+import static org.gridgain.grid.kernal.processors.cache.GridCacheUtils.*;
 
 /**
  * Managed transaction adapter.
@@ -1187,14 +1186,6 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
     protected GridBiTuple<GridCacheOperation, GridDrReceiverConflictContextImpl<K, V>> drResolveConflict(
         GridCacheOperation op, K key, V newVal, byte[] newValBytes, long newTtl, long newDrExpireTime,
         GridCacheVersion newVer, GridCacheEntryEx<K, V> old) throws GridException, GridCacheEntryRemovedException {
-        GridDrReceiverCacheConfiguration drRcvCfg = cctx.config().getDrReceiverConfiguration();
-
-        assert drRcvCfg != null;
-
-        GridDrReceiverCacheConflictResolverMode mode = drRcvCfg.getConflictResolverMode();
-
-        assert mode != null;
-
         // Construct old entry info.
         GridDrEntry<K, V> oldEntry = old.drEntry();
 
@@ -1206,7 +1197,7 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
 
         GridDrEntry<K, V> newEntry = new GridDrPlainEntry<>(key, newVal, newTtl, newExpireTime, newVer);
 
-        GridDrReceiverConflictContextImpl<K, V> ctx = cctx.drResolveConflict(key, oldEntry, newEntry);
+        GridDrReceiverConflictContextImpl<K, V> ctx = cctx.drResolveConflict(oldEntry, newEntry);
 
         if (ctx.isMerge()) {
             V resVal = ctx.mergeValue();
