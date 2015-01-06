@@ -37,6 +37,9 @@ object ScalarCacheQueryExample {
      */
     def main(args: Array[String]) {
         scalar("examples/config/example-cache.xml") {
+            // Clean up caches on all nodes before run.
+            cache$(CACHE_NAME).get.globalClearAll(0)
+
             example(grid$)
         }
     }
