@@ -7,7 +7,7 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.kernal.processors;
+package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
@@ -30,9 +30,9 @@ import static org.gridgain.grid.cache.GridCachePreloadMode.*;
 import static org.gridgain.grid.cache.GridCacheWriteSynchronizationMode.*;
 
 /**
- * Stopped node when client operations are executing.
+ * Stops node when there are ongoing user operations.
  */
-public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
+public abstract class GridCacheAbstractStopBusySelfTest extends GridCommonAbstractTest {
     /** */
     public static final int CLN_GRD = 0;
 
@@ -44,14 +44,6 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
 
     /** */
     private AtomicBoolean suspended = new AtomicBoolean(false);
-
-    /**
-     * Constructs test.
-     */
-    @SuppressWarnings("ConstructorNotProtectedInAbstractClass")
-    public GridAbstractStopSelfTest() {
-        super(/* don't start grid */ false);
-    }
 
     /**
      * @return Cache distribution mode.
@@ -135,7 +127,7 @@ public abstract class GridAbstractStopSelfTest extends GridCommonAbstractTest {
             @Override public Integer call() throws Exception {
                 info("Start operation.");
 
-                Integer val = (Integer) clientCache().put(1, 999);
+                Integer val = (Integer)clientCache().put(1, 999);
 
                 info("Stop operation.");
 

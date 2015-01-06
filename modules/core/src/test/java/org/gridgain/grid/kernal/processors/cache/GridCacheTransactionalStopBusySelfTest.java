@@ -7,11 +7,11 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.kernal.processors;
+package org.gridgain.grid.kernal.processors.cache;
 
 /**
  * Stopped node when client operations are executing.
  */
-public class GridTransactionStopSelfTest extends GridAbstractStopSelfTest {
+public class GridCacheTransactionalStopBusySelfTest extends GridCacheAbstractStopBusySelfTest {
     // No-op.
 }

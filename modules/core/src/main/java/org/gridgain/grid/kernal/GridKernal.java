@@ -1907,10 +1907,10 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
             }
 
             GridEmailProcessorAdapter email = ctx.email();
+            GridCacheProcessor cacheProcessor = ctx.cache();
 
             List<GridComponent> comps = ctx.components();
 
-            GridCacheProcessor cacheProcessor = null;
 
             // Callback component in reverse order while kernal is still functional
             // if called in the same thread, at least.
@@ -1918,9 +1918,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                 GridComponent comp = it.previous();
 
                 try {
-                    if (cacheProcessor == null && comp instanceof GridCacheProcessor)
-                        cacheProcessor = (GridCacheProcessor) comp;
-
                     comp.onKernalStop(cancel);
                 }
                 catch (Throwable e) {
@@ -1934,19 +1931,18 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             while (true) {
                 try {
-                    if (gw.tryWriteLock(10)) {
-                        if (cacheProcessor != null)
-                            cacheProcessor.cancelUserOperations();
-
+                    if (gw.tryWriteLock(10))
                         break;
-                    }
-                    else
-                        if (cacheProcessor != null)
-                            cacheProcessor.cancelUserOperations();
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     // Preserve interrupt status & ignore.
                     // Note that interrupted flag is cleared.
                     interrupted = true;
+                }
+                finally {
+                    // Cleanup even on successful acquire.
+                    if (cacheProcessor != null)
+                        cacheProcessor.cancelUserOperations();
                 }
             }
 

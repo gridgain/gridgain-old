@@ -254,7 +254,7 @@ public class GridCacheMvccManager<K, V> extends GridCacheManagerAdapter<K, V> {
      * Cancels all client futures.
      */
     public void cancelClientFutures() {
-        GridException e = new GridException("Future can't be completed (grid stopped).");
+        GridException e = new GridException("Operation has been cancelled (grid is stopping).");
 
         for (Collection<GridCacheFuture<?>> futures : futs.values()) {
             for (GridCacheFuture<?> future : futures)
