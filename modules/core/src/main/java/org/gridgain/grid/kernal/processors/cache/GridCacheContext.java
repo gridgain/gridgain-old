@@ -1591,7 +1591,7 @@ public class GridCacheContext<K, V> implements Externalizable {
      * @return Conflict resolution result.
      * @throws GridException In case of exception.
      */
-    public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(GridDrEntry<K, V> oldEntry,
+    public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(GridDrEntryEx<K, V> oldEntry,
         GridDrEntry<K, V> newEntry) throws GridException {
         GridDrReceiverCacheConfiguration drRcvCfg = cacheCfg.getDrReceiverConfiguration();
 
@@ -1617,16 +1617,20 @@ public class GridCacheContext<K, V> implements Externalizable {
         }
         else {
             // Resolve the conflict automatically.
-            long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
+            if (isStoreEnabled() && store().isLocalStore() && oldEntry.isStartVersion())
+                ctx.useNew();
+            else {
+                long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
 
-            if (topVerDiff > 0)
-                ctx.useNew();
-            else if (topVerDiff < 0)
-                ctx.useOld();
-            else if (newEntry.order() > oldEntry.order())
-                ctx.useNew();
-            else
-                ctx.useOld();
+                if (topVerDiff > 0)
+                    ctx.useNew();
+                else if (topVerDiff < 0)
+                    ctx.useOld();
+                else if (newEntry.order() > oldEntry.order())
+                    ctx.useNew();
+                else
+                    ctx.useOld();
+            }
         }
 
         if (drRcvCfg != null)

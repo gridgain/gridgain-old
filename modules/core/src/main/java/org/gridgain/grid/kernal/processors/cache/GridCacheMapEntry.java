@@ -15,6 +15,7 @@ import org.gridgain.grid.dr.*;
 import org.gridgain.grid.dr.cache.sender.*;
 import org.gridgain.grid.kernal.managers.deployment.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
+import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.cache.extras.*;
 import org.gridgain.grid.kernal.processors.cache.query.*;
 import org.gridgain.grid.kernal.processors.dr.*;
@@ -1707,7 +1708,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
                     newTtlResolved = true;
 
-                    GridDrEntry<K, V> oldEntry = drEntry();
+                    GridDrEntryEx<K, V> oldEntry = drEntry();
                     GridDrEntry<K, V> newEntry = new GridDrPlainEntry<>(k, (V)writeObj, newTtl, newExpireTime, drVer);
 
                     drRes = cctx.drResolveConflict(oldEntry, newEntry);
@@ -2930,9 +2931,11 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
     }
 
     /** {@inheritDoc} */
-    @Override public synchronized GridDrEntry<K, V> drEntry() throws GridException {
-        return new GridDrPlainEntry<>(key, isStartVersion() ? unswap(true, true) : rawGetOrUnmarshalUnlocked(false),
-            ttlExtras(), expireTimeExtras(), ver.drVersion());
+    @Override public synchronized GridDrEntryEx<K, V> drEntry() throws GridException {
+        boolean isNew = isStartVersion();
+
+        return new GridDrPlainEntry<>(key, isNew ? unswap(true, true) : rawGetOrUnmarshalUnlocked(false),
+            ttlExtras(), expireTimeExtras(), ver.drVersion(), isNew);
     }
 
     /** {@inheritDoc} */

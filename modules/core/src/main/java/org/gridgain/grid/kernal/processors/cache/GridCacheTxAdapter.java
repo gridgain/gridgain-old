@@ -12,6 +12,7 @@ package org.gridgain.grid.kernal.processors.cache;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.dr.*;
+import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
@@ -1187,7 +1188,7 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
         GridCacheOperation op, K key, V newVal, byte[] newValBytes, long newTtl, long newDrExpireTime,
         GridCacheVersion newVer, GridCacheEntryEx<K, V> old) throws GridException, GridCacheEntryRemovedException {
         // Construct old entry info.
-        GridDrEntry<K, V> oldEntry = old.drEntry();
+        GridDrEntryEx<K, V> oldEntry = old.drEntry();
 
         // Construct new entry info.
         if (newVal == null && newValBytes != null)
