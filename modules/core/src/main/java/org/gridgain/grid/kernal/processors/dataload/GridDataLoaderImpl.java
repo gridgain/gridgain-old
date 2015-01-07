@@ -408,7 +408,6 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
         final int remaps
     ) {
         assert entries != null;
-        assert entries.size() > 1 || activeKeys == null;
 
         if (remaps >= MAX_REMAP_CNT) {
             resFut.onDone(new GridException("Failed to finish operation (too many remaps): " + remaps));
@@ -484,10 +483,13 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
                             if (activeKeys.isEmpty())
                                 resFut.onDone();
                         }
-                        else
+                        else {
+                            assert entriesForNode.size() == 1;
+
                             // That has been a single key,
                             // so complete result future right away.
                             resFut.onDone();
+                        }
                     }
                     catch (GridException e1) {
                         if (log.isDebugEnabled())
