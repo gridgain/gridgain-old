@@ -451,6 +451,11 @@ public final class GridSystemProperties {
     public static final String GG_WORK_DIR = "GRIDGAIN_WORK_DIR";
 
     /**
+     * Flag indicating whether process id should be included to each MBean name.
+     */
+    public static final String GG_JVN_ID_IN_MBAEN_NAME = "GRIDGAIN_JVM_ID_IN_MBAEN_NAME";
+
+    /**
      * Enforces singleton.
      */
     private GridSystemProperties() {
