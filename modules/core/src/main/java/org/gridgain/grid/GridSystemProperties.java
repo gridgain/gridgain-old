@@ -453,7 +453,7 @@ public final class GridSystemProperties {
     /**
      * Flag indicating whether process id should be included to each MBean name.
      */
-    public static final String GG_JVN_ID_IN_MBAEN_NAME = "GRIDGAIN_JVM_ID_IN_MBAEN_NAME";
+    public static final String GG_MBEAN_APPEND_JVM_ID = "GRIDGAIN_MBEAN_APPEND_JVM_ID";
 
     /**
      * Enforces singleton.
