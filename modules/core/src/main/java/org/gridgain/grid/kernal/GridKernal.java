@@ -1911,7 +1911,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             List<GridComponent> comps = ctx.components();
 
-
             // Callback component in reverse order while kernal is still functional
             // if called in the same thread, at least.
             for (ListIterator<GridComponent> it = comps.listIterator(comps.size()); it.hasPrevious();) {
