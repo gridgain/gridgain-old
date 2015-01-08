@@ -3866,7 +3866,7 @@ public abstract class GridUtils {
      * @param sb Sb.
      */
     private static void appendJvmId(SB sb) {
-        if (Boolean.getBoolean(GG_MBEAN_APPEND_JVM_ID)) {
+        if (getBoolean(GG_MBEAN_APPEND_JVM_ID)) {
             String gridId = Integer.toHexString(Grid.class.getClassLoader().hashCode()) + "_"
                 + ManagementFactory.getRuntimeMXBean().getName();
 
