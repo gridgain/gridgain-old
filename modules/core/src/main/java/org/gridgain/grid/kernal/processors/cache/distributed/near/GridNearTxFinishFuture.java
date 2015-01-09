@@ -326,7 +326,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
             null,
             tx.size(),
             commit && tx.pessimistic() ? m.writes() : null,
-            commit && tx.pessimistic() ? F.view(tx.writeEntries(), CU.<K, V>transferRequired()) : null,
+            commit && tx.pessimistic() ? tx.writeEntries() : null,
             commit ? tx.syncCommit() : tx.syncRollback(),
             tx.subjectId(),
             tx.taskNameHash()
