@@ -275,11 +275,13 @@ public class GridCacheContinuousQueryAdapter<K, V> implements GridCacheContinuou
 
             guard.block();
 
-            GridContinuousHandler hnd = ctx.kernalContext().security().enabled() ?
+            GridContinuousHandler hnd = ctx.kernalContext().security().enabled() ? keepPortable ?
+                new GridCacheContinuousQueryHandlerV4<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
+                    ctx.kernalContext().job().currentTaskNameHash()) :
                 new GridCacheContinuousQueryHandlerV2<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
-                    keepPortable, ctx.kernalContext().job().currentTaskNameHash()) :
-                new GridCacheContinuousQueryHandler<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
-                    keepPortable);
+                    ctx.kernalContext().job().currentTaskNameHash()) : keepPortable ?
+                new GridCacheContinuousQueryHandlerV3<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal) :
+                new GridCacheContinuousQueryHandler<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal);
 
             routineId = ctx.kernalContext().continuous().startRoutine(hnd, bufSize, timeInterval, autoUnsubscribe,
                 prj.predicate()).get();
