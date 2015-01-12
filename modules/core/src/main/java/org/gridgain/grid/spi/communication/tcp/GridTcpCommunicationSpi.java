@@ -553,7 +553,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     GridCommunicationClient oldClient = clients.putIfAbsent(node.id(), client);
 
                     assert oldClient == null : "Client already created [node=" + node + ", client=" + client +
-                        ", oldClient=" + oldClient + ", recoveryDesc" + recovery + ']';
+                        ", oldClient=" + oldClient + ", recoveryDesc=" + recovery + ']';
                 }
 
                 return client;
