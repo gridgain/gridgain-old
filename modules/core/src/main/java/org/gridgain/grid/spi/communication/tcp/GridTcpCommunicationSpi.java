@@ -451,7 +451,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                                     GridCommunicationClient oldClient = clients.putIfAbsent(sndId, client);
 
-                                    assert oldClient == null;
+                                    assert oldClient == null : "Client already created " +
+                                        "[node=" + rmtNode + ", client=" + client + ", oldClient=" + oldClient + ']';
 
                                     fut.onDone(client);
                                 }
@@ -551,7 +552,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     GridCommunicationClient oldClient = clients.putIfAbsent(node.id(), client);
 
-                    assert oldClient == null;
+                    assert oldClient == null : "Client already created [node=" + node + ", client=" + client +
+                        ", oldClient=" + oldClient + ", recoveryDesc=" + recovery + ']';
                 }
 
                 return client;
@@ -1925,7 +1927,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             if (client0 != null) {
                                 GridCommunicationClient old = clients.put(nodeId, client0);
 
-                                assert old == null;
+                                assert old == null : "Client already created " +
+                                    "[node=" + node + ", client=" + client0 + ", oldClient=" + old + ']';
                             }
                             else
                                 U.sleep(200);
@@ -2463,7 +2466,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
             int queueLimit = unackedMsgsBufSize != 0 ? unackedMsgsBufSize : (maxSize * 5);
 
             GridNioRecoveryDescriptor old =
-                recoveryDescs.put(id, recovery = new GridNioRecoveryDescriptor(queueLimit, node, log));
+                recoveryDescs.putIfAbsent(id, recovery = new GridNioRecoveryDescriptor(queueLimit, node, log));
 
             if (old != null)
                 recovery = old;
