@@ -451,7 +451,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                                     GridCommunicationClient oldClient = clients.putIfAbsent(sndId, client);
 
-                                    assert oldClient == null;
+                                    assert oldClient == null : oldClient;
 
                                     fut.onDone(client);
                                 }
@@ -551,7 +551,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
 
                     GridCommunicationClient oldClient = clients.putIfAbsent(node.id(), client);
 
-                    assert oldClient == null;
+                    assert oldClient == null : oldClient;
                 }
 
                 return client;
@@ -1925,7 +1925,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             if (client0 != null) {
                                 GridCommunicationClient old = clients.put(nodeId, client0);
 
-                                assert old == null;
+                                assert old == null : old;
                             }
                             else
                                 U.sleep(200);
