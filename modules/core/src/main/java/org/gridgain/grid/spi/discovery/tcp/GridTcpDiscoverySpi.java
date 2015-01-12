@@ -4426,7 +4426,7 @@ public class GridTcpDiscoverySpi extends GridSpiAdapter implements GridDiscovery
                 }
 
                 if (msg.verified() || !ring.hasRemoteNodes()) {
-                    if (ipFinder.isShared() && !ring.hasRemoteNodes()) {
+                    if (ipFinder.isShared() && !ring.hasRemoteNodes() && locNode != null) {
                         try {
                             ipFinder.unregisterAddresses(locNode.socketAddresses());
                         }

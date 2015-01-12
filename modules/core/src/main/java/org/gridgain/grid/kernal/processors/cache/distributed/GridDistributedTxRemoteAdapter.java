@@ -12,6 +12,7 @@ package org.gridgain.grid.kernal.processors.cache.distributed;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.kernal.processors.cache.*;
+import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.lang.*;
@@ -371,12 +372,70 @@ public class GridDistributedTxRemoteAdapter<K, V> extends GridCacheTxAdapter<K, 
 
                 writeMap.put(e.key(), e);
             }
-            // If lock is explicit.
+            // Either lock is explicit or this is additional backup records.
             else {
-                e.cached(cctx.cache().entryEx(e.key()), null);
+                // Add locks for missing entry.
+                if (e.explicitVersion() == null && !groupLock()) {
+                    int part = cctx.affinity().partition(e.key());
 
-                // explicit lock.
-                writeMap.put(e.key(), e);
+                    try {
+                        GridDhtLocalPartition<K, V> locPart = cctx.topology().localPartition(part, topologyVersion(),
+                            false);
+
+                        if (locPart != null && locPart.reserve()) {
+                            try {
+                                while (true) {
+                                    try {
+                                        GridDistributedCacheEntry<K, V> cacheEntry =
+                                            (GridDistributedCacheEntry<K, V>)cctx.cache().entryEx(e.key(),
+                                                topologyVersion());
+
+                                        // Add remote candidate before reordering.
+                                        cacheEntry.addRemote(
+                                            nodeId(),
+                                            nodeId,
+                                            threadId(),
+                                            xidVersion(),
+                                            timeout(),
+                                            true,
+                                            implicitSingle(),
+                                            null
+                                        );
+
+                                        e.cached(cacheEntry, cacheEntry.keyBytes());
+
+                                        writeMap.put(e.key(), e);
+
+                                        break;
+                                    }
+                                    catch (GridDistributedLockCancelledException ex) {
+                                        U.warn(log, "Got lock cancel exception for tx entry (will skip write): " + e,
+                                            ex);
+
+                                        break;
+                                    }
+                                    catch (GridCacheEntryRemovedException ignored) {
+                                        if (log.isDebugEnabled())
+                                            log.debug("Got obsolete entry for tx write (will retry): " + e);
+                                    }
+                                }
+                            }
+                            finally {
+                                locPart.release();
+                            }
+                        }
+                    }
+                    catch (GridDhtInvalidPartitionException ignore) {
+                        if (log.isDebugEnabled())
+                            log.debug("Got invalid partition for remote write (will ignore): " + e);
+                    }
+                }
+                else {
+                    e.cached(cctx.cache().entryEx(e.key()), null);
+
+                    // explicit lock.
+                    writeMap.put(e.key(), e);
+                }
             }
         }
         else {

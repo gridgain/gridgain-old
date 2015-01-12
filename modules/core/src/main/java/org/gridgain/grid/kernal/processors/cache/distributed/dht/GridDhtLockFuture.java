@@ -16,6 +16,7 @@ import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.timeout.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
+import org.gridgain.grid.product.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.tostring.*;
@@ -36,6 +37,9 @@ import static org.gridgain.grid.kernal.processors.dr.GridDrType.*;
  */
 public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Boolean>
     implements GridCacheMvccFuture<K, V, Boolean>, GridDhtFuture<Boolean>, GridCacheMappedVersion {
+    /** */
+    private static GridProductVersion SKIP_DUPLICATE_BACKUP_LOCKS_SINCE = GridProductVersion.fromString("6.5.6-p1");
+
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -761,8 +765,10 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
                 }
             }
 
+            Map<GridNode, Set<K>> updateMap = null;
+
             if (tx != null) {
-                tx.addDhtMapping(dhtMap);
+                updateMap = tx.addDhtMapping(dhtMap);
                 tx.addNearMapping(nearMap);
 
                 tx.needsCompletedVersions(hasRmtNodes);
@@ -795,6 +801,8 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
 
                 List<GridDhtCacheEntry<K, V>> dhtMapping = mapped.getValue();
 
+                Set<K> newMapping = updateMap == null ? null : updateMap.get(n);
+
                 int cnt = F.size(dhtMapping);
 
                 if (cnt > 0) {
@@ -802,37 +810,58 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
 
                     List<GridDhtCacheEntry<K, V>> nearMapping = nearMap.get(n);
 
-                    MiniFuture fut = new MiniFuture(n, dhtMapping, nearMapping);
-
-                    GridDhtLockRequest<K, V> req = new GridDhtLockRequest<>(
-                        nearNodeId,
-                        inTx() ? tx.nearXidVersion() : null,
-                        threadId,
-                        futId,
-                        fut.futureId(),
-                        lockVer,
-                        topVer,
-                        inTx(),
-                        read,
-                        isolation(),
-                        isInvalidate(),
-                        timeout,
-                        cnt,
-                        F.size(nearMapping),
-                        inTx() ? tx.size() : cnt,
-                        inTx() ? tx.groupLockKey() : null,
-                        inTx() && tx.partitionLock(),
-                        inTx() ? tx.subjectId() : null,
-                        inTx() ? tx.taskNameHash() : 0);
+                    MiniFuture fut = null;
 
                     try {
+                        GridDhtLockRequest<K, V> req = null;
+
                         for (ListIterator<GridDhtCacheEntry<K, V>> it = dhtMapping.listIterator(); it.hasNext();) {
                             GridDhtCacheEntry<K, V> e = it.next();
 
                             // Must unswap entry so that isNewLocked returns correct value.
                             e.unswap(true, false);
 
+                            boolean isNewLocked = false;
+
+                            try {
+                                isNewLocked = e.isNewLocked();
+                            }
+                            catch (GridCacheEntryRemovedException ex) {
+                                assert false : "Entry cannot become obsolete when DHT local candidate is added " +
+                                    "[e=" + e + ", ex=" + ex + ']';
+                            }
+
+                            // Skip entry if it is not new and is not present in updated mapping.
+                            if (tx != null && !isNewLocked && (newMapping == null || !newMapping.contains(e.key())) &&
+                                n.version().compareTo(SKIP_DUPLICATE_BACKUP_LOCKS_SINCE) >= 0)
+                                continue;
+
                             boolean invalidateRdr = e.readerId(n.id()) != null;
+
+                            if (req == null) {
+                                fut = new MiniFuture(n, dhtMapping, nearMapping);
+
+                                req = new GridDhtLockRequest<>(
+                                    nearNodeId,
+                                    inTx() ? tx.nearXidVersion() : null,
+                                    threadId,
+                                    futId,
+                                    fut.futureId(),
+                                    lockVer,
+                                    topVer,
+                                    inTx(),
+                                    read,
+                                    isolation(),
+                                    isInvalidate(),
+                                    timeout,
+                                    cnt,
+                                    F.size(nearMapping),
+                                    inTx() ? tx.size() : cnt,
+                                    inTx() ? tx.groupLockKey() : null,
+                                    inTx() && tx.partitionLock(),
+                                    inTx() ? tx.subjectId() : null,
+                                    inTx() ? tx.taskNameHash() : 0);
+                            }
 
                             req.addDhtKey(
                                 e.key(),
@@ -842,32 +871,31 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
                                 invalidateRdr,
                                 cctx);
 
-                            try {
-                                if (e.isNewLocked())
-                                    // Mark last added key as needed to be preloaded.
-                                    req.markLastKeyForPreload();
-                            }
-                            catch (GridCacheEntryRemovedException ex) {
-                                assert false : "Entry cannot become obsolete when DHT local candidate is added " +
-                                    "[e=" + e + ", ex=" + ex + ']';
-                            }
+                            // Mark last added key as needed to be preloaded.
+                            if (isNewLocked)
+                                req.markLastKeyForPreload();
 
                             it.set(addOwned(req, e));
                         }
 
-                        add(fut); // Append new future.
+                        if (fut != null) {
+                            add(fut); // Append new future.
 
-                        if (log.isDebugEnabled())
-                            log.debug("Sending DHT lock request to DHT node [node=" + n.id() + ", req=" + req + ']');
+                            if (log.isDebugEnabled())
+                                log.debug(
+                                    "Sending DHT lock request to DHT node [node=" + n.id() + ", req=" + req + ']');
 
-                        cctx.io().send(n, req);
+                            cctx.io().send(n, req);
+                        }
                     }
                     catch (GridException e) {
-                        // Fail the whole thing.
-                        if (e instanceof GridTopologyException)
-                            fut.onResult((GridTopologyException)e);
-                        else
-                            fut.onResult(e);
+                        if (fut != null) {
+                            // Fail the whole thing.
+                            if (e instanceof GridTopologyException)
+                                fut.onResult((GridTopologyException)e);
+                            else
+                                fut.onResult(e);
+                        }
                     }
                 }
             }

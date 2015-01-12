@@ -226,24 +226,14 @@ public abstract class GridCacheTxPessimisticOriginatingNodeFailureAbstractSelfTe
             assertFalse(e.getValue().isEmpty());
 
             for (GridNode node : e.getValue()) {
-                final UUID checkNodeId = node.id();
+                Grid grid = grid(node.id());
 
-                G.grid(checkNodeId).forNode(node).compute().call(new Callable<Void>() {
-                    /** */
-                    @GridInstanceResource
-                    private Grid grid;
+                GridCache<Integer, String> cache0 = grid.cache(null);
 
-                    @Override public Void call() throws Exception {
-                        GridCache<Integer, String> cache = grid.cache(null);
+                assertNotNull(cache0);
 
-                        assertNotNull(cache);
-
-                        assertEquals("Failed to check entry value on node: " + checkNodeId,
-                            fullFailure ? initVal : val, cache.peek(key));
-
-                        return null;
-                    }
-                });
+                assertEquals("Failed to check entry value on node: " + node.id(),
+                    fullFailure ? initVal : val, cache0.peek(key));
             }
         }
 
@@ -459,6 +449,15 @@ public abstract class GridCacheTxPessimisticOriginatingNodeFailureAbstractSelfTe
 
         ignoreMsgCls = null;
         ignoreMsgNodeIds = null;
+    }
+
+    private Grid grid(UUID nodeId) {
+        for (Grid g : GridGain.allGrids()) {
+            if (g.localNode().id().equals(nodeId))
+                return g;
+        }
+
+        throw new IllegalArgumentException("Failed to find node with given ID: " + nodeId);
     }
 
     /**

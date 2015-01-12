@@ -30,12 +30,6 @@ public interface GridCacheTxRemoteEx<K, V> extends GridCacheTxEx<K, V> {
         Collection<GridCacheVersion> rolledbackVers, Collection<GridCacheVersion> pendingVers);
 
     /**
-     * @param e Sets write value for pessimistic transactions.
-     * @return {@code True} if entry was found.
-     */
-    public boolean setWriteValue(GridCacheTxEntry<K, V> e);
-
-    /**
      * Adds remote candidates and completed versions to all involved entries.
      *
      * @param cands Candidates.
