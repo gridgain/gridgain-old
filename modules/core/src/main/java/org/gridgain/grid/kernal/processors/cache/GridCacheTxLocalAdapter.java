@@ -2886,6 +2886,30 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
         return Collections.emptyList();
     }
 
+    /** {@inheritDoc} */
+    @Override public boolean setWriteValue(GridCacheTxEntry<K, V> e) {
+        GridCacheTxEntry<K, V> entry = txMap.get(e.key());
+
+        if (entry != null) {
+            // Copy values.
+            entry.value(e.value(), e.hasWriteValue(), e.hasReadValue());
+            entry.transformClosures(e.transformClosures());
+            entry.valueBytes(e.valueBytes());
+            entry.op(e.op());
+            entry.ttl(e.ttl());
+            entry.explicitVersion(e.explicitVersion());
+            entry.groupLockEntry(e.groupLockEntry());
+
+            // DR stuff.
+            entry.drVersion(e.drVersion());
+            entry.drExpireTime(e.drExpireTime());
+
+            return true;
+        }
+
+        return false;
+    }
+
     /**
      * @param op Cache operation.
      * @param val Value.

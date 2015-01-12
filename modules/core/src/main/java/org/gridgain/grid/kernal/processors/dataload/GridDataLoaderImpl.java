@@ -351,14 +351,18 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
         try {
             GridFutureAdapter<Object> resFut = new GridFutureAdapter<>(ctx);
 
-            activeFuts.add(resFut);
-
             resFut.listenAsync(rmvActiveFut);
 
-            Collection<K> keys = new GridConcurrentHashSet<>(entries.size(), 1.0f, 16);
+            activeFuts.add(resFut);
 
-            for (Map.Entry<K, V> entry : entries)
-                keys.add(entry.getKey());
+            Collection<K> keys = null;
+
+            if (entries.size() > 1) {
+                keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
+
+                for (Map.Entry<K, V> entry : entries)
+                    keys.add(entry.getKey());
+            }
 
             load0(entries, resFut, keys, 0);
 
@@ -400,7 +404,7 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
     private void load0(
         Collection<? extends Map.Entry<K, V>> entries,
         final GridFutureAdapter<Object> resFut,
-        final Collection<K> activeKeys,
+        @Nullable final Collection<K> activeKeys,
         final int remaps
     ) {
         assert entries != null;
@@ -472,11 +476,20 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
                     try {
                         t.get();
 
-                        for (Map.Entry<K, V> e : entriesForNode)
-                            activeKeys.remove(e.getKey());
+                        if (activeKeys != null) {
+                            for (Map.Entry<K, V> e : entriesForNode)
+                                activeKeys.remove(e.getKey());
 
-                        if (activeKeys.isEmpty())
+                            if (activeKeys.isEmpty())
+                                resFut.onDone();
+                        }
+                        else {
+                            assert entriesForNode.size() == 1;
+
+                            // That has been a single key,
+                            // so complete result future right away.
                             resFut.onDone();
+                        }
                     }
                     catch (GridException e1) {
                         if (log.isDebugEnabled())
