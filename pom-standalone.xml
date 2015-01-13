@@ -995,18 +995,6 @@
                                 <fileset>
                                     <directory>libs</directory>
                                 </fileset>
-
-                                <fileset>
-                                    <directory>bin/include/visor-common</directory>
-                                </fileset>
-
-                                <fileset>
-                                    <directory>bin/include/visorcmd</directory>
-                                </fileset>
-
-                                <fileset>
-                                    <directory>bin/include/visorui</directory>
-                                </fileset>
                             </filesets>
                         </configuration>
                     </execution>
