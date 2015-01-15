@@ -1795,44 +1795,36 @@ public class GridCacheTxManager<K, V> extends GridCacheManagerAdapter<K, V> {
             return;
         }
 
-        if (tx instanceof GridDistributedTxRemoteAdapter) {
-            GridCacheTxRemoteEx<K,V> rmtTx = (GridCacheTxRemoteEx<K, V>)tx;
-
-            rmtTx.doneRemote(tx.xidVersion(), Collections.<GridCacheVersion>emptyList(), Collections.<GridCacheVersion>emptyList(),
-                Collections.<GridCacheVersion>emptyList());
-        }
-
         try {
-            tx.prepare();
-
             if (commitInfo != null) {
                 for (GridCacheTxEntry<K, V> entry : commitInfo.recoveryWrites()) {
-                    GridCacheTxEntry<K, V> write = tx.writeMap().get(entry.key());
-
-                    if (write != null) {
+                    if (keyBelongs(entry.key(), tx)) {
                         GridCacheEntryEx<K, V> cached = entry.cached();
+
                         if (cached == null || cached.detached()) {
                             cached = cctx.cache().entryEx(entry.key(), tx.topologyVersion());
 
                             entry.cached(cached, cached.keyBytes());
                         }
 
-                        tx.writeMap().put(entry.key(), entry);
-
-                        continue;
+                        tx.setWriteValue(entry);
                     }
 
                     ((GridCacheTxAdapter<K, V>)tx).recoveryWrites(commitInfo.recoveryWrites());
-
-                    // If write was not found, check read.
-                    GridCacheTxEntry<K, V> read = tx.readMap().remove(entry.key());
-
-                    if (read != null)
-                        tx.writeMap().put(entry.key(), entry);
                 }
-
-                tx.commitAsync().listenAsync(new CommitListener(tx));
             }
+
+            if (tx instanceof GridDistributedTxRemoteAdapter) {
+                GridCacheTxRemoteEx<K,V> rmtTx = (GridCacheTxRemoteEx<K, V>)tx;
+
+                rmtTx.doneRemote(tx.xidVersion(), Collections.<GridCacheVersion>emptyList(), Collections.<GridCacheVersion>emptyList(),
+                    Collections.<GridCacheVersion>emptyList());
+            }
+
+            tx.prepare();
+
+            if (commitInfo != null)
+                tx.commitAsync().listenAsync(new CommitListener(tx));
             else
                 tx.rollbackAsync();
         }
@@ -1841,6 +1833,23 @@ public class GridCacheTxManager<K, V> extends GridCacheManagerAdapter<K, V> {
 
             salvageTx(tx);
         }
+    }
+
+    /**
+     * @param key Key to check.
+     * @param tx Transaction.
+     * @return If key belongs to this transaction.
+     */
+    private boolean keyBelongs(K key, GridCacheTxEx<K, V> tx) {
+        GridNode primary = cctx.affinity().primary(key, tx.topologyVersion());
+
+        if (tx.local() && primary.id().equals(cctx.localNodeId()))
+            return true;
+        else if (!tx.local())
+            return cctx.affinity().backups(key, tx.topologyVersion()).contains(cctx.localNode()) &&
+                tx.nodeId().equals(primary.id());
+
+        return false;
     }
 
     /**

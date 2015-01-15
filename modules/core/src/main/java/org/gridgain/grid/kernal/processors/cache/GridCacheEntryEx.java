@@ -11,8 +11,8 @@ package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.*;
+import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.lang.*;
@@ -114,7 +114,7 @@ public interface GridCacheEntryEx<K, V> extends GridMetadataAware {
      * @return DR entry.
      * @throws GridException If failed.
      */
-    public GridDrEntry<K, V> drEntry() throws GridException;
+    public GridDrEntryEx<K, V> drEntry() throws GridException;
 
     /**
      * @param val New value.

@@ -70,6 +70,8 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheTtlManagerSelfTest.class);
         suite.addTestSuite(GridCacheLifecycleAwareSelfTest.class);
         suite.addTestSuite(GridCacheStopSelfTest.class);
+        suite.addTestSuite(GridCacheAtomicStopBusySelfTest.class);
+        suite.addTestSuite(GridCacheTransactionalStopBusySelfTest.class);
         suite.addTestSuite(GridCacheAtomicNearCacheSelfTest.class);
         suite.addTestSuite(GridCacheStorePutxSelfTest.class);
         suite.addTestSuite(GridCacheOffHeapMultiThreadedUpdateSelfTest.class);
@@ -194,6 +196,7 @@ public class GridDataGridTestSuite extends TestSuite {
 
         suite.addTest(new TestSuite(GridCacheReturnValueTransferSelfTest.class));
         suite.addTest(new TestSuite(GridCacheOffHeapUpdateSelfTest.class));
+        suite.addTest(new TestSuite(GridCachePutAllLargeBatchSelfTest.class));
 
         // TODO: GG-7242, GG-7243: Enabled when fixed.
 //        suite.addTest(new TestSuite(GridCacheDhtRemoveFailureTest.class));

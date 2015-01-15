@@ -98,6 +98,6 @@ public class GridCacheCommittedTxInfo<K, V> implements Externalizable {
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridCacheCommittedTxInfo.class, this, "recoveryWrites", recoveryWrites);
+        return S.toString(GridCacheCommittedTxInfo.class, this);
     }
 }
