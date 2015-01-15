@@ -1907,6 +1907,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
             }
 
             GridEmailProcessorAdapter email = ctx.email();
+            GridCacheProcessor cacheProcessor = ctx.cache();
 
             List<GridComponent> comps = ctx.components();
 
@@ -1925,7 +1926,27 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                 }
             }
 
-            gw.writeLock();
+            boolean interrupted = false;
+
+            while (true) {
+                try {
+                    if (gw.tryWriteLock(10))
+                        break;
+                }
+                catch (InterruptedException e) {
+                    // Preserve interrupt status & ignore.
+                    // Note that interrupted flag is cleared.
+                    interrupted = true;
+                }
+                finally {
+                    // Cleanup even on successful acquire.
+                    if (cacheProcessor != null)
+                        cacheProcessor.cancelUserOperations();
+                }
+            }
+
+            if (interrupted)
+                Thread.currentThread().interrupt();
 
             try {
                 assert gw.getState() == STARTED || gw.getState() == STARTING;
