@@ -342,15 +342,15 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
     /**
      * @param mappings Mappings to add.
      */
-    void addDhtMapping(Map<GridNode, List<GridDhtCacheEntry<K, V>>> mappings) {
-        addMapping(mappings, dhtMap);
+    Map<GridNode, Set<K>> addDhtMapping(Map<GridNode, List<GridDhtCacheEntry<K, V>>> mappings) {
+        return addMapping(mappings, dhtMap);
     }
 
     /**
      * @param mappings Mappings to add.
      */
-    void addNearMapping(Map<GridNode, List<GridDhtCacheEntry<K, V>>> mappings) {
-        addMapping(mappings, nearMap);
+    Map<GridNode, Set<K>> addNearMapping(Map<GridNode, List<GridDhtCacheEntry<K, V>>> mappings) {
+        return addMapping(mappings, nearMap);
     }
 
     /**
@@ -413,17 +413,37 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
      * @param mappings Entry mappings.
      * @param map Transaction mappings.
      */
-    private void addMapping(Map<GridNode, List<GridDhtCacheEntry<K, V>>> mappings,
-        Map<UUID, GridDistributedTxMapping<K, V>> map) {
+    private Map<GridNode, Set<K>> addMapping(
+        Map<GridNode, List<GridDhtCacheEntry<K, V>>> mappings,
+        Map<UUID, GridDistributedTxMapping<K, V>> map
+    ) {
+        Map<GridNode, Set<K>> added = null;
+
         for (Map.Entry<GridNode, List<GridDhtCacheEntry<K, V>>> mapping : mappings.entrySet()) {
             GridNode n = mapping.getKey();
 
-            for (GridDhtCacheEntry<K, V> entry : mapping.getValue()) {
+            GridDistributedTxMapping<K, V> m = map.get(n.id());
+
+            List<GridDhtCacheEntry<K, V>> entries = mapping.getValue();
+
+            // If adding new entries for the node, add to result mapping.
+            if (m == null) {
+                if (added == null)
+                    added = U.newHashMap(mappings.size());
+
+                Collection<K> keys = F.viewReadOnly(entries, new C1<GridDhtCacheEntry<K, V>, K>() {
+                    @Override public K apply(GridDhtCacheEntry<K, V> entry) {
+                        return entry.key();
+                    }
+                });
+
+                added.put(n, new HashSet<>(keys));
+            }
+
+            for (GridDhtCacheEntry<K, V> entry : entries) {
                 GridCacheTxEntry<K, V> txEntry = txMap.get(entry.key());
 
                 if (txEntry != null) {
-                    GridDistributedTxMapping<K, V> m = map.get(n.id());
-
                     if (m == null)
                         map.put(n.id(), m = new GridDistributedTxMapping<>(n));
 
@@ -431,6 +451,8 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
                 }
             }
         }
+
+        return added;
     }
 
 

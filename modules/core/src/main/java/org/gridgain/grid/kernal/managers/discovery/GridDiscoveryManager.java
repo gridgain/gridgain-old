@@ -99,9 +99,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
     /** Network segment check worker. */
     private SegmentCheckWorker segChkWrk;
 
-    /** Network segment check thread. */
-    private GridThread segChkThread;
-
     /** Last logged topology. */
     private final AtomicLong lastLoggedTop = new AtomicLong();
 
@@ -370,13 +367,8 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
         startSpi();
 
         // Start segment check worker only if frequency is greater than 0.
-        if (hasRslvrs && segChkFreq > 0) {
-            segChkWrk = new SegmentCheckWorker();
-
-            segChkThread = new GridThread(segChkWrk);
-
-            segChkThread.start();
-        }
+        if (hasRslvrs && segChkFreq > 0)
+            new GridThread(segChkWrk = new SegmentCheckWorker()).start();
 
         checkAttributes(discoCache().remoteNodes());
 
@@ -790,13 +782,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
 
     /** {@inheritDoc} */
     @Override public void onKernalStop0(boolean cancel) {
-        // Stop segment check worker.
-        if (segChkWrk != null) {
-            segChkWrk.cancel();
-
-            U.join(segChkThread, log);
-        }
-
         if (!locJoinEvt.isDone())
             locJoinEvt.onDone(new GridException("Failed to wait for local node joined event (grid is stopping)."));
     }
@@ -805,6 +790,10 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
     @Override public void stop(boolean cancel) throws GridException {
         // Stop receiving notifications.
         getSpi().setListener(null);
+
+        // Stop segment check worker.
+        U.cancel(segChkWrk);
+        U.join(segChkWrk, log);
 
         // Stop discovery worker.
         U.cancel(discoWrk);

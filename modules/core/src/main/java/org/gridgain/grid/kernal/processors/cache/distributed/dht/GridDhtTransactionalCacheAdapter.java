@@ -421,7 +421,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
      */
     protected void finish(GridCacheContext<K, V> ctx,
         UUID nodeId,
-        GridCacheTxRemoteEx<K, V> tx,
+        GridDistributedTxRemoteAdapter<K, V> tx,
         GridDhtTxFinishRequest<K, V> req,
         Collection<GridCacheTxEntry<K, V>> writes) {
         // We don't allow explicit locks for transactions and
@@ -465,6 +465,8 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                                     entry + ", tx=" + tx + ']');
                         }
                     }
+
+                    tx.recoveryWrites(req.recoveryWrites());
 
                     // Complete remote candidates.
                     tx.doneRemote(req.baseVersion(), null, null, null);
@@ -1145,7 +1147,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
         finish(ctx, nodeId, dhtTx, req, req.writes());
 
         if (nearTx != null && isNearEnabled(cacheCfg))
-            finish(near().context(), nodeId, (GridCacheTxRemoteEx<K, V>)nearTx, req, req.nearWrites());
+            finish(near().context(), nodeId, (GridDistributedTxRemoteAdapter<K, V>)nearTx, req, req.nearWrites());
 
         sendReply(nodeId, req);
     }
@@ -1809,10 +1811,13 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             if (err == null) {
                 res.pending(localDhtPendingVersions(entries, mappedVer));
 
+                boolean needsVers = U.hasNearCache(nearNode, ctx.name());
+
                 // We have to add completed versions for cases when nearLocal and remote transactions
                 // execute concurrently.
-                res.completedVersions(ctx.tm().committedVersions(req.version()),
-                    ctx.tm().rolledbackVersions(req.version()));
+                res.completedVersions(
+                    needsVers ? ctx.tm().committedVersions(req.version()) : Collections.<GridCacheVersion>emptyList(),
+                    needsVers ? ctx.tm().rolledbackVersions(req.version()) : Collections.<GridCacheVersion>emptyList());
 
                 int i = 0;
 

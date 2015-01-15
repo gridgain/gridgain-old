@@ -9,15 +9,15 @@
 
 package org.gridgain.grid.kernal.processors.dr;
 
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.kernal.processors.cache.*;
+import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 /**
  * Data center entry implementation containing only plain key and value.
  */
-public class GridDrPlainEntry<K, V> implements GridDrEntry<K, V> {
+public class GridDrPlainEntry<K, V> implements GridDrEntryEx<K, V> {
     /** Key. */
     private final K key;
 
@@ -33,9 +33,10 @@ public class GridDrPlainEntry<K, V> implements GridDrEntry<K, V> {
     /** Version. */
     private final GridCacheVersion ver;
 
+    /** Start version flag. */
+    private final boolean isStartVer;
+
     /**
-     * Constructor.
-     *
      * @param key Key.
      * @param val Value.
      * @param ttl TTL.
@@ -43,6 +44,18 @@ public class GridDrPlainEntry<K, V> implements GridDrEntry<K, V> {
      * @param ver Version.
      */
     public GridDrPlainEntry(K key, @Nullable V val, long ttl, long expireTime, GridCacheVersion ver) {
+        this(key, val, ttl, expireTime, ver, false);
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @param ttl TTL.
+     * @param expireTime Expire time.
+     * @param ver Version.
+     * @param isStartVer Start version flag.
+     */
+    public GridDrPlainEntry(K key, V val, long ttl, long expireTime, GridCacheVersion ver, boolean isStartVer) {
         assert ver != null;
         assert key != null;
 
@@ -51,6 +64,7 @@ public class GridDrPlainEntry<K, V> implements GridDrEntry<K, V> {
         this.ttl = ttl;
         this.expireTime = expireTime;
         this.ver = ver;
+        this.isStartVer = isStartVer;
     }
 
     /** {@inheritDoc} */
@@ -91,6 +105,11 @@ public class GridDrPlainEntry<K, V> implements GridDrEntry<K, V> {
     /** {@inheritDoc} */
     @Override public long globalTime() {
         return ver.globalTime();
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean isStartVersion() {
+        return isStartVer;
     }
 
     /** {@inheritDoc} */
