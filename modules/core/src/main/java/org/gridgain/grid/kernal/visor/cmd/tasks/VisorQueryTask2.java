@@ -10,7 +10,7 @@
 package org.gridgain.grid.kernal.visor.cmd.tasks;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.cache.GridCache;
+import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.query.GridCacheQueryFuture;
 import org.gridgain.grid.kernal.GridKernal;
 import org.gridgain.grid.kernal.processors.cache.query.*;
@@ -71,7 +71,7 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
 
                 String qryId = (scan ? SCAN_QRY_NAME : SQL_QRY_NAME) + "-" + UUID.randomUUID();
 
-                GridCache<Object, Object> c = g.cachex(arg.cacheName());
+                GridCacheProjection<Object, Object> c = g.cachex(arg.cacheName()).keepPortable();
 
                 if (c == null)
                     return new GridBiTuple<>(new GridException("Cache not found: " + escapeName(arg.cacheName())), null);
