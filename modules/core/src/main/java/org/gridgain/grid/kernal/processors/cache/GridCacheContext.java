@@ -1061,7 +1061,7 @@ public class GridCacheContext<K, V> implements Externalizable {
      *
      * @param prj Flags to set.
      */
-    void projectionPerCall(@Nullable GridCacheProjectionImpl<K, V> prj) {
+    public void projectionPerCall(@Nullable GridCacheProjectionImpl<K, V> prj) {
         if (nearContext())
             dht().near().context().prjPerCall.set(prj);
         else
@@ -1581,26 +1581,25 @@ public class GridCacheContext<K, V> implements Externalizable {
             return oldVer.dataCenterId() != dataCenterId || newVer.dataCenterId() != dataCenterId || mode == DR_ALWAYS;
         }
         else
-            return false;
+            return isStoreEnabled() && store().isLocalStore();
     }
     /**
      * Resolve DR conflict.
      *
-     * @param key Key.
      * @param oldEntry Old entry.
      * @param newEntry New entry.
      * @return Conflict resolution result.
      * @throws GridException In case of exception.
      */
-    public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(K key, GridDrEntry<K, V> oldEntry,
+    public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(GridDrEntryEx<K, V> oldEntry,
         GridDrEntry<K, V> newEntry) throws GridException {
         GridDrReceiverCacheConfiguration drRcvCfg = cacheCfg.getDrReceiverConfiguration();
 
-        assert drRcvCfg != null;
+        assert drRcvCfg != null || (isStoreEnabled() && store().isLocalStore());
 
-        GridDrReceiverCacheConflictResolverMode mode = drRcvCfg.getConflictResolverMode();
+        GridDrReceiverCacheConflictResolverMode mode = drRcvCfg != null ? drRcvCfg.getConflictResolverMode() : null;
 
-        assert mode != null;
+        assert mode != null || (isStoreEnabled() && store().isLocalStore());
 
         GridDrReceiverConflictContextImpl<K, V> ctx = new GridDrReceiverConflictContextImpl<>(oldEntry, newEntry);
 
@@ -1618,19 +1617,24 @@ public class GridCacheContext<K, V> implements Externalizable {
         }
         else {
             // Resolve the conflict automatically.
-            long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
+            if (isStoreEnabled() && store().isLocalStore() && oldEntry.isStartVersion())
+                ctx.useNew();
+            else {
+                long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
 
-            if (topVerDiff > 0)
-                ctx.useNew();
-            else if (topVerDiff < 0)
-                ctx.useOld();
-            else if (newEntry.order() > oldEntry.order())
-                ctx.useNew();
-            else
-                ctx.useOld();
+                if (topVerDiff > 0)
+                    ctx.useNew();
+                else if (topVerDiff < 0)
+                    ctx.useOld();
+                else if (newEntry.order() > oldEntry.order())
+                    ctx.useNew();
+                else
+                    ctx.useOld();
+            }
         }
 
-        cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());
+        if (drRcvCfg != null)
+            cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());
 
         return ctx;
     }

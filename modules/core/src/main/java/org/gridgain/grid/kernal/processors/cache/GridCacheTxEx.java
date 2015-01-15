@@ -504,4 +504,10 @@ public interface GridCacheTxEx<K, V> extends GridCacheTx, GridTimeoutObject {
      *      transactions.
      */
     public boolean hasTransforms();
+
+    /**
+     * @param e Sets write value for pessimistic transactions.
+     * @return {@code True} if entry was found.
+     */
+    public boolean setWriteValue(GridCacheTxEntry<K, V> e);
 }

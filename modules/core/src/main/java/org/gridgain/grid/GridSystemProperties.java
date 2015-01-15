@@ -15,6 +15,7 @@ import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
 import org.jetbrains.annotations.*;
 
 import javax.net.ssl.*;
+import java.lang.management.*;
 
 /**
  * Contains constants for all system properties and environmental variables in GridGain. These
@@ -449,6 +450,18 @@ public final class GridSystemProperties {
      * priority.
      */
     public static final String GG_WORK_DIR = "GRIDGAIN_WORK_DIR";
+
+    /**
+     * If this property is set to {@code true} then GridGain will append
+     * hash code of {@link Grid} class as hex string and append
+     * JVM name returned by {@link RuntimeMXBean#getName()}.
+     * <p>
+     * This may be helpful when running GridGain in some application server
+     * clusters or similar environments to avoid MBean name collisions.
+     * <p>
+     * Default is {@code false}.
+     */
+    public static final String GG_MBEAN_APPEND_JVM_ID = "GRIDGAIN_MBEAN_APPEND_JVM_ID";
 
     /**
      * Enforces singleton.

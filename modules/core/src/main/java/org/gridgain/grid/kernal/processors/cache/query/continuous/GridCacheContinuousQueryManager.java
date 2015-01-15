@@ -149,13 +149,21 @@ public class GridCacheContinuousQueryManager<K, V> extends GridCacheManagerAdapt
      * @param id Listener ID.
      */
     void unregisterListener(boolean internal, UUID id) {
+        ListenerInfo info;
+
         if (internal) {
-            if (intLsnrs.remove(id) != null)
+            if ((info = intLsnrs.remove(id)) != null) {
                 intLsnrCnt.decrementAndGet();
+
+                info.lsnr.onUnregister();
+            }
         }
         else {
-            if (lsnrs.remove(id) != null)
+            if ((info = lsnrs.remove(id)) != null) {
                 lsnrCnt.decrementAndGet();
+
+                info.lsnr.onUnregister();
+            }
         }
     }
 
