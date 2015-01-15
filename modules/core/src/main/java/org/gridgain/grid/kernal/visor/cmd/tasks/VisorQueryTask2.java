@@ -71,13 +71,15 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
 
                 String qryId = (scan ? SCAN_QRY_NAME : SQL_QRY_NAME) + "-" + UUID.randomUUID();
 
-                GridCacheProjection<Object, Object> c = g.cachex(arg.cacheName()).keepPortable();
+                GridCache<Object, Object> c = g.cachex(arg.cacheName());
 
                 if (c == null)
                     return new GridBiTuple<>(new GridException("Cache not found: " + escapeName(arg.cacheName())), null);
 
+                GridCacheProjection<Object, Object> cp = c.keepPortable();
+
                 if (scan) {
-                    GridCacheQueryFuture<Map.Entry<Object, Object>> fut = c.queries().createScanQuery(null)
+                    GridCacheQueryFuture<Map.Entry<Object, Object>> fut = cp.queries().createScanQuery(null)
                         .pageSize(arg.pageSize())
                         .projection(g.forNodeIds(arg.proj()))
                         .execute();
@@ -102,7 +104,7 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
                         SCAN_COL_NAMES, rows.get1(), next != null, duration));
                 }
                 else {
-                    GridCacheQueryFuture<List<?>> fut = ((GridCacheQueriesEx<?, ?>)c.queries())
+                    GridCacheQueryFuture<List<?>> fut = ((GridCacheQueriesEx<?, ?>)cp.queries())
                         .createSqlFieldsQuery(arg.queryTxt(), true)
                         .pageSize(arg.pageSize())
                         .projection(g.forNodeIds(arg.proj()))

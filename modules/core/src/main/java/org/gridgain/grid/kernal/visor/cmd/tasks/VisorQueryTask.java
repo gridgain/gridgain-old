@@ -121,6 +121,11 @@ public class VisorQueryTask extends VisorOneNodeTask<VisorQueryTask.VisorQueryAr
         /** Flag indicating that this furure was read from last check. */
         private Boolean accessed;
 
+        /**
+         * @param fut Future.
+         * @param next Next result.
+         * @param accessed {@code true} if query was accessed before remove timeout.
+         */
         public VisorFutureResultSetHolder(GridCacheQueryFuture<R> fut, R next, Boolean accessed) {
             this.fut = fut;
             this.next = next;
