@@ -106,12 +106,17 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         return true;
     }
 
+    private GridCacheProjectionImpl<K, V> keepPortablePrj;
+
     /** {@inheritDoc} */
     @Override public boolean register(final UUID nodeId, final UUID routineId, final GridKernalContext ctx)
         throws GridException {
         assert nodeId != null;
         assert routineId != null;
         assert ctx != null;
+
+        if (keepPortable())
+            keepPortablePrj = ctx.cache().internalCache(cacheName).keepPortable0();
 
         if (cb != null)
             ctx.resource().injectGeneric(cb);
@@ -414,7 +419,7 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         GridCacheContext<K, V> cctx = cache.context();
 
         if (keepPortable())
-            cctx.projectionPerCall(cache.<K, V>keepPortable0());
+            cctx.projectionPerCall(keepPortablePrj);
 
         return cctx;
     }
