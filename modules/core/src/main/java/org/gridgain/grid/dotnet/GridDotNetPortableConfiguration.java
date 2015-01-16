@@ -10,10 +10,9 @@
 package org.gridgain.grid.dotnet;
 
 import org.gridgain.grid.portables.*;
-import org.gridgain.grid.util.typedef.internal.S;
+import org.gridgain.grid.util.typedef.internal.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 
 /**
  * Mirror of .Net class GridDotNetPortableConfiguration.cs

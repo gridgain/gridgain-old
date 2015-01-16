@@ -10,8 +10,9 @@
 package org.gridgain.grid.dotnet;
 
 import org.gridgain.grid.portables.*;
-import org.gridgain.grid.util.typedef.internal.S;
-import org.jetbrains.annotations.Nullable;
+import org.gridgain.grid.util.typedef.internal.*;
+
+import org.jetbrains.annotations.*;
 
 /**
  * Mirror of .Net class GridDotNetPortableTypeConfiguration.cs
