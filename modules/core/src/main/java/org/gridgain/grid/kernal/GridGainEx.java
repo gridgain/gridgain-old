@@ -515,15 +515,16 @@ public class GridGainEx {
      *
      * @param springCfgPath Spring config path.
      * @param gridName Grid name.
-     * @param envPtr Environment pointer.
+     * @param cfgClo Configuration closure.
      * @return Started Grid.
      * @throws GridException If failed.
      */
-    public static Grid startInterop(@Nullable String springCfgPath, @Nullable String gridName, long envPtr)
+    public static Grid startInterop(@Nullable String springCfgPath, @Nullable String gridName,
+        GridClosure<GridConfiguration, GridConfiguration> cfgClo)
         throws GridException {
-        GridInteropProcessorAdapter.ENV_PTR.set(envPtr);
+        URL url = resolveSpringUrl(springCfgPath);
 
-        return start(springCfgPath, gridName);
+        return start(url, gridName, null, cfgClo);
     }
 
     /**
@@ -644,21 +645,7 @@ public class GridGainEx {
      */
     public static Grid start(String springCfgPath, @Nullable String gridName,
         @Nullable GridSpringResourceContext springCtx) throws GridException {
-        A.notNull(springCfgPath, "springCfgPath");
-
-        URL url;
-
-        try {
-            url = new URL(springCfgPath);
-        }
-        catch (MalformedURLException e) {
-            url = U.resolveGridGainUrl(springCfgPath);
-
-            if (url == null)
-                throw new GridException("Spring XML configuration path is invalid: " + springCfgPath +
-                    ". Note that this path should be either absolute or a relative local file system path, " +
-                    "relative to META-INF in classpath or valid URL to GRIDGAIN_HOME.", e);
-        }
+        URL url = resolveSpringUrl(springCfgPath);
 
         return start(url, gridName, springCtx);
     }
@@ -706,6 +693,23 @@ public class GridGainEx {
      */
     public static Grid start(URL springCfgUrl, @Nullable String gridName,
         @Nullable GridSpringResourceContext springCtx) throws GridException {
+        return start(springCfgUrl, gridName, springCtx, null);
+    }
+
+    /**
+     * Internal Spring-based start routine.
+     *
+     * @param springCfgUrl Spring XML configuration file URL. This cannot be {@code null}.
+     * @param gridName Grid name that will override default.
+     * @param springCtx Optional Spring application context.
+     * @param cfgClo Optional closure to change configuration before it is used to start the grid.
+     * @return Started grid.
+     * @throws GridException If failed.
+     */
+    private static Grid start(URL springCfgUrl, @Nullable String gridName,
+        @Nullable GridSpringResourceContext springCtx,
+        @Nullable GridClosure<GridConfiguration, GridConfiguration> cfgClo)
+        throws GridException {
         A.notNull(springCfgUrl, "springCfgUrl");
 
         boolean isLog4jUsed = U.gridClassLoader().getResource("org/apache/log4j/Appender.class") != null;
@@ -741,6 +745,12 @@ public class GridGainEx {
                 if (cfg.getGridName() == null && !F.isEmpty(gridName))
                     cfg.setGridName(gridName);
 
+                if (cfgClo != null) {
+                    cfg = cfgClo.apply(cfg);
+
+                    assert cfg != null;
+                }
+
                 // Use either user defined context or our one.
                 GridNamedInstance grid = start0(
                     new GridStartContext(cfg, springCfgUrl, springCtx == null ? cfgMap.get2() : springCtx));
@@ -768,6 +778,33 @@ public class GridGainEx {
         GridNamedInstance res = !grids.isEmpty() ? grids.get(0) : null;
 
         return res != null ? res.grid() : null;
+    }
+
+    /**
+     * Resolve Spring configuration URL.
+     *
+     * @param springCfgPath Spring XML configuration file path or URL. This cannot be {@code null}.
+     * @return URL.
+     * @throws GridException If failed.
+     */
+    private static URL resolveSpringUrl(String springCfgPath) throws GridException {
+        A.notNull(springCfgPath, "springCfgPath");
+
+        URL url;
+
+        try {
+            url = new URL(springCfgPath);
+        }
+        catch (MalformedURLException e) {
+            url = U.resolveGridGainUrl(springCfgPath);
+
+            if (url == null)
+                throw new GridException("Spring XML configuration path is invalid: " + springCfgPath +
+                    ". Note that this path should be either absolute or a relative local file system path, " +
+                    "relative to META-INF in classpath or valid URL to GRIDGAIN_HOME.", e);
+        }
+
+        return url;
     }
 
     /**
