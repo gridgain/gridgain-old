@@ -1415,7 +1415,7 @@ public class GridGainEx {
             myCfg.setSecurityCredentialsProvider(cfg.getSecurityCredentialsProvider());
             myCfg.setServiceConfiguration(cfg.getServiceConfiguration());
             myCfg.setWarmupClosure(cfg.getWarmupClosure());
-            myCfg.setInteropConfiguration(cfg.getInteropConfiguration());
+            myCfg.setDotNetConfiguration(cfg.getDotNetConfiguration());
 
             GridClientConnectionConfiguration clientCfg = cfg.getClientConnectionConfiguration();
 
