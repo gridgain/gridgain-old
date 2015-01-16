@@ -304,7 +304,7 @@ public class GridHadoopCommandLineTest extends GridCommonAbstractTest {
 
         assertEquals(0, executeHadoopCmd("jar", examplesJar.getAbsolutePath(), "wordcount", "/input", "/output"));
 
-        GridGgfsPath path = new GridGgfsPath("/users/" + System.getProperty("user.name") + "/");
+        GridGgfsPath path = new GridGgfsPath("/user/" + System.getProperty("user.name") + "/");
 
         assertTrue(ggfs.exists(path));
 
