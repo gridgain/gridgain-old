@@ -20,11 +20,11 @@ import org.gridgain.grid.spi.discovery.tcp.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
-import org.gridgain.testframework.*;
 
 import java.lang.reflect.*;
 import java.net.*;
 import java.nio.file.*;
+import java.util.*;
 
 import static org.gridgain.grid.cache.GridCacheAtomicityMode.*;
 import static org.gridgain.grid.cache.GridCacheMode.*;
@@ -73,7 +73,10 @@ public class GridGgfsHadoopFileSystemLoggerStateSelfTest extends GridGgfsCommonA
         ggfsCfg.setName("ggfs");
         ggfsCfg.setBlockSize(512 * 1024);
         ggfsCfg.setDefaultMode(PRIMARY);
-        ggfsCfg.setIpcEndpointConfiguration(GridGgfsTestUtils.jsonToMap("{type:'tcp', port:10500}"));
+        ggfsCfg.setIpcEndpointConfiguration(new HashMap<String, String>() {{
+            put("type", "tcp");
+            put("port", "10500");
+        }});
 
         GridCacheConfiguration cacheCfg = defaultCacheConfiguration();
 
