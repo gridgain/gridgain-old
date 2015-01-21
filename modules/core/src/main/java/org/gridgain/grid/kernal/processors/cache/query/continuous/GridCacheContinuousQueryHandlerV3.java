@@ -20,6 +20,7 @@ import java.util.*;
 /**
  * Continuous query handler used when "keepPortable" flag is set.
  */
+@Deprecated
 public class GridCacheContinuousQueryHandlerV3<K, V> extends GridCacheContinuousQueryHandler<K, V> {
     /** */
     private static final long serialVersionUID = 0L;

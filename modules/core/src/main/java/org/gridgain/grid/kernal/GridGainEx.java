@@ -15,7 +15,6 @@ import org.gridgain.grid.cache.affinity.rendezvous.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.dr.hub.sender.*;
 import org.gridgain.grid.ggfs.*;
-import org.gridgain.grid.kernal.processors.interop.*;
 import org.gridgain.grid.kernal.processors.resource.*;
 import org.gridgain.grid.kernal.processors.spring.*;
 import org.gridgain.grid.lang.*;
@@ -1200,8 +1199,8 @@ public class GridGainEx {
         /** REST executor service shutdown flag. */
         private boolean restSvcShutdown;
 
-        /** DR executor service. */
-        private ExecutorService drExecSvc;
+        /** Utility cache executor service. */
+        private ExecutorService utilityCacheExecSvc;
 
         /** Grid state. */
         private volatile GridGainState state = STOPPED;
@@ -1610,6 +1609,13 @@ public class GridGainEx {
                 clientCfg.setRestExecutorService(restExecSvc);
             }
 
+            utilityCacheExecSvc = new GridThreadPoolExecutor(
+                "utility-" + cfg.getGridName(),
+                DFLT_SYSTEM_CORE_THREAD_CNT,
+                DFLT_SYSTEM_MAX_THREAD_CNT,
+                DFLT_SYSTEM_KEEP_ALIVE_TIME,
+                new LinkedBlockingQueue<Runnable>(DFLT_SYSTEM_THREADPOOL_QUEUE_CAP));
+
             execSvcShutdown = cfg.getExecutorServiceShutdown();
             sysSvcShutdown = cfg.getSystemExecutorServiceShutdown();
             mgmtSvcShutdown = cfg.getManagementExecutorServiceShutdown();
@@ -1929,20 +1935,6 @@ public class GridGainEx {
                 // No-op.
             }
 
-            if (!drSysCaches.isEmpty()) {
-                // Note that since we use 'LinkedBlockingQueue', number of
-                // maximum threads has no effect.
-                drExecSvc = new GridThreadPoolExecutor(
-                    "dr-" + cfg.getGridName(),
-                    Math.min(16, drSysCaches.size() * 2),
-                    Math.min(16, drSysCaches.size() * 2),
-                    DFLT_SYSTEM_KEEP_ALIVE_TIME,
-                    new LinkedBlockingQueue<Runnable>(DFLT_SYSTEM_THREADPOOL_QUEUE_CAP));
-
-                // Pre-start all threads as they are guaranteed to be needed.
-                ((ThreadPoolExecutor)drExecSvc).prestartAllCoreThreads();
-            }
-
             // Ensure that SPIs support multiple grid instances, if required.
             if (!startCtx.single()) {
                 ensureMultiInstanceSupport(deploySpi);
@@ -1969,7 +1961,7 @@ public class GridGainEx {
                 // Init here to make grid available to lifecycle listeners.
                 grid = grid0;
 
-                grid0.start(myCfg, drExecSvc, new CA() {
+                grid0.start(myCfg, utilityCacheExecSvc, new CA() {
                     @Override public void apply() {
                         startLatch.countDown();
                     }
@@ -2247,10 +2239,10 @@ public class GridGainEx {
                 restExecSvc = null;
             }
 
-            if (drExecSvc != null) {
-                U.shutdownNow(getClass(), drExecSvc, log);
+            if (utilityCacheExecSvc != null) {
+                U.shutdownNow(getClass(), utilityCacheExecSvc, log);
 
-                drExecSvc = null;
+                utilityCacheExecSvc = null;
             }
         }
 

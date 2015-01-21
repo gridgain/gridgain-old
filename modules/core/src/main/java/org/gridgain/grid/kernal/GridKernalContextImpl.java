@@ -258,6 +258,9 @@ public class GridKernalContextImpl extends GridMetadataAwareAdapter implements G
     private GridEx grid;
 
     /** */
+    private ExecutorService utilityCachePool;
+
+    /** */
     private GridProduct product;
 
     /** */
@@ -292,10 +295,14 @@ public class GridKernalContextImpl extends GridMetadataAwareAdapter implements G
      * @param grid Grid instance managed by kernal.
      * @param cfg Grid configuration.
      * @param gw Kernal gateway.
+     * @param utilityCachePool Utility cache pool.
      * @param ent Release enterprise flag.
      */
     @SuppressWarnings("TypeMayBeWeakened")
-    protected GridKernalContextImpl(GridLoggerProxy log, GridEx grid, GridConfiguration cfg, GridKernalGateway gw,
+    protected GridKernalContextImpl(GridLoggerProxy log,
+        GridEx grid, GridConfiguration cfg,
+        GridKernalGateway gw,
+        ExecutorService utilityCachePool,
         boolean ent) {
         assert grid != null;
         assert cfg != null;
@@ -305,6 +312,7 @@ public class GridKernalContextImpl extends GridMetadataAwareAdapter implements G
         this.cfg = cfg;
         this.gw = gw;
         this.ent = ent;
+        this.utilityCachePool = utilityCachePool;
 
         try {
             spring = SPRING.create(false);
@@ -663,8 +671,8 @@ public class GridKernalContextImpl extends GridMetadataAwareAdapter implements G
     }
 
     /** {@inheritDoc} */
-    @Override public ExecutorService drPool() {
-        return grid.drPool();
+    @Override public ExecutorService utilityCachePool() {
+        return utilityCachePool;
     }
 
     /** {@inheritDoc} */

@@ -136,7 +136,7 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
 
         String cacheName = cctx.name();
 
-        plc = CU.isDrSystemCache(cacheName) ? DR_POOL : SYSTEM_POOL;
+        plc = CU.isSystemCache(cacheName) ? UTILITY_CACHE_POOL : SYSTEM_POOL;
 
         depEnabled = cctx.gridDeploy().enabled();
 
@@ -333,7 +333,7 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
      * @throws GridTopologyException If receiver left.
      */
     public void send(GridNode node, GridCacheMessage<K, V> msg) throws GridException {
-        send(node, msg, SYSTEM_POOL);
+        send(node, msg, policy(node));
     }
 
     /**
@@ -446,11 +446,11 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
                     msg0 = (GridCacheMessage<K, V>)msg.clone();
 
                 if (gridTopic != null)
-                    cctx.gridIO().send(nodesView, gridTopic, msg0, plc);
+                    cctx.gridIO().send(nodesView, gridTopic, msg0, policy(nodesView));
                 else {
                     assert topic != null;
 
-                    cctx.gridIO().send(nodesView, topic, msg0, plc);
+                    cctx.gridIO().send(nodesView, topic, msg0, policy(nodesView));
                 }
 
                 boolean added = false;
@@ -561,7 +561,7 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
             try {
                 cnt++;
 
-                cctx.gridIO().sendOrderedMessage(node, topic, msgId, msg, plc, timeout, false);
+                cctx.gridIO().sendOrderedMessage(node, topic, msgId, msg, policy(node), timeout, false);
 
                 if (log.isDebugEnabled())
                     log.debug("Sent ordered cache message [topic=" + topic + ", msg=" + msg +
@@ -773,6 +773,40 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
         X.println(">>> Cache IO manager memory stats [grid=" + cctx.gridName() + ", cache=" + cctx.name() + ']');
         X.println(">>>   clsHandlersSize: " + clsHandlers.size());
         X.println(">>>   orderedHandlersSize: " + orderedHandlers.size());
+    }
+
+    /**
+     * Get policy for the given message.
+     *
+     * @param node Destination node.
+     * @return Policy.
+     */
+    @Deprecated
+    private GridIoPolicy policy(GridNode node) {
+        if (plc == UTILITY_CACHE_POOL) {
+            if (!node.version().greaterThanEqual(6, 5, 7))
+                return SYSTEM_POOL;
+        }
+
+        return plc;
+    }
+
+    /**
+     * Get policy for the given message.
+     *
+     * @param nodes Destination nodes.
+     * @return Policy.
+     */
+    @Deprecated
+    private GridIoPolicy policy(Collection<? extends GridNode> nodes) {
+        if (plc == UTILITY_CACHE_POOL) {
+            for (GridNode node : nodes) {
+                if (!node.version().greaterThanEqual(6, 5, 7))
+                    return SYSTEM_POOL;
+            }
+        }
+
+        return plc;
     }
 
     /**
