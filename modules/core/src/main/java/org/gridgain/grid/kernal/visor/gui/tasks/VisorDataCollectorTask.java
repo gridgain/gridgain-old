@@ -21,6 +21,7 @@ import org.gridgain.grid.kernal.visor.cmd.dto.*;
 import org.gridgain.grid.kernal.visor.cmd.dto.event.*;
 import org.gridgain.grid.kernal.visor.gui.dto.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.product.*;
 import org.gridgain.grid.streamer.*;
 import org.gridgain.grid.util.ipc.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -477,6 +478,9 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
         /** */
         private static final long serialVersionUID = 0L;
 
+        private static final transient GridProductVersion SECURITY_EVENTS_AVAILABLE_SINCE_VER =
+            GridProductVersion.fromString("6.5.0");
+
         /**
          * Create job with given argument.
          *
@@ -517,7 +521,17 @@ public class VisorDataCollectorTask extends VisorMultiNodeTask<VisorDataCollecto
                     }
                 }
 
-                res.events.addAll(collectEvents(g, arg.evtOrderKey, arg.evtThrottleCntrKey, arg.taskMonitoringEnabled));
+                boolean securityEvts = true;
+
+                for (GridNode n : g.nodes())
+                    if (n.version().compareTo(SECURITY_EVENTS_AVAILABLE_SINCE_VER) < 0) {
+                        securityEvts = false;
+
+                        break;
+                    }
+
+                res.events.addAll(collectEvents(g, arg.evtOrderKey, arg.evtThrottleCntrKey, arg.taskMonitoringEnabled,
+                    securityEvts));
             }
             catch(Throwable eventsEx) {
                 res.eventsEx = eventsEx;

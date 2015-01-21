@@ -90,7 +90,7 @@ public class VisorCacheCollectMetricsTask extends VisorMultiNodeTask<GridBiTuple
             }
         }
 
-        Collection<VisorCacheAggregatedMetrics> aggrMetrics = grpAggrMetrics.values();
+        Collection<VisorCacheAggregatedMetrics> aggrMetrics = new ArrayList<>(grpAggrMetrics.values());
 
         // Final aggregation of averages.
         for (VisorCacheAggregatedMetrics metric : aggrMetrics) {

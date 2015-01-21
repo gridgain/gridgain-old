@@ -140,10 +140,11 @@ public class VisorTaskUtilsEnt extends VisorTaskUtils {
      * @param evtOrderKey Unique key to take last order key from node local map.
      * @param evtThrottleCntrKey  Unique key to take throttle count from node local map.
      * @param all If {@code true} then collect all events otherwise collect only non task events.
+     * @param security If {@code true} then collect security events.
      * @return Collections of node events
      */
     public static Collection<VisorGridEvent> collectEvents(Grid g, String evtOrderKey, String evtThrottleCntrKey,
-        final boolean all) {
+        final boolean all, boolean security) {
         assert g != null;
 
         GridNodeLocalMap<String, Long> nl = g.nodeLocalMap();
@@ -222,23 +223,25 @@ public class VisorTaskUtilsEnt extends VisorTaskUtils {
 
                 res.add(new VisorGridLicenseEvent(tid, id, name, nid, t, msg, shortDisplay, le.licenseId()));
             }
-            else if (e instanceof GridAuthorizationEvent) {
-                GridAuthorizationEvent ae = (GridAuthorizationEvent)e;
+            else if (security) {
+                if (e instanceof GridAuthorizationEvent) {
+                    GridAuthorizationEvent ae = (GridAuthorizationEvent)e;
 
-                res.add(new VisorGridAuthorizationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.operation(),
-                    ae.subject()));
-            }
-            else if (e instanceof GridAuthenticationEvent) {
-                GridAuthenticationEvent ae = (GridAuthenticationEvent)e;
+                    res.add(new VisorGridAuthorizationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.operation(),
+                        ae.subject()));
+                }
+                else if (e instanceof GridAuthenticationEvent) {
+                    GridAuthenticationEvent ae = (GridAuthenticationEvent)e;
 
-                res.add(new VisorGridAuthenticationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.subjectType(),
-                    ae.subjectId(), ae.login()));
-            }
-            else if (e instanceof GridSecureSessionEvent) {
-                GridSecureSessionEvent se = (GridSecureSessionEvent)e;
+                    res.add(new VisorGridAuthenticationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.subjectType(),
+                        ae.subjectId(), ae.login()));
+                }
+                else if (e instanceof GridSecureSessionEvent) {
+                    GridSecureSessionEvent se = (GridSecureSessionEvent)e;
 
-                res.add(new VisorGridSecuritySessionEvent(tid, id, name, nid, t, msg, shortDisplay, se.subjectType(),
-                    se.subjectId()));
+                    res.add(new VisorGridSecuritySessionEvent(tid, id, name, nid, t, msg, shortDisplay, se.subjectType(),
+                        se.subjectId()));
+                }
             }
         }
 
