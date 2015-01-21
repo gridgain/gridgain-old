@@ -993,8 +993,16 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
 
         GridCacheMvccCandidate<K> cand = addEntry(entry);
 
-        if (cand != null && !cand.reentry())
-            distributedKeys.add(key);
+        if (cand != null) {
+            if (!cand.reentry())
+                distributedKeys.add(key);
+        }
+        else {
+            assert inTx();
+            assert tx.implicit();
+
+            tx.addKeyMapping(cctx.localNode(), Collections.singletonList(key));
+        }
 
         return inTx() && cand == null;
     }
