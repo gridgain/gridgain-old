@@ -210,10 +210,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     @GridToStringExclude
     private GridPortables portables;
 
-    /** DR pool. */
-    @GridToStringExclude
-    private ExecutorService drPool;
-
     /** Kernal gateway. */
     @GridToStringExclude
     private final AtomicReference<GridKernalGateway> gw = new AtomicReference<>();
@@ -512,12 +508,12 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
     /**
      * @param cfg Grid configuration to use.
-     * @param drPool Dr executor service.
+     * @param utilityCachePool Utility cache pool.
      * @param errHnd Error handler to use for notification about startup problems.
      * @throws GridException Thrown in case of any errors.
      */
     @SuppressWarnings({"CatchGenericClass", "unchecked"})
-    public void start(final GridConfiguration cfg, @Nullable ExecutorService drPool, GridAbsClosure errHnd)
+    public void start(final GridConfiguration cfg, @Nullable ExecutorService utilityCachePool, GridAbsClosure errHnd)
         throws GridException {
         gw.compareAndSet(null, new GridKernalGatewayImpl(cfg.getGridName()));
 
@@ -626,7 +622,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
         // Spin out SPIs & managers.
         try {
-            GridKernalContextImpl ctx = new GridKernalContextImpl(log, this, cfg, gw, ENT);
+            GridKernalContextImpl ctx = new GridKernalContextImpl(log, this, cfg, gw, utilityCachePool, ENT);
 
             nodeLoc = new GridNodeLocalMapImpl(ctx);
 
@@ -644,8 +640,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
             ctx.product(new GridProductImpl(ctx, verChecker));
 
             scheduler = new GridSchedulerImpl(ctx);
-
-            this.drPool = drPool;
 
             startProcessor(ctx, rsrcProc, attrs);
 
@@ -1926,6 +1920,21 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                 }
             }
 
+            // Cancel update notification timer.
+            if (updateNtfTimer != null)
+                updateNtfTimer.cancel();
+
+            if (starveTimer != null)
+                starveTimer.cancel();
+
+            // Cancel license timer.
+            if (licTimer != null)
+                licTimer.cancel();
+
+            // Cancel metrics log timer.
+            if (metricsLogTimer != null)
+                metricsLogTimer.cancel();
+
             boolean interrupted = false;
 
             while (true) {
@@ -1953,21 +1962,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
                 // No more kernal calls from this point on.
                 gw.setState(STOPPING);
-
-                // Cancel update notification timer.
-                if (updateNtfTimer != null)
-                    updateNtfTimer.cancel();
-
-                if (starveTimer != null)
-                    starveTimer.cancel();
-
-                // Cancel license timer.
-                if (licTimer != null)
-                    licTimer.cancel();
-
-                // Cancel metrics log timer.
-                if (metricsLogTimer != null)
-                    metricsLogTimer.cancel();
 
                 // Clear node local store.
                 nodeLoc.clear();
@@ -2753,11 +2747,6 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
         finally {
             unguard();
         }
-    }
-
-    /** {@inheritDoc} */
-    @Nullable @Override public ExecutorService drPool() {
-        return drPool;
     }
 
     /**

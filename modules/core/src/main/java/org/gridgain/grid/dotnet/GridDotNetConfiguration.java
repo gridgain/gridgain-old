@@ -33,7 +33,8 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
 
     /**
      * Copy constructor.
-     * @param cfg configuration to copy.
+     *
+     * @param cfg Configuration to copy.
      */
     public GridDotNetConfiguration(GridDotNetConfiguration cfg) {
         if (cfg.getPortableConfiguration() != null)
@@ -72,6 +73,15 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
         this.assemblies = assemblies;
     }
 
+    /**
+     * Copy configuration.
+     *
+     * @return Copied configuration.
+     */
+    public GridDotNetConfiguration copy() {
+        return new GridDotNetConfiguration(this);
+    }
+
     /** {@inheritDoc} */
     @Override public void writePortable(GridPortableWriter writer) throws GridPortableException {
         GridPortableRawWriter rawWriter = writer.rawWriter();
@@ -84,7 +94,7 @@ public class GridDotNetConfiguration implements GridPortableMarshalAware {
     @Override public void readPortable(GridPortableReader reader) throws GridPortableException {
         GridPortableRawReader rawReader = reader.rawReader();
 
-        portableCfg = (GridDotNetPortableConfiguration)rawReader.readObject();
+        portableCfg = rawReader.readObject();
         assemblies = (List<String>)rawReader.<String>readCollection();
     }
 

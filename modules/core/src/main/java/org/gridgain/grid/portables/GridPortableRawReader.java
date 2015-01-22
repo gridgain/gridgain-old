@@ -104,7 +104,7 @@ public interface GridPortableRawReader {
      * @return Object.
      * @throws GridPortableException In case of error.
      */
-    @Nullable public Object readObject() throws GridPortableException;
+    @Nullable public <T> T readObject() throws GridPortableException;
 
     /**
      * @return Byte array.

@@ -27,9 +27,9 @@ public class GridGgfsServerManagerIpcEndpointRegistrationOnLinuxAndMacSelfTest
         GridConfiguration cfg = gridConfiguration();
 
         cfg.setGgfsConfiguration(
-            gridGgfsConfiguration(null), // Check null IPC endpoint config won't bring any hassles.
-            gridGgfsConfiguration("{type:'tcp', port:" + (DFLT_IPC_PORT + 1) + "}"),
-            gridGgfsConfiguration("{type:'shmem', port:" + (DFLT_IPC_PORT + 2) + "}"));
+            gridGgfsConfiguration(null, null, null), // Check null IPC endpoint config won't bring any hassles.
+            gridGgfsConfiguration("tcp", DFLT_IPC_PORT + 1, null),
+            gridGgfsConfiguration("shmem", DFLT_IPC_PORT + 2, null));
 
         G.start(cfg);
 

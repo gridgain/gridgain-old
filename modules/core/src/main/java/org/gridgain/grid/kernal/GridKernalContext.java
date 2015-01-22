@@ -313,11 +313,11 @@ public interface GridKernalContext extends GridMetadataAware, Iterable<GridCompo
     public GridHadoopProcessorAdapter hadoop();
 
     /**
-     * Gets DR pool.
+     * Gets utility cache pool.
      *
-     * @return DR pool.
+     * @return Utility cache pool.
      */
-    public ExecutorService drPool();
+    public ExecutorService utilityCachePool();
 
     /**
      * Gets version converter processor.

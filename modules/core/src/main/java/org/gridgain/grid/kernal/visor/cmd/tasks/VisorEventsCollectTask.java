@@ -16,6 +16,7 @@ import org.gridgain.grid.kernal.processors.task.*;
 import org.gridgain.grid.kernal.visor.cmd.*;
 import org.gridgain.grid.kernal.visor.cmd.dto.event.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.product.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
@@ -169,6 +170,9 @@ public class VisorEventsCollectTask extends VisorMultiNodeTask<VisorEventsCollec
         /** */
         private static final long serialVersionUID = 0L;
 
+        private static final transient GridProductVersion SECURITY_EVENTS_AVAILABLE_SINCE_VER =
+            GridProductVersion.fromString("6.5.0");
+
         /**
          * Create job with specified argument.
          *
@@ -272,6 +276,15 @@ public class VisorEventsCollectTask extends VisorMultiNodeTask<VisorEventsCollec
 
             Long maxOrder = startEvtOrder;
 
+            boolean securityEvts = true;
+
+            for (GridNode n : g.nodes())
+                if (n.version().compareTo(SECURITY_EVENTS_AVAILABLE_SINCE_VER) < 0) {
+                    securityEvts = false;
+
+                    break;
+                }
+
             for (GridEvent e : evts) {
                 int tid = e.type();
                 GridUuid id = e.id();
@@ -315,23 +328,25 @@ public class VisorEventsCollectTask extends VisorMultiNodeTask<VisorEventsCollec
                     res.add(new VisorGridDiscoveryEvent(tid, id, name, nid, t, msg, shortDisplay,
                         node.id(), addr, node.isDaemon()));
                 }
-                else if (e instanceof GridAuthenticationEvent) {
-                    GridAuthenticationEvent ae = (GridAuthenticationEvent)e;
+                else if (securityEvts) {
+                    if (e instanceof GridAuthenticationEvent) {
+                        GridAuthenticationEvent ae = (GridAuthenticationEvent)e;
 
-                    res.add(new VisorGridAuthenticationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.subjectType(),
-                        ae.subjectId(), ae.login()));
-                }
-                else if (e instanceof GridAuthorizationEvent) {
-                    GridAuthorizationEvent ae = (GridAuthorizationEvent)e;
+                        res.add(new VisorGridAuthenticationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.subjectType(),
+                            ae.subjectId(), ae.login()));
+                    }
+                    else if (e instanceof GridAuthorizationEvent) {
+                        GridAuthorizationEvent ae = (GridAuthorizationEvent)e;
 
-                    res.add(new VisorGridAuthorizationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.operation(),
-                        ae.subject()));
-                }
-                else if (e instanceof GridSecureSessionEvent) {
-                    GridSecureSessionEvent se = (GridSecureSessionEvent) e;
+                        res.add(new VisorGridAuthorizationEvent(tid, id, name, nid, t, msg, shortDisplay, ae.operation(),
+                            ae.subject()));
+                    }
+                    else if (e instanceof GridSecureSessionEvent) {
+                        GridSecureSessionEvent se = (GridSecureSessionEvent)e;
 
-                    res.add(new VisorGridSecuritySessionEvent(tid, id, name, nid, t, msg, shortDisplay, se.subjectType(),
-                        se.subjectId()));
+                        res.add(new VisorGridSecuritySessionEvent(tid, id, name, nid, t, msg, shortDisplay, se.subjectType(),
+                            se.subjectId()));
+                    }
                 }
                 else
                     res.add(new VisorGridEvent(tid, id, name, nid, t, msg, shortDisplay));

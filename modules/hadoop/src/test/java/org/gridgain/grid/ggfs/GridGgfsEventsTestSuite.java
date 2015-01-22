@@ -15,8 +15,9 @@ import org.gridgain.grid.kernal.ggfs.hadoop.*;
 import org.gridgain.grid.kernal.processors.hadoop.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.ipc.shmem.*;
-import org.gridgain.testframework.*;
 import org.jetbrains.annotations.*;
+
+import java.util.*;
 
 import static org.gridgain.grid.ggfs.GridGgfsMode.*;
 
@@ -69,8 +70,10 @@ public class GridGgfsEventsTestSuite extends TestSuite {
         @Override protected GridGgfsConfiguration getGgfsConfiguration() throws GridException {
             GridGgfsConfiguration ggfsCfg = super.getGgfsConfiguration();
 
-            ggfsCfg.setIpcEndpointConfiguration(GridGgfsTestUtils.jsonToMap("{type:'shmem', port:" +
-                (GridIpcSharedMemoryServerEndpoint.DFLT_IPC_PORT + 1) + "}"));
+            ggfsCfg.setIpcEndpointConfiguration(new HashMap<String, String>() {{
+                put("type", "shmem");
+                put("port", String.valueOf(GridIpcSharedMemoryServerEndpoint.DFLT_IPC_PORT + 1));
+            }});
 
             return ggfsCfg;
         }
@@ -84,9 +87,10 @@ public class GridGgfsEventsTestSuite extends TestSuite {
         @Override protected GridGgfsConfiguration getGgfsConfiguration() throws GridException {
             GridGgfsConfiguration ggfsCfg = super.getGgfsConfiguration();
 
-            ggfsCfg.setIpcEndpointConfiguration(GridGgfsTestUtils.jsonToMap("{type:'tcp', port:" +
-                (GridIpcSharedMemoryServerEndpoint.DFLT_IPC_PORT + 1) + "}"));
-
+            ggfsCfg.setIpcEndpointConfiguration(new HashMap<String, String>() {{
+                put("type", "tcp");
+                put("port", String.valueOf(GridIpcSharedMemoryServerEndpoint.DFLT_IPC_PORT + 1));
+            }});
             return ggfsCfg;
         }
     }
@@ -117,7 +121,10 @@ public class GridGgfsEventsTestSuite extends TestSuite {
 
             ggfsCfg.setName("ggfs-secondary");
             ggfsCfg.setDefaultMode(PRIMARY);
-            ggfsCfg.setIpcEndpointConfiguration(GridGgfsTestUtils.jsonToMap("{type:'tcp', port:11500}"));
+            ggfsCfg.setIpcEndpointConfiguration(new HashMap<String, String>(){{
+                put("type", "tcp");
+                put("port", "11500");
+            }});
 
             return ggfsCfg;
         }
@@ -211,7 +218,10 @@ public class GridGgfsEventsTestSuite extends TestSuite {
 
             ggfsCfg.setName("ggfs-secondary");
             ggfsCfg.setDefaultMode(PRIMARY);
-            ggfsCfg.setIpcEndpointConfiguration(GridGgfsTestUtils.jsonToMap("{type:'tcp', port:11500}"));
+            ggfsCfg.setIpcEndpointConfiguration(new HashMap<String, String>() {{
+                put("type", "tcp");
+                put("port", "11500");
+            }});
 
             return ggfsCfg;
         }

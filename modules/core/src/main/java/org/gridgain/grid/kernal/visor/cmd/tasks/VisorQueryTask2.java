@@ -10,7 +10,7 @@
 package org.gridgain.grid.kernal.visor.cmd.tasks;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.cache.GridCache;
+import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.query.GridCacheQueryFuture;
 import org.gridgain.grid.kernal.GridKernal;
 import org.gridgain.grid.kernal.processors.cache.query.*;
@@ -76,8 +76,10 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
                 if (c == null)
                     return new GridBiTuple<>(new GridException("Cache not found: " + escapeName(arg.cacheName())), null);
 
+                GridCacheProjection<Object, Object> cp = c.keepPortable();
+
                 if (scan) {
-                    GridCacheQueryFuture<Map.Entry<Object, Object>> fut = c.queries().createScanQuery(null)
+                    GridCacheQueryFuture<Map.Entry<Object, Object>> fut = cp.queries().createScanQuery(null)
                         .pageSize(arg.pageSize())
                         .projection(g.forNodeIds(arg.proj()))
                         .execute();
@@ -102,7 +104,7 @@ public class VisorQueryTask2 extends VisorOneNodeTask<VisorQueryTask.VisorQueryA
                         SCAN_COL_NAMES, rows.get1(), next != null, duration));
                 }
                 else {
-                    GridCacheQueryFuture<List<?>> fut = ((GridCacheQueriesEx<?, ?>)c.queries())
+                    GridCacheQueryFuture<List<?>> fut = ((GridCacheQueriesEx<?, ?>)cp.queries())
                         .createSqlFieldsQuery(arg.queryTxt(), true)
                         .pageSize(arg.pageSize())
                         .projection(g.forNodeIds(arg.proj()))

@@ -15,7 +15,6 @@ import org.gridgain.grid.cache.affinity.rendezvous.*;
 import org.gridgain.grid.compute.*;
 import org.gridgain.grid.dr.hub.sender.*;
 import org.gridgain.grid.ggfs.*;
-import org.gridgain.grid.kernal.processors.interop.*;
 import org.gridgain.grid.kernal.processors.resource.*;
 import org.gridgain.grid.kernal.processors.spring.*;
 import org.gridgain.grid.lang.*;
@@ -515,15 +514,16 @@ public class GridGainEx {
      *
      * @param springCfgPath Spring config path.
      * @param gridName Grid name.
-     * @param envPtr Environment pointer.
+     * @param cfgClo Configuration closure.
      * @return Started Grid.
      * @throws GridException If failed.
      */
-    public static Grid startInterop(@Nullable String springCfgPath, @Nullable String gridName, long envPtr)
+    public static Grid startInterop(@Nullable String springCfgPath, @Nullable String gridName,
+        GridClosure<GridConfiguration, GridConfiguration> cfgClo)
         throws GridException {
-        GridInteropProcessorAdapter.ENV_PTR.set(envPtr);
+        URL url = resolveSpringUrl(springCfgPath);
 
-        return start(springCfgPath, gridName);
+        return start(url, gridName, null, cfgClo);
     }
 
     /**
@@ -644,21 +644,7 @@ public class GridGainEx {
      */
     public static Grid start(String springCfgPath, @Nullable String gridName,
         @Nullable GridSpringResourceContext springCtx) throws GridException {
-        A.notNull(springCfgPath, "springCfgPath");
-
-        URL url;
-
-        try {
-            url = new URL(springCfgPath);
-        }
-        catch (MalformedURLException e) {
-            url = U.resolveGridGainUrl(springCfgPath);
-
-            if (url == null)
-                throw new GridException("Spring XML configuration path is invalid: " + springCfgPath +
-                    ". Note that this path should be either absolute or a relative local file system path, " +
-                    "relative to META-INF in classpath or valid URL to GRIDGAIN_HOME.", e);
-        }
+        URL url = resolveSpringUrl(springCfgPath);
 
         return start(url, gridName, springCtx);
     }
@@ -706,6 +692,23 @@ public class GridGainEx {
      */
     public static Grid start(URL springCfgUrl, @Nullable String gridName,
         @Nullable GridSpringResourceContext springCtx) throws GridException {
+        return start(springCfgUrl, gridName, springCtx, null);
+    }
+
+    /**
+     * Internal Spring-based start routine.
+     *
+     * @param springCfgUrl Spring XML configuration file URL. This cannot be {@code null}.
+     * @param gridName Grid name that will override default.
+     * @param springCtx Optional Spring application context.
+     * @param cfgClo Optional closure to change configuration before it is used to start the grid.
+     * @return Started grid.
+     * @throws GridException If failed.
+     */
+    private static Grid start(URL springCfgUrl, @Nullable String gridName,
+        @Nullable GridSpringResourceContext springCtx,
+        @Nullable GridClosure<GridConfiguration, GridConfiguration> cfgClo)
+        throws GridException {
         A.notNull(springCfgUrl, "springCfgUrl");
 
         boolean isLog4jUsed = U.gridClassLoader().getResource("org/apache/log4j/Appender.class") != null;
@@ -741,6 +744,12 @@ public class GridGainEx {
                 if (cfg.getGridName() == null && !F.isEmpty(gridName))
                     cfg.setGridName(gridName);
 
+                if (cfgClo != null) {
+                    cfg = cfgClo.apply(cfg);
+
+                    assert cfg != null;
+                }
+
                 // Use either user defined context or our one.
                 GridNamedInstance grid = start0(
                     new GridStartContext(cfg, springCfgUrl, springCtx == null ? cfgMap.get2() : springCtx));
@@ -768,6 +777,33 @@ public class GridGainEx {
         GridNamedInstance res = !grids.isEmpty() ? grids.get(0) : null;
 
         return res != null ? res.grid() : null;
+    }
+
+    /**
+     * Resolve Spring configuration URL.
+     *
+     * @param springCfgPath Spring XML configuration file path or URL. This cannot be {@code null}.
+     * @return URL.
+     * @throws GridException If failed.
+     */
+    private static URL resolveSpringUrl(String springCfgPath) throws GridException {
+        A.notNull(springCfgPath, "springCfgPath");
+
+        URL url;
+
+        try {
+            url = new URL(springCfgPath);
+        }
+        catch (MalformedURLException e) {
+            url = U.resolveGridGainUrl(springCfgPath);
+
+            if (url == null)
+                throw new GridException("Spring XML configuration path is invalid: " + springCfgPath +
+                    ". Note that this path should be either absolute or a relative local file system path, " +
+                    "relative to META-INF in classpath or valid URL to GRIDGAIN_HOME.", e);
+        }
+
+        return url;
     }
 
     /**
@@ -1163,8 +1199,8 @@ public class GridGainEx {
         /** REST executor service shutdown flag. */
         private boolean restSvcShutdown;
 
-        /** DR executor service. */
-        private ExecutorService drExecSvc;
+        /** Utility cache executor service. */
+        private ExecutorService utilityCacheExecSvc;
 
         /** Grid state. */
         private volatile GridGainState state = STOPPED;
@@ -1573,6 +1609,13 @@ public class GridGainEx {
                 clientCfg.setRestExecutorService(restExecSvc);
             }
 
+            utilityCacheExecSvc = new GridThreadPoolExecutor(
+                "utility-" + cfg.getGridName(),
+                DFLT_SYSTEM_CORE_THREAD_CNT,
+                DFLT_SYSTEM_MAX_THREAD_CNT,
+                DFLT_SYSTEM_KEEP_ALIVE_TIME,
+                new LinkedBlockingQueue<Runnable>(DFLT_SYSTEM_THREADPOOL_QUEUE_CAP));
+
             execSvcShutdown = cfg.getExecutorServiceShutdown();
             sysSvcShutdown = cfg.getSystemExecutorServiceShutdown();
             mgmtSvcShutdown = cfg.getManagementExecutorServiceShutdown();
@@ -1892,20 +1935,6 @@ public class GridGainEx {
                 // No-op.
             }
 
-            if (!drSysCaches.isEmpty()) {
-                // Note that since we use 'LinkedBlockingQueue', number of
-                // maximum threads has no effect.
-                drExecSvc = new GridThreadPoolExecutor(
-                    "dr-" + cfg.getGridName(),
-                    Math.min(16, drSysCaches.size() * 2),
-                    Math.min(16, drSysCaches.size() * 2),
-                    DFLT_SYSTEM_KEEP_ALIVE_TIME,
-                    new LinkedBlockingQueue<Runnable>(DFLT_SYSTEM_THREADPOOL_QUEUE_CAP));
-
-                // Pre-start all threads as they are guaranteed to be needed.
-                ((ThreadPoolExecutor)drExecSvc).prestartAllCoreThreads();
-            }
-
             // Ensure that SPIs support multiple grid instances, if required.
             if (!startCtx.single()) {
                 ensureMultiInstanceSupport(deploySpi);
@@ -1932,7 +1961,7 @@ public class GridGainEx {
                 // Init here to make grid available to lifecycle listeners.
                 grid = grid0;
 
-                grid0.start(myCfg, drExecSvc, new CA() {
+                grid0.start(myCfg, utilityCacheExecSvc, new CA() {
                     @Override public void apply() {
                         startLatch.countDown();
                     }
@@ -2210,10 +2239,10 @@ public class GridGainEx {
                 restExecSvc = null;
             }
 
-            if (drExecSvc != null) {
-                U.shutdownNow(getClass(), drExecSvc, log);
+            if (utilityCacheExecSvc != null) {
+                U.shutdownNow(getClass(), utilityCacheExecSvc, log);
 
-                drExecSvc = null;
+                utilityCacheExecSvc = null;
             }
         }
 
