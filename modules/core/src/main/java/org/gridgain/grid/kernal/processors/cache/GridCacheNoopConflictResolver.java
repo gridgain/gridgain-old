@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 
@@ -25,7 +24,7 @@ public class GridCacheNoopConflictResolver implements GridCacheConflictResolver 
 
     /** {@inheritDoc} */
     @Override public <K, V> GridDrReceiverConflictContextImpl<K, V> resolve(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntry<K, V> newEntry) throws GridException {
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
         assert false : "Should not reach this place.";
 
         return null;

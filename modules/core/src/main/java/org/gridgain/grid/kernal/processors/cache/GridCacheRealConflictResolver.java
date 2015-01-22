@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.dr.cache.receiver.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
@@ -49,7 +48,7 @@ public class GridCacheRealConflictResolver implements GridCacheConflictResolver 
     /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override public <K, V> GridDrReceiverConflictContextImpl<K, V> resolve(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntry<K, V> newEntry) throws GridException {
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
         GridDrReceiverConflictContextImpl<K, V> ctx = new GridDrReceiverConflictContextImpl<>(oldEntry, newEntry);
 
         if (newEntry.dataCenterId() != oldEntry.dataCenterId() || mode == DR_ALWAYS) {
@@ -68,16 +67,25 @@ public class GridCacheRealConflictResolver implements GridCacheConflictResolver 
             if (oldEntry.isStartVersion())
                 ctx.useNew();
             else {
-                long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
+                if (atomicVerComparator) {
+                    // Handle special case when version check using ATOMIC cache comparator is required.
+                    if (GridCacheMapEntry.ATOMIC_VER_COMPARATOR.compare(oldEntry.version(), newEntry.version()) >= 0)
+                        ctx.useOld();
+                    else
+                        ctx.useNew();
+                }
+                else {
+                    long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
 
-                if (topVerDiff > 0)
-                    ctx.useNew();
-                else if (topVerDiff < 0)
-                    ctx.useOld();
-                else if (newEntry.order() > oldEntry.order())
-                    ctx.useNew();
-                else
-                    ctx.useOld();
+                    if (topVerDiff > 0)
+                        ctx.useNew();
+                    else if (topVerDiff < 0)
+                        ctx.useOld();
+                    else if (newEntry.order() > oldEntry.order())
+                        ctx.useNew();
+                    else
+                        ctx.useOld();
+                }
             }
         }
 

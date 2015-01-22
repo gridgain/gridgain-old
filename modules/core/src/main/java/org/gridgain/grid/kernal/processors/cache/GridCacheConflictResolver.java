@@ -10,7 +10,6 @@
 package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 
@@ -32,9 +31,10 @@ public interface GridCacheConflictResolver {
      *
      * @param oldEntry Old entry.
      * @param newEntry New entry.
+     * @param atomicVerComparator Whether to use atomic version comparator.
      * @return Conflict resolution context.
      * @throws GridException If failed.
      */
     public <K, V> GridDrReceiverConflictContextImpl<K, V> resolve(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntry<K, V> newEntry) throws GridException;
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException;
 }

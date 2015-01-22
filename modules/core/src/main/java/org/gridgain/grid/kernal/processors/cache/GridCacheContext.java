@@ -1587,12 +1587,13 @@ public class GridCacheContext<K, V> implements Externalizable {
      *
      * @param oldEntry Old entry.
      * @param newEntry New entry.
+     * @param atomicVerComparator Whether to use atomic version comparator.
      * @return Conflict resolution result.
      * @throws GridException In case of exception.
      */
     public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntry<K, V> newEntry) throws GridException {
-        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry);
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
+        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator);
 
         if (cacheCfg.getDrReceiverConfiguration() != null)
             cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());
