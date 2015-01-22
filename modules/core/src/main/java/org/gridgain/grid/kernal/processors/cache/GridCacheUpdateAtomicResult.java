@@ -53,7 +53,7 @@ public class GridCacheUpdateAtomicResult<K, V> {
      * @param oldVal Old value.
      * @param newVal New value.
      * @param newTtl New TTL.
-     * @param drExpireTime Explict DR expire time (if any).
+     * @param drExpireTime Explicit DR expire time (if any).
      * @param rmvVer Version for deferred delete.
      * @param drConflictCtx DR conflict resolution context.
      * @param sndToDht Whether update should be propagated to DHT node.
