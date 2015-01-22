@@ -784,7 +784,7 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
     @Deprecated
     private GridIoPolicy policy(GridNode node) {
         if (plc == UTILITY_CACHE_POOL) {
-            if (!node.version().greaterThanEqual(6, 5, 7))
+            if (!node.version().greaterThanEqual(6, 6, 0))
                 return SYSTEM_POOL;
         }
 
@@ -801,7 +801,7 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
     private GridIoPolicy policy(Collection<? extends GridNode> nodes) {
         if (plc == UTILITY_CACHE_POOL) {
             for (GridNode node : nodes) {
-                if (!node.version().greaterThanEqual(6, 5, 7))
+                if (!node.version().greaterThanEqual(6, 6, 0))
                     return SYSTEM_POOL;
             }
         }
