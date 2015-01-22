@@ -65,16 +65,20 @@ public class GridCacheRealConflictResolver implements GridCacheConflictResolver 
         }
         else {
             // Resolve the conflict automatically.
-            long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
+            if (oldEntry.isStartVersion())
+                ctx.useNew();
+            else {
+                long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
 
-            if (topVerDiff > 0)
-                ctx.useNew();
-            else if (topVerDiff < 0)
-                ctx.useOld();
-            else if (newEntry.order() > oldEntry.order())
-                ctx.useNew();
-            else
-                ctx.useOld();
+                if (topVerDiff > 0)
+                    ctx.useNew();
+                else if (topVerDiff < 0)
+                    ctx.useOld();
+                else if (newEntry.order() > oldEntry.order())
+                    ctx.useNew();
+                else
+                    ctx.useOld();
+            }
         }
 
         return ctx;
