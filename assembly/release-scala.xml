@@ -37,7 +37,7 @@
 
     <fileSets>
         <fileSet>
-            <directory>${basedir}/os/bin</directory>
+            <directory>bin</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
                 <include>**/ggvisorcmd.bat</include>
@@ -46,7 +46,7 @@
         </fileSet>
 
         <fileSet>
-            <directory>${basedir}/os/bin</directory>
+            <directory>bin</directory>
             <outputDirectory>/</outputDirectory>
             <fileMode>0755</fileMode>
             <includes>
