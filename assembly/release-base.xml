@@ -63,6 +63,7 @@
                 <exclude>**/*hadoop*.bat</exclude>
                 <exclude>ggrouter.bat</exclude>
                 <exclude>**/target-classpath.bat</exclude>
+                <exclude>**/ggvisorcmd.bat</exclude>
             </excludes>
         </fileSet>
 
@@ -78,6 +79,7 @@
                 <exclude>ggrouter.sh</exclude>
                 <exclude>**/target-classpath.sh</exclude>
                 <exclude>**/service.sh</exclude>
+                <exclude>**/ggvisorcmd.sh</exclude>
             </excludes>
         </fileSet>
 
