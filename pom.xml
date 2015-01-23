@@ -94,7 +94,9 @@
     <profiles>
         <profile>
             <id>scala</id>
-
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <modules>
                 <module>modules/scalar</module>
                 <module>modules/visor-console</module>
