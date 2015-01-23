@@ -188,6 +188,9 @@ public class GridCacheContext<K, V> implements Externalizable {
     /** Cache name. */
     private String cacheName;
 
+    /** Conflict resovler. */
+    private GridCacheConflictResolver rslvr;
+
     /**
      * Empty constructor required for {@link Externalizable}.
      */
@@ -304,6 +307,12 @@ public class GridCacheContext<K, V> implements Externalizable {
         dataCenterId = ctx.config().getDataCenterId();
 
         cacheName = cacheCfg.getName();
+
+        GridDrReceiverCacheConfiguration drRcvCfg = cacheCfg.getDrReceiverConfiguration();
+
+        rslvr = drRcvCfg != null ? new GridCacheRealConflictResolver(drRcvCfg.getConflictResolverMode(),
+            drRcvCfg.getConflictResolver()) : storeMgr.isLocalStore() ?
+            new GridCacheRealConflictResolver(DR_AUTO, null) : new GridCacheNoopConflictResolver();
     }
 
     /**
@@ -1571,69 +1580,22 @@ public class GridCacheContext<K, V> implements Externalizable {
      * @return {@code True} in case DR is required.
      */
     public boolean drNeedResolve(GridCacheVersion oldVer, GridCacheVersion newVer) {
-        GridDrReceiverCacheConfiguration drRcvCfg = cacheCfg.getDrReceiverConfiguration();
-
-        if (drRcvCfg != null) {
-            GridDrReceiverCacheConflictResolverMode mode = drRcvCfg.getConflictResolverMode();
-
-            assert mode != null;
-
-            return oldVer.dataCenterId() != dataCenterId || newVer.dataCenterId() != dataCenterId || mode == DR_ALWAYS;
-        }
-        else
-            return isStoreEnabled() && store().isLocalStore();
+        return rslvr.needResolve(oldVer, newVer);
     }
     /**
      * Resolve DR conflict.
      *
      * @param oldEntry Old entry.
      * @param newEntry New entry.
+     * @param atomicVerComparator Whether to use atomic version comparator.
      * @return Conflict resolution result.
      * @throws GridException In case of exception.
      */
     public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntry<K, V> newEntry) throws GridException {
-        GridDrReceiverCacheConfiguration drRcvCfg = cacheCfg.getDrReceiverConfiguration();
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
+        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator);
 
-        assert drRcvCfg != null || (isStoreEnabled() && store().isLocalStore());
-
-        GridDrReceiverCacheConflictResolverMode mode = drRcvCfg != null ? drRcvCfg.getConflictResolverMode() : null;
-
-        assert mode != null || (isStoreEnabled() && store().isLocalStore());
-
-        GridDrReceiverConflictContextImpl<K, V> ctx = new GridDrReceiverConflictContextImpl<>(oldEntry, newEntry);
-
-        if (newEntry.dataCenterId() != oldEntry.dataCenterId() || mode == DR_ALWAYS) {
-            // Cannot resolve conflict manually, fallback to resolver.
-            GridDrReceiverCacheConflictResolver<K, V> rslvr = drRcvCfg != null ?
-                (GridDrReceiverCacheConflictResolver<K, V>)drRcvCfg.getConflictResolver() : null;
-
-            assert mode == DR_ALWAYS && rslvr != null || mode == DR_AUTO;
-
-            if (rslvr != null)
-                rslvr.resolve(ctx);
-            else
-                ctx.useNew();
-        }
-        else {
-            // Resolve the conflict automatically.
-            if (isStoreEnabled() && store().isLocalStore() && oldEntry.isStartVersion())
-                ctx.useNew();
-            else {
-                long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
-
-                if (topVerDiff > 0)
-                    ctx.useNew();
-                else if (topVerDiff < 0)
-                    ctx.useOld();
-                else if (newEntry.order() > oldEntry.order())
-                    ctx.useNew();
-                else
-                    ctx.useOld();
-            }
-        }
-
-        if (drRcvCfg != null)
+        if (cacheCfg.getDrReceiverConfiguration() != null)
             cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());
 
         return ctx;

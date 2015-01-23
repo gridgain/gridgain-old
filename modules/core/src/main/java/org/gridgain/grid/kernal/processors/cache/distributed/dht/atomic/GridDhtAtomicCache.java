@@ -922,7 +922,11 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                         boolean replicate = ctx.isDrEnabled();
 
-                        if (storeEnabled() && keys.size() > 1 && cacheCfg.getDrReceiverConfiguration() == null) {
+                        if (keys.size() > 1 &&                             // Several keys ...
+                            storeEnabled() &&                              // and store is enabled ...
+                            !ctx.store().isLocalStore() &&                 // and this is not local store ...
+                            cacheCfg.getDrReceiverConfiguration() == null  // and no DR.
+                        ) {
                             // This method can only be used when there are no replicated entries in the batch.
                             UpdateBatchResult<K, V> updRes = updateWithBatch(node, hasNear, req, res, locked, ver,
                                 dhtFut, completionCb, replicate, taskName);

@@ -108,6 +108,11 @@ public class GridDrPlainEntry<K, V> implements GridDrEntryEx<K, V> {
     }
 
     /** {@inheritDoc} */
+    @Override public GridCacheVersion version() {
+        return ver;
+    }
+
+    /** {@inheritDoc} */
     @Override public boolean isStartVersion() {
         return isStartVer;
     }

@@ -10,11 +10,17 @@
 package org.gridgain.grid.kernal.processors.cache.dr;
 
 import org.gridgain.grid.dr.*;
+import org.gridgain.grid.kernal.processors.cache.*;
 
 /**
  * Data center replication entry.
  */
 public interface GridDrEntryEx<K, V> extends GridDrEntry<K, V> {
+    /**
+     * @return Version.
+     */
+    public GridCacheVersion version();
+
     /**
      * @return {@code True} entry is new.
      */

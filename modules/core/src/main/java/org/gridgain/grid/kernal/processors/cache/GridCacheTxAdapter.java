@@ -1196,9 +1196,9 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
 
         long newExpireTime = newDrExpireTime >= 0L ? newDrExpireTime : CU.toExpireTime(newTtl);
 
-        GridDrEntry<K, V> newEntry = new GridDrPlainEntry<>(key, newVal, newTtl, newExpireTime, newVer);
+        GridDrEntryEx<K, V> newEntry = new GridDrPlainEntry<>(key, newVal, newTtl, newExpireTime, newVer);
 
-        GridDrReceiverConflictContextImpl<K, V> ctx = cctx.drResolveConflict(oldEntry, newEntry);
+        GridDrReceiverConflictContextImpl<K, V> ctx = cctx.drResolveConflict(oldEntry, newEntry, false);
 
         if (ctx.isMerge()) {
             V resVal = ctx.mergeValue();

@@ -64,7 +64,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
     private static final byte IS_UNSWAPPED_MASK = 0x04;
 
     /** */
-    private static final Comparator<GridCacheVersion> ATOMIC_VER_COMPARATOR = new GridCacheAtomicVersionComparator();
+    static final Comparator<GridCacheVersion> ATOMIC_VER_COMPARATOR = new GridCacheAtomicVersionComparator();
 
     /**
      * NOTE
@@ -1719,13 +1719,32 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                     newTtlResolved = true;
 
                     GridDrEntryEx<K, V> oldEntry = drEntry();
-                    GridDrEntry<K, V> newEntry = new GridDrPlainEntry<>(k, (V)writeObj, newTtl, newExpireTime, drVer);
+                    GridDrEntryEx<K, V> newEntry = new GridDrPlainEntry<>(k, (V)writeObj, newTtl, newExpireTime, drVer);
 
-                    drRes = cctx.drResolveConflict(oldEntry, newEntry);
+                    drRes = cctx.drResolveConflict(oldEntry, newEntry, verCheck);
 
                     assert drRes != null;
 
                     if (drRes.isUseOld()) {
+                        // Handle special case with atomic comparator.
+                        if (!isNew() &&                                            // Not initial value,
+                            verCheck &&                                            // and atomic version check,
+                            oldDrVer.dataCenterId() == drVer.dataCenterId() &&     // and data centers are equal,
+                            ATOMIC_VER_COMPARATOR.compare(oldDrVer, drVer) == 0 && // and both versions are equal,
+                            cctx.isStoreEnabled() &&                               // and store is enabled,
+                            primary)                                               // and we are primary.
+                        {
+                            V val = rawGetOrUnmarshalUnlocked(false);
+
+                            if (val == null) {
+                                assert deletedUnlocked();
+
+                                cctx.store().removeFromStore(null, key());
+                            }
+                            else
+                                cctx.store().putToStore(null, key(), val, ver);
+                        }
+
                         old = retval ? rawGetOrUnmarshalUnlocked(false) : val;
 
                         return new GridCacheUpdateAtomicResult<>(false, old, null, 0L, -1L, null, null, false);
