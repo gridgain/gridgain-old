@@ -538,8 +538,8 @@
                                     <packages>org.gridgain.grid.cache.spring</packages>
                                 </group>
                                 <group>
-                                    <title>.Net Configuration</title>
-                                    <packages>org.gridgain.grid.dotnet</packages>
+                                    <title>Interoperability API</title>
+                                    <packages>org.gridgain.grid.interop</packages>
                                 </group>
                             </groups>
                             <header>

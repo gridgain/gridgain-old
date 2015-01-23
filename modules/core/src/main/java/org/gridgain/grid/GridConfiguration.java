@@ -12,12 +12,12 @@ package org.gridgain.grid;
 import org.gridgain.client.ssl.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.compute.*;
-import org.gridgain.grid.dotnet.*;
 import org.gridgain.grid.dr.hub.receiver.*;
 import org.gridgain.grid.dr.hub.sender.*;
 import org.gridgain.grid.events.*;
 import org.gridgain.grid.ggfs.*;
 import org.gridgain.grid.hadoop.*;
+import org.gridgain.grid.interop.*;
 import org.gridgain.grid.kernal.managers.eventstorage.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
@@ -395,8 +395,8 @@ public class GridConfiguration {
     /** Cache configurations. */
     private GridCacheConfiguration[] cacheCfg;
 
-    /** Configuration for .Net nodes. */
-    private GridDotNetConfiguration dotNetCfg;
+    /** Interop configuration. */
+    private GridInteropConfiguration interopCfg;
 
     /** Flag indicating whether cache sanity check is enabled. */
     private boolean cacheSanityCheckEnabled = DFLT_CACHE_SANITY_CHECK_ENABLED;
@@ -599,6 +599,7 @@ public class GridConfiguration {
         hadoopCfg = cfg.getHadoopConfiguration();
         inclEvtTypes = cfg.getIncludeEventTypes();
         includeProps = cfg.getIncludeProperties();
+        interopCfg = cfg.getInteropConfiguration() != null ? cfg.getInteropConfiguration().copy() : null;
         jettyPath = cfg.getRestJettyPath();
         licUrl = cfg.getLicenseUrl();
         lifecycleBeans = cfg.getLifecycleBeans();
@@ -663,8 +664,6 @@ public class GridConfiguration {
         userAttrs = cfg.getUserAttributes();
         waitForSegOnStart = cfg.isWaitForSegmentOnStart();
         warmupClos = cfg.getWarmupClosure();
-        dotNetCfg = cfg.getDotNetConfiguration() == null ?
-            null : new GridDotNetConfiguration(cfg.getDotNetConfiguration());
     }
 
     /**
@@ -3194,19 +3193,21 @@ public class GridConfiguration {
     }
 
     /**
-     * Returns configuration for .Net nodes.
-     * @return Configuration for .Net nodes.
+     * Gets interop configuration.
+     *
+     * @return Interop configuration.
      */
-    @Nullable public GridDotNetConfiguration getDotNetConfiguration() {
-        return dotNetCfg;
+    @Nullable public GridInteropConfiguration getInteropConfiguration() {
+        return interopCfg;
     }
 
     /**
-     * Sets configuration for .Net nodes.
-     * @param dotNetCfg Configuration for .Net nodes
+     * Sets interop configuration.
+     *
+     * @param interopCfg Interop configuration.
      */
-    public void setDotNetConfiguration(@Nullable GridDotNetConfiguration dotNetCfg) {
-        this.dotNetCfg = dotNetCfg;
+    public void setInteropConfiguration(@Nullable GridInteropConfiguration interopCfg) {
+        this.interopCfg = interopCfg;
     }
 
     /** {@inheritDoc} */
