@@ -12,7 +12,6 @@ package org.gridgain.grid.kernal.processors.cache;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.cloner.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.dr.cache.receiver.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.managers.communication.*;
@@ -310,9 +309,9 @@ public class GridCacheContext<K, V> implements Externalizable {
 
         GridDrReceiverCacheConfiguration drRcvCfg = cacheCfg.getDrReceiverConfiguration();
 
-        rslvr = drRcvCfg != null ? new GridCacheRealConflictResolver(drRcvCfg.getConflictResolverMode(),
+        rslvr = drRcvCfg != null ? new GridCacheConflictResolver(drRcvCfg.getConflictResolverMode(),
             drRcvCfg.getConflictResolver()) : storeMgr.isLocalStore() ?
-            new GridCacheRealConflictResolver(DR_AUTO, null) : new GridCacheNoopConflictResolver();
+            new GridCacheConflictResolver(DR_AUTO, null) : null;
     }
 
     /**
@@ -1580,7 +1579,7 @@ public class GridCacheContext<K, V> implements Externalizable {
      * @return {@code True} in case DR is required.
      */
     public boolean drNeedResolve(GridCacheVersion oldVer, GridCacheVersion newVer) {
-        return rslvr.needResolve(oldVer, newVer);
+        return rslvr != null;
     }
     /**
      * Resolve DR conflict.
@@ -1593,9 +1592,11 @@ public class GridCacheContext<K, V> implements Externalizable {
      */
     public GridDrReceiverConflictContextImpl<K, V> drResolveConflict(GridDrEntryEx<K, V> oldEntry,
         GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
+        assert rslvr != null : "Should not reach this place.";
+
         GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator);
 
-        if (cacheCfg.getDrReceiverConfiguration() != null)
+        if (ctx.isManualResolve())
             cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());
 
         return ctx;

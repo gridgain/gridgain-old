@@ -40,6 +40,9 @@ public class GridDrReceiverConflictContextImpl<K, V> implements GridDrReceiverCa
     /** Explicit TTL flag. */
     private boolean explicitTtl;
 
+    /** Manual resolve flag. */
+    private boolean manualResolve;
+
     /**
      * Constructor.
      *
@@ -109,6 +112,20 @@ public class GridDrReceiverConflictContextImpl<K, V> implements GridDrReceiverCa
      */
     public boolean isMerge() {
         return state == State.MERGE;
+    }
+
+    /**
+     * Set manual resolve class.
+     */
+    public void manualResolve() {
+        this.manualResolve = true;
+    }
+
+    /**
+     * @return Manual resolve flag.
+     */
+    public boolean isManualResolve() {
+        return manualResolve;
     }
 
     /**
