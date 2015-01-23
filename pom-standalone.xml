@@ -180,6 +180,39 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>net.alchim31.maven</groupId>
+                    <artifactId>scala-maven-plugin</artifactId>
+                    <version>3.2.0</version>
+                    <configuration>
+                        <jvmArgs>
+                            <jvmArg>-Xms512m</jvmArg>
+                            <jvmArg>-Xmx1024m</jvmArg>
+                        </jvmArgs>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>scala-compile-first</id>
+                            <phase>process-resources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                                <goal>compile</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>scala-test-compile</id>
+                            <phase>process-test-resources</phase>
+                            <goals>
+                                <goal>testCompile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
