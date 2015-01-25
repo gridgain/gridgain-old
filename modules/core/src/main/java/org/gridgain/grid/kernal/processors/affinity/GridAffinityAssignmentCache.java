@@ -138,7 +138,8 @@ public class GridAffinityAssignmentCache {
 
         List<List<GridNode>> prevAssignment = prev == null ? null : prev.assignment();
 
-        GridCacheDistributionMode distroMode = U.distributionMode(discoEvt.eventNode(), ctx.name());
+        GridCacheDistributionMode distroMode = discoEvt != null ? U.distributionMode(discoEvt.eventNode(), ctx.name()) :
+            null;
 
         List<List<GridNode>> assignment = prevAssignment != null && discoEvt.type() == EVT_NODE_JOINED &&
             (distroMode == CLIENT_ONLY || distroMode == NEAR_ONLY) ?
