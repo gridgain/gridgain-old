@@ -10,6 +10,7 @@
 package org.gridgain.grid.kernal.processors.affinity;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.affinity.*;
 import org.gridgain.grid.events.*;
 import org.gridgain.grid.kernal.*;
@@ -26,6 +27,9 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+
+import static org.gridgain.grid.cache.GridCacheDistributionMode.*;
+import static org.gridgain.grid.events.GridEventType.EVT_NODE_JOINED;
 
 /**
  * Affinity cached function.
@@ -134,8 +138,14 @@ public class GridAffinityAssignmentCache {
 
         List<List<GridNode>> prevAssignment = prev == null ? null : prev.assignment();
 
-        List<List<GridNode>> assignment = aff.assignPartitions(
-            new GridCacheAffinityFunctionContextImpl(sorted, prevAssignment, discoEvt, topVer, backups));
+        GridCacheDistributionMode distroMode = discoEvt != null ? U.distributionMode(discoEvt.eventNode(), ctx.name()) :
+            null;
+
+        List<List<GridNode>> assignment = prevAssignment != null && discoEvt.type() == EVT_NODE_JOINED &&
+            (distroMode == CLIENT_ONLY || distroMode == NEAR_ONLY) ?
+            prevAssignment :
+            aff.assignPartitions(new GridCacheAffinityFunctionContextImpl(sorted, prevAssignment, discoEvt, topVer,
+                backups));
 
         GridAffinityAssignment updated = new GridAffinityAssignment(topVer, assignment);
 

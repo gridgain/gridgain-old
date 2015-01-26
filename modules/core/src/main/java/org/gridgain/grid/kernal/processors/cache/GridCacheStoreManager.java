@@ -69,8 +69,13 @@ public class GridCacheStoreManager<K, V> extends GridCacheManagerAdapter<K, V> {
         boolean convertPortable = !cctx.config().isKeepPortableInStore();
 
         if (cctx.config().isPortableEnabled()) {
-            if (store instanceof GridInteropAware)
-                ((GridInteropAware)store).configure(cctx.cache().name(), convertPortable);
+            GridCacheStore store0 = store;
+
+            if (store0 instanceof GridCacheWriteBehindStore)
+                store0 = ((GridCacheWriteBehindStore)store0).store();
+
+            if (store0 instanceof GridInteropAware)
+                ((GridInteropAware)store0).configure(cctx.cache().name(), convertPortable);
             else
                 this.convertPortable = convertPortable;
         }
