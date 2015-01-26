@@ -9,6 +9,8 @@
 
 package org.gridgain.grid.kernal.processors.cache;
 
+import org.gridgain.grid.*;
+import org.gridgain.grid.marshaller.optimized.*;
 import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.common.*;
 
@@ -59,6 +61,27 @@ public class GridCacheVersionSelfTest extends GridCommonAbstractTest {
                 return version(0x7FFFFFF + 1, 1);
             }
         }, IllegalArgumentException.class, null);
+    }
+
+    /**
+     * Test versions marshalling.
+     *
+     * @throws GridException If failed.
+     */
+    public void testMarshalling() throws GridException {
+        GridCacheVersion ver = version(1, 1);
+        GridCacheVersionEx verEx = new GridCacheVersionEx(2, 2, 0, 0, ver);
+
+        GridOptimizedMarshaller marsh = new GridOptimizedMarshaller(false);
+
+        byte[] verBytes = marsh.marshal(ver);
+        byte[] verExBytes = marsh.marshal(verEx);
+
+        GridCacheVersion verNew = marsh.unmarshal(verBytes, Thread.currentThread().getContextClassLoader());
+        GridCacheVersionEx verExNew = marsh.unmarshal(verExBytes, Thread.currentThread().getContextClassLoader());
+
+        assert ver.equals(verNew);
+        assert verEx.equals(verExNew);
     }
 
     /**
