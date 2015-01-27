@@ -10,21 +10,35 @@
 package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.dr.cache.receiver.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 
+import static org.gridgain.grid.dr.cache.receiver.GridDrReceiverCacheConflictResolverMode.*;
+
 /**
- * Cache conflict resolver.
+ * Real conflict resolver.
  */
-public interface GridCacheConflictResolver {
+public class GridCacheConflictResolver {
+    /** Mode. */
+    private final GridDrReceiverCacheConflictResolverMode mode;
+
+    /** Resolver. */
+    private final GridDrReceiverCacheConflictResolver rslvr;
+
     /**
-     * Whether conflict resolving is needed.
+     * Constructor.
      *
-     * @param oldVer Old version.
-     * @param newVer New version.
-     * @return {@code True} if needed.
+     * @param mode Mode.
+     * @param rslvr Resolver.
      */
-    public boolean needResolve(GridCacheVersion oldVer, GridCacheVersion newVer);
+    public GridCacheConflictResolver(GridDrReceiverCacheConflictResolverMode mode,
+        GridDrReceiverCacheConflictResolver rslvr) {
+        assert mode != null;
+
+        this.mode = mode;
+        this.rslvr = rslvr;
+    }
 
     /**
      * Resolve the conflict.
@@ -35,6 +49,52 @@ public interface GridCacheConflictResolver {
      * @return Conflict resolution context.
      * @throws GridException If failed.
      */
+    @SuppressWarnings("unchecked")
     public <K, V> GridDrReceiverConflictContextImpl<K, V> resolve(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException;
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
+        GridDrReceiverConflictContextImpl<K, V> ctx = new GridDrReceiverConflictContextImpl<>(oldEntry, newEntry);
+
+        if (newEntry.dataCenterId() != oldEntry.dataCenterId() || mode == DR_ALWAYS) {
+            assert mode == DR_ALWAYS && rslvr != null || mode == DR_AUTO :
+                "Invalid resolver configuration (must be checked on startup) [mode=" + mode + ", rslvr=" + rslvr + ']';
+
+            if (rslvr != null) {
+                // Try falling back to user resolver.
+                rslvr.resolve(ctx);
+
+                ctx.manualResolve();
+            }
+            else
+                // No other option, but to use new entry.
+                ctx.useNew();
+        }
+        else {
+            // Resolve the conflict automatically.
+            if (oldEntry.isStartVersion())
+                ctx.useNew();
+            else {
+                if (atomicVerComparator) {
+                    // Handle special case when version check using ATOMIC cache comparator is required.
+                    if (GridCacheMapEntry.ATOMIC_VER_COMPARATOR.compare(oldEntry.version(), newEntry.version()) >= 0)
+                        ctx.useOld();
+                    else
+                        ctx.useNew();
+                }
+                else {
+                    long topVerDiff = newEntry.topologyVersion() - oldEntry.topologyVersion();
+
+                    if (topVerDiff > 0)
+                        ctx.useNew();
+                    else if (topVerDiff < 0)
+                        ctx.useOld();
+                    else if (newEntry.order() > oldEntry.order())
+                        ctx.useNew();
+                    else
+                        ctx.useOld();
+                }
+            }
+        }
+
+        return ctx;
+    }
 }

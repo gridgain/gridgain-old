@@ -93,6 +93,7 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheOffHeapTieredAtomicSelfTest.class);
         suite.addTestSuite(GridCacheOffHeapTieredSelfTest.class);
         suite.addTestSuite(GridCachePartitionedLockBackupUpdateSelfTest.class);
+        suite.addTestSuite(ClientAffinityAssignmentSelfTest.class);
 
         // Local cache.
         suite.addTestSuite(GridCacheLocalProjectionSelfTest.class);

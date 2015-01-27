@@ -19,7 +19,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <gridgain.version>6.6.0</gridgain.version>
+        <gridgain.version>6.6.2</gridgain.version>
         <gridgain.edition>fabric</gridgain.edition>
         <hadoop.version>2.4.1</hadoop.version>
         <spring.version>4.1.0.RELEASE</spring.version>
@@ -567,8 +567,8 @@
                                     <packages>org.gridgain.grid.cache.spring</packages>
                                 </group>
                                 <group>
-                                    <title>.Net Configuration</title>
-                                    <packages>org.gridgain.grid.dotnet</packages>
+                                    <title>Interoperability API</title>
+                                    <packages>org.gridgain.grid.interop</packages>
                                 </group>
                             </groups>
                             <header>
