@@ -400,56 +400,68 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         boolean mongoCache = false; // CU.isMongoCache(c, cc.getName());
 
-        // Validate DR send configuration.
-        GridDrSenderCacheConfiguration drSndCfg = cc.getDrSenderConfiguration();
-
-        if (drSndCfg != null) {
-            if (ggfsCache)
-                throw new GridException("GGFS cache cannot be data center replication sender cache: " + cc.getName());
-
-            if (mongoCache)
-                throw new GridException("Mongo cache cannot be data center replication sender cache: " + cc.getName());
-
-            assertParameter(drSndCfg.getMode() != null, "cfg.getDrSenderConfiguration().getMode() != null");
-
-            if (cc.getCacheMode() == LOCAL)
-                throw new GridException("Data center replication is not supported for LOCAL cache");
-
-            assertParameter(drSndCfg.getBatchSendSize() > 0, "cfg.getDrSenderConfiguration().getBatchSendSize() > 0");
-
-            if (drSndCfg.getBatchSendFrequency() < 0)
-                drSndCfg.setBatchSendFrequency(0);
-
-            assertParameter(drSndCfg.getMaxBatches() > 0, "cfg.getDrSenderConfiguration().getMaxBatches() > 0");
-
-            assertParameter(drSndCfg.getSenderHubLoadBalancingMode() != null,
-                "cfg.getDrSendConfiguration().getSenderHubLoadBalancingMode() != null");
-
-            assertParameter(drSndCfg.getStateTransferThreadsCount() > 0,
-                "cfg.getDrSenderConfiguration().getStateTransferThreadsCount() > 0");
-
-            assertParameter(drSndCfg.getStateTransferThrottle() >= 0,
-                "cfg.getDrSenderConfiguration().getStateTransferThrottle >= 0");
+        if (cc.getDistributionMode() == CLIENT_ONLY) {
+            if (cc.getDrSenderConfiguration() != null || cc.getDrReceiverConfiguration() != null)
+                U.warn(log, "Data center replication configuration is ignored for cache when distribution mode is " +
+                    "set to " + CLIENT_ONLY.toString() + ": " + cc.getName());
         }
+        else {
+            // Validate DR send configuration.
+            GridDrSenderCacheConfiguration drSndCfg = cc.getDrSenderConfiguration();
 
-        // Validate DR receive configuration.
-        GridDrReceiverCacheConfiguration drRcvCfg = cc.getDrReceiverConfiguration();
+            if (drSndCfg != null) {
+                if (ggfsCache)
+                    throw new GridException("GGFS cache cannot be data center replication sender cache: " +
+                        cc.getName());
 
-        if (drRcvCfg != null) {
-            if (ggfsCache)
-                throw new GridException("GGFS cache cannot be data center replication receiver cache: " +
-                    cc.getName());
+                if (mongoCache)
+                    throw new GridException("Mongo cache cannot be data center replication sender cache: " +
+                        cc.getName());
 
-            if (mongoCache)
-                throw new GridException("Mongo cache cannot be data center replication receiver cache: " +
-                    cc.getName());
+                assertParameter(drSndCfg.getMode() != null, "cfg.getDrSenderConfiguration().getMode() != null");
 
-            GridDrReceiverCacheConflictResolverMode rslvrMode = drRcvCfg.getConflictResolverMode();
+                if (cc.getCacheMode() == LOCAL)
+                    throw new GridException("Data center replication is not supported for LOCAL cache");
 
-            assertParameter(rslvrMode != null, "cfg.getDrReceiverConfiguration().getConflictResolverPolicy() != null");
+                assertParameter(drSndCfg.getBatchSendSize() > 0,
+                    "cfg.getDrSenderConfiguration().getBatchSendSize() > 0");
 
-            if (rslvrMode != DR_AUTO && drRcvCfg.getConflictResolver() == null)
-                throw new GridException("Conflict resolver must be not null with " + rslvrMode + " resolving policy");
+                if (drSndCfg.getBatchSendFrequency() < 0)
+                    drSndCfg.setBatchSendFrequency(0);
+
+                assertParameter(drSndCfg.getMaxBatches() > 0, "cfg.getDrSenderConfiguration().getMaxBatches() > 0");
+
+                assertParameter(drSndCfg.getSenderHubLoadBalancingMode() != null,
+                    "cfg.getDrSendConfiguration().getSenderHubLoadBalancingMode() != null");
+
+                assertParameter(drSndCfg.getStateTransferThreadsCount() > 0,
+                    "cfg.getDrSenderConfiguration().getStateTransferThreadsCount() > 0");
+
+                assertParameter(drSndCfg.getStateTransferThrottle() >= 0,
+                    "cfg.getDrSenderConfiguration().getStateTransferThrottle >= 0");
+            }
+
+            // Validate DR receive configuration.
+            GridDrReceiverCacheConfiguration drRcvCfg = cc.getDrReceiverConfiguration();
+
+            if (drRcvCfg != null) {
+                if (ggfsCache)
+                    throw new GridException("GGFS cache cannot be data center replication receiver cache: " +
+                        cc.getName());
+
+                if (mongoCache)
+                    throw new GridException("Mongo cache cannot be data center replication receiver cache: " +
+                        cc.getName());
+
+                GridDrReceiverCacheConflictResolverMode rslvrMode = drRcvCfg.getConflictResolverMode();
+
+                assertParameter(rslvrMode != null,
+                    "cfg.getDrReceiverConfiguration().getConflictResolverPolicy() != null");
+
+                if (rslvrMode != DR_AUTO && drRcvCfg.getConflictResolver() == null)
+                    throw new GridException("Conflict resolver must be not null with " + rslvrMode +
+                        " resolving policy");
+            }
         }
 
         if (cc.getAtomicityMode() == ATOMIC)
