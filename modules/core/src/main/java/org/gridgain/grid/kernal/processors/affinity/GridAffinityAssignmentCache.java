@@ -29,7 +29,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import static org.gridgain.grid.cache.GridCacheDistributionMode.*;
-import static org.gridgain.grid.events.GridEventType.EVT_NODE_JOINED;
 
 /**
  * Affinity cached function.
@@ -117,6 +116,7 @@ public class GridAffinityAssignmentCache {
      * @param topVer Topology version to calculate affinity cache for.
      * @param discoEvt Discovery event that caused this topology version change.
      */
+    @SuppressWarnings("IfMayBeConditional")
     public List<List<GridNode>> calculate(long topVer, GridDiscoveryEvent discoEvt) {
         if (log.isDebugEnabled())
             log.debug("Calculating affinity [topVer=" + topVer + ", locNodeId=" + ctx.localNodeId() +
@@ -138,14 +138,23 @@ public class GridAffinityAssignmentCache {
 
         List<List<GridNode>> prevAssignment = prev == null ? null : prev.assignment();
 
-        GridCacheDistributionMode distroMode = discoEvt != null ? U.distributionMode(discoEvt.eventNode(), ctx.name()) :
-            null;
+        List<List<GridNode>> assignment;
 
-        List<List<GridNode>> assignment = prevAssignment != null && discoEvt.type() == EVT_NODE_JOINED &&
-            (distroMode == CLIENT_ONLY || distroMode == NEAR_ONLY) ?
-            prevAssignment :
-            aff.assignPartitions(new GridCacheAffinityFunctionContextImpl(sorted, prevAssignment, discoEvt, topVer,
-                backups));
+        if (prevAssignment != null && discoEvt != null) {
+            GridCacheDistributionMode distroMode = U.distributionMode(discoEvt.eventNode(), ctx.name());
+
+            if (distroMode == null || // no cache on node.
+                distroMode == CLIENT_ONLY || distroMode == NEAR_ONLY)
+                assignment = prevAssignment;
+            else
+                assignment = aff.assignPartitions(new GridCacheAffinityFunctionContextImpl(sorted, prevAssignment,
+                    discoEvt, topVer, backups));
+        }
+        else
+            assignment = aff.assignPartitions(new GridCacheAffinityFunctionContextImpl(sorted, prevAssignment, discoEvt,
+                topVer, backups));
+
+        assert assignment != null;
 
         GridAffinityAssignment updated = new GridAffinityAssignment(topVer, assignment);
 
