@@ -18,9 +18,8 @@ import org.gridgain.grid.kernal.processors.continuous.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.security.*;
-import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
@@ -244,27 +243,19 @@ public class GridCacheContinuousQueryAdapter<K, V> implements GridCacheContinuou
         prj = prj.forCache(ctx.name());
 
         if (prj.nodes().isEmpty())
-            throw new GridTopologyException("Failed to execute query (projection is empty): " + this);
+            throw new GridTopologyException("Failed to execute continuous query (projection is empty): " + this);
 
-        GridCacheMode mode = ctx.config().getCacheMode();
-
-        if (mode == LOCAL || mode == REPLICATED) {
+        if (ctx.config().getCacheMode() == LOCAL) {
             Collection<GridNode> nodes = prj.nodes();
 
-            GridNode node = nodes.contains(ctx.localNode()) ? ctx.localNode() : F.rand(nodes);
+            if (!nodes.contains(ctx.localNode()))
+                throw new GridTopologyException("Continuous query for LOCAL cache can be executed only locally (" +
+                    "provided projection contains remote nodes only): " + this);
+            else if (nodes.size() > 1)
+                U.warn(log, "Continuous query for LOCAL cache will be executed locally (provided projection is " +
+                    "ignored): " + this);
 
-            assert node != null;
-
-            if (nodes.size() > 1 && !ctx.cache().isDrSystemCache()) {
-                if (node.id().equals(ctx.localNodeId()))
-                    U.warn(log, "Continuous query for " + mode + " cache can be run only on local node. " +
-                        "Will execute query locally: " + this);
-                else
-                    U.warn(log, "Continuous query for " + mode + " cache can be run only on single node. " +
-                        "Will execute query on remote node [qry=" + this + ", node=" + node + ']');
-            }
-
-            prj = prj.forNode(node);
+            prj = prj.forNode(ctx.localNode());
         }
 
         closeLock.lock();

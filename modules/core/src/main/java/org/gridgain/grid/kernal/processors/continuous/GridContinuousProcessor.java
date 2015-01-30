@@ -1173,7 +1173,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
          * @return Object to send or {@code null} if there is nothing to send for now.
          */
         @Nullable Collection<Object> add(@Nullable Object obj) {
-            Collection<Object> toSnd = null;
+            ConcurrentLinkedDeque8 buf0 = null;
 
             if (buf.sizex() >= bufSize - 1) {
                 lock.writeLock().lock();
@@ -1181,7 +1181,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
                 try {
                     buf.add(obj);
 
-                    toSnd = buf;
+                    buf0 = buf;
 
                     buf = new ConcurrentLinkedDeque8<>();
 
@@ -1203,7 +1203,16 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
                 }
             }
 
-            return toSnd != null ? new ArrayList<>(toSnd) : null;
+            Collection<Object> toSnd = null;
+
+            if (buf0 != null) {
+                toSnd = new ArrayList<>(buf0.sizex());
+
+                for (Object o : buf0)
+                    toSnd.add(o);
+            }
+
+            return toSnd;
         }
 
         /**
@@ -1214,7 +1223,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
         GridBiTuple<Collection<Object>, Long> checkInterval() {
             assert interval > 0;
 
-            Collection<Object> toSnd = null;
+            ConcurrentLinkedDeque8 buf0 = null;
             long diff;
 
             long now = U.currentTimeMillis();
@@ -1225,7 +1234,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
                 diff = now - lastSndTime;
 
                 if (diff >= interval && !buf.isEmpty()) {
-                    toSnd = buf;
+                    buf0 = buf;
 
                     buf = new ConcurrentLinkedDeque8<>();
 
@@ -1234,6 +1243,15 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
             }
             finally {
                 lock.writeLock().unlock();
+            }
+
+            Collection<Object> toSnd = null;
+
+            if (buf0 != null) {
+                toSnd = new ArrayList<>(buf0.sizex());
+
+                for (Object o : buf0)
+                    toSnd.add(o);
             }
 
             return F.t(toSnd, diff < interval ? interval - diff : interval);
