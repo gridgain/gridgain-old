@@ -38,7 +38,7 @@ public class GridAffinityAssignmentCache {
     private static final Comparator<GridNode> nodeCmp = new GridNodeOrderComparator();
 
     /** Cache name. */
-    private final String cacheName;;
+    private final String cacheName;
 
     /** Number of backups. */
     private int backups;
