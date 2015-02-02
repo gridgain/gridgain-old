@@ -11,7 +11,6 @@ package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.dr.cache.sender.*;
 import org.gridgain.grid.kernal.managers.deployment.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
@@ -1214,8 +1213,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
             GridCacheMode mode = cctx.config().getCacheMode();
 
-            if (mode == GridCacheMode.LOCAL || mode == GridCacheMode.REPLICATED ||
-                (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
+            if (mode == GridCacheMode.LOCAL || (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
                 cctx.continuousQueries().onEntryUpdate(this, key, val, valueBytesUnlocked(), old, oldBytes);
 
             cctx.dataStructures().onEntryUpdated(key, false);
@@ -1378,8 +1376,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
                 GridCacheMode mode = cctx.config().getCacheMode();
 
-                if (mode == GridCacheMode.LOCAL || mode == GridCacheMode.REPLICATED ||
-                    (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
+                if (mode == GridCacheMode.LOCAL || (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
                     cctx.continuousQueries().onEntryUpdate(this, key, null, null, old, oldBytes);
 
                 cctx.dataStructures().onEntryUpdated(key, true);
@@ -2068,7 +2065,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
             if (metrics)
                 cctx.cache().metrics0().onWrite();
 
-            if (primary || cctx.isReplicated())
+            if (primary)
                 cctx.continuousQueries().onEntryUpdate(this, key, val, valueBytesUnlocked(), old, oldBytes);
 
             cctx.dataStructures().onEntryUpdated(key, op == DELETE);
@@ -3022,7 +3019,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                 drReplicate(drType, val, valBytes, ver);
 
                 if (!skipQryNtf) {
-                    if (cctx.affinity().primary(cctx.localNode(), key, topVer) || cctx.isReplicated())
+                    if (cctx.affinity().primary(cctx.localNode(), key, topVer))
                         cctx.continuousQueries().onEntryUpdate(this, key, val, valueBytesUnlocked(), null, null);
 
                     cctx.dataStructures().onEntryUpdated(key, false);

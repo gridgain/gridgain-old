@@ -30,27 +30,32 @@ public class ClientAffinityAssignmentSelfTest extends GridCommonAbstractTest {
     private boolean client;
 
     /** */
+    private boolean cache;
+
+    /** */
     private int aff;
 
     /** {@inheritDoc} */
     @Override protected GridConfiguration getConfiguration(String gridName) throws Exception {
         GridConfiguration cfg = super.getConfiguration(gridName);
 
-        GridCacheConfiguration ccfg = new GridCacheConfiguration();
+        if (cache) {
+            GridCacheConfiguration ccfg = new GridCacheConfiguration();
 
-        ccfg.setCacheMode(GridCacheMode.PARTITIONED);
-        ccfg.setBackups(1);
-        ccfg.setAtomicityMode(GridCacheAtomicityMode.TRANSACTIONAL);
-        ccfg.setDistributionMode(client ? CLIENT_ONLY : PARTITIONED_ONLY);
+            ccfg.setCacheMode(GridCacheMode.PARTITIONED);
+            ccfg.setBackups(1);
+            ccfg.setAtomicityMode(GridCacheAtomicityMode.TRANSACTIONAL);
+            ccfg.setDistributionMode(client ? CLIENT_ONLY : PARTITIONED_ONLY);
 
-        if (aff == 0)
-            ccfg.setAffinity(new GridCacheConsistentHashAffinityFunction(false, PARTS));
-        else if (aff == 1)
-            ccfg.setAffinity(new GridCacheRendezvousAffinityFunction(false, PARTS));
-        else
-            ccfg.setAffinity(new GridCachePartitionFairAffinity(PARTS));
+            if (aff == 0)
+                ccfg.setAffinity(new GridCacheConsistentHashAffinityFunction(false, PARTS));
+            else if (aff == 1)
+                ccfg.setAffinity(new GridCacheRendezvousAffinityFunction(false, PARTS));
+            else
+                ccfg.setAffinity(new GridCachePartitionFairAffinity(PARTS));
 
-        cfg.setCacheConfiguration(ccfg);
+            cfg.setCacheConfiguration(ccfg);
+        }
 
         return cfg;
     }
@@ -86,6 +91,8 @@ public class ClientAffinityAssignmentSelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     private void checkAffinityFunction() throws Exception {
+        cache = true;
+
         startGrids(3);
 
         try {
@@ -98,6 +105,16 @@ public class ClientAffinityAssignmentSelfTest extends GridCommonAbstractTest {
             checkAffinity();
 
             startGrid(4);
+
+            checkAffinity();
+
+            cache = false;
+
+            startGrid(5);
+
+            checkAffinity();
+
+            stopGrid(5);
 
             checkAffinity();
 
@@ -121,13 +138,18 @@ public class ClientAffinityAssignmentSelfTest extends GridCommonAbstractTest {
         GridCacheAffinity<Object> aff = grid(0).cache(null).affinity();
 
         for (Grid grid : GridGain.allGrids()) {
-            if (grid.localNode().id().equals(grid(0).localNode().id()))
-                continue;
+            try {
+                if (grid.localNode().id().equals(grid(0).localNode().id()))
+                    continue;
 
-            GridCacheAffinity<Object> checkAff = grid.cache(null).affinity();
+                GridCacheAffinity<Object> checkAff = grid.cache(null).affinity();
 
-            for (int p = 0; p < PARTS; p++)
-                assertEquals(aff.mapPartitionToPrimaryAndBackups(p), checkAff.mapPartitionToPrimaryAndBackups(p));
+                for (int p = 0; p < PARTS; p++)
+                    assertEquals(aff.mapPartitionToPrimaryAndBackups(p), checkAff.mapPartitionToPrimaryAndBackups(p));
+            }
+            catch (IllegalArgumentException ignored) {
+                // Skip the node without cache.
+            }
         }
     }
 }
