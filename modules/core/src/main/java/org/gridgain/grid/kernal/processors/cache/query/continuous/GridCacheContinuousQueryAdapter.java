@@ -327,7 +327,7 @@ public class GridCacheContinuousQueryAdapter<K, V> implements GridCacheContinuou
      */
     static class CallbackWrapper<K, V> implements GridBiPredicate<UUID, Collection<GridCacheContinuousQueryEntry<K, V>>> {
         /** Serialization ID. */
-        private static final long serialVersionUID = 0L;
+        private static final long serialVersionUID = 0L;;
 
         /** */
         private final GridBiPredicate<UUID, Collection<Map.Entry<K, V>>> cb;
