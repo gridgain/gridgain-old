@@ -10,6 +10,7 @@
 package org.gridgain.grid.kernal.processors.rest.protocols.http.jetty;
 
 import net.sf.json.*;
+import net.sf.json.processors.JsonValueProcessor;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.*;
 import org.gridgain.grid.*;
@@ -36,6 +37,17 @@ import static org.gridgain.grid.kernal.processors.rest.GridRestCommand.*;
  * {@code /gridgain?cmd=cmdName&param1=abc&param2=123}
  */
 public class GridJettyRestHandler extends AbstractHandler {
+    /** JSON value processor that does not transform input object. */
+    private static final JsonValueProcessor SKIP_JSON_VALUE_PROCESSOR = new JsonValueProcessor() {
+        @Override public Object processArrayValue(Object o, JsonConfig jsonConfig) {
+            return o;
+        }
+
+        @Override public Object processObjectValue(String s, Object o, JsonConfig jsonConfig) {
+            return o;
+        }
+    };
+
     /** Logger. */
     private final GridLogger log;
 
@@ -255,6 +267,10 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
 
         JsonConfig cfg = new GridJettyJsonConfig();
+
+        // Workaround of not needed transformation of string into JSON object.
+        cfg.registerJsonValueProcessor(cmdRes.getClass(), "response", SKIP_JSON_VALUE_PROCESSOR);
+
         JSON json;
 
         try {
