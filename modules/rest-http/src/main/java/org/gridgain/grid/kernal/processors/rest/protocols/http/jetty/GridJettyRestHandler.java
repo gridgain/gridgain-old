@@ -268,7 +268,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
         JsonConfig cfg = new GridJettyJsonConfig();
 
-        // Workaround of not needed transformation of string into JSON object.
+        // Workaround for not needed transformation of string into JSON object.
         if (cmdRes.getResponse() instanceof String)
             cfg.registerJsonValueProcessor(cmdRes.getClass(), "response", SKIP_JSON_VALUE_PROCESSOR);
 
