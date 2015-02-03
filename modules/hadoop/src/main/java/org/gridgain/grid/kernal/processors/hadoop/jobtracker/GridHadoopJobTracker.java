@@ -150,7 +150,7 @@ public class GridHadoopJobTracker extends GridHadoopComponent {
             }
         });
 
-        qry.execute();
+        qry.execute(ctx.kernalContext().grid().forLocal());
 
         ctx.kernalContext().event().addLocalEventListener(new GridLocalEventListener() {
             @Override public void onEvent(final GridEvent evt) {
