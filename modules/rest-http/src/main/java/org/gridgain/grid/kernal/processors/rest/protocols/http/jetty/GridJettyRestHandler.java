@@ -48,6 +48,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
     };
 
+
     /** Logger. */
     private final GridLogger log;
 
