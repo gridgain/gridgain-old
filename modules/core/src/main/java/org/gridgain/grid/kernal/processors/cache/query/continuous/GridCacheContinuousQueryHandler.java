@@ -59,6 +59,9 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     /** Internal flag. */
     private boolean internal;
 
+    /** Whether to skip primary check for REPLICATED cache. */
+    private transient boolean skipPrimaryCheck;
+
     /**
      * Required by {@link Externalizable}.
      */
@@ -75,11 +78,12 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
      * @param filter Filter.
      * @param prjPred Projection predicate.
      * @param internal If {@code true} then query is notified about internal entries updates.
+     * @param skipPrimaryCheck Whether to skip primary check for REPLICATED cache.
      */
     GridCacheContinuousQueryHandler(@Nullable String cacheName, Object topic,
         GridBiPredicate<UUID, Collection<org.gridgain.grid.cache.query.GridCacheContinuousQueryEntry<K, V>>> cb,
         @Nullable GridPredicate<org.gridgain.grid.cache.query.GridCacheContinuousQueryEntry<K, V>> filter,
-        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal) {
+        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal, boolean skipPrimaryCheck) {
         assert topic != null;
         assert cb != null;
 
@@ -89,6 +93,7 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         this.filter = filter;
         this.prjPred = prjPred;
         this.internal = internal;
+        this.skipPrimaryCheck = skipPrimaryCheck;
     }
 
     /** {@inheritDoc} */
@@ -142,16 +147,21 @@ class GridCacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
             }
 
             @Override public void onEntryUpdate(GridCacheContinuousQueryEntry<K, V> e, boolean recordEvt) {
+                GridCacheContext<K, V> cctx = cacheContext(ctx);
+
+                if (cctx.isReplicated() && !skipPrimaryCheck && !e.primary())
+                    return;
+
                 boolean notify;
 
-                GridCacheFlag[] f = cacheContext(ctx).forceLocalRead();
+                GridCacheFlag[] f = cctx.forceLocalRead();
 
                 try {
                     notify = (prjPred == null || checkProjection(e)) &&
                         (filter == null || filter.apply(e));
                 }
                 finally {
-                    cacheContext(ctx).forceFlags(f);
+                    cctx.forceFlags(f);
                 }
 
                 if (notify) {

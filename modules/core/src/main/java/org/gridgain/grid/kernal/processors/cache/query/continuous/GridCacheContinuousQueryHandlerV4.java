@@ -44,8 +44,9 @@ public class GridCacheContinuousQueryHandlerV4<K, V> extends GridCacheContinuous
     public GridCacheContinuousQueryHandlerV4(@Nullable String cacheName, Object topic,
         GridBiPredicate<UUID, Collection<GridCacheContinuousQueryEntry<K, V>>> cb,
         @Nullable GridPredicate<GridCacheContinuousQueryEntry<K, V>> filter,
-        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal, int taskHash) {
-        super(cacheName, topic, cb, filter, prjPred, internal, taskHash);
+        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal, boolean skipPrimaryCheck,
+        int taskHash) {
+        super(cacheName, topic, cb, filter, prjPred, internal, skipPrimaryCheck, taskHash);
     }
 
     /** {@inheritDoc} */

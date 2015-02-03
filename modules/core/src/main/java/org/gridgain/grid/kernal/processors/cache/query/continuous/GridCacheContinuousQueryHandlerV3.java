@@ -39,12 +39,13 @@ public class GridCacheContinuousQueryHandlerV3<K, V> extends GridCacheContinuous
      * @param filter Filter.
      * @param prjPred Projection predicate.
      * @param internal If {@code true} then query is notified about internal entries updates.
+     * @param skipPrimaryCheck Whether to skip primary check for REPLICATED cache.
      */
     public GridCacheContinuousQueryHandlerV3(@Nullable String cacheName, Object topic,
         GridBiPredicate<UUID, Collection<GridCacheContinuousQueryEntry<K, V>>> cb,
         @Nullable GridPredicate<GridCacheContinuousQueryEntry<K, V>> filter,
-        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal) {
-        super(cacheName, topic, cb, filter, prjPred, internal);
+        @Nullable GridPredicate<GridCacheEntry<K, V>> prjPred, boolean internal, boolean skipPrimaryCheck) {
+        super(cacheName, topic, cb, filter, prjPred, internal, skipPrimaryCheck);
     }
 
     /** {@inheritDoc} */

@@ -19,13 +19,14 @@ import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.security.*;
 import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
 import java.util.concurrent.locks.*;
 
-import static org.gridgain.grid.cache.GridCacheMode.*;
+import static org.gridgain.grid.cache.GridCacheDistributionMode.*;
 
 /**
  * Continuous query implementation.
@@ -245,17 +246,36 @@ public class GridCacheContinuousQueryAdapter<K, V> implements GridCacheContinuou
         if (prj.nodes().isEmpty())
             throw new GridTopologyException("Failed to execute continuous query (projection is empty): " + this);
 
-        if (ctx.config().getCacheMode() == LOCAL) {
-            Collection<GridNode> nodes = prj.nodes();
+        boolean skipPrimaryCheck = false;
 
-            if (!nodes.contains(ctx.localNode()))
-                throw new GridTopologyException("Continuous query for LOCAL cache can be executed only locally (" +
-                    "provided projection contains remote nodes only): " + this);
-            else if (nodes.size() > 1)
-                U.warn(log, "Continuous query for LOCAL cache will be executed locally (provided projection is " +
-                    "ignored): " + this);
+        Collection<GridNode> nodes = prj.nodes();
 
-            prj = prj.forNode(ctx.localNode());
+        if (nodes.isEmpty())
+            throw new GridTopologyException("Failed to execute continuous query (empty projection is provided): " +
+                this);
+
+        switch (ctx.config().getCacheMode()) {
+            case LOCAL:
+                if (!nodes.contains(ctx.localNode()))
+                    throw new GridTopologyException("Continuous query for LOCAL cache can be executed only locally (" +
+                        "provided projection contains remote nodes only): " + this);
+                else if (nodes.size() > 1)
+                    U.warn(log, "Continuous query for LOCAL cache will be executed locally (provided projection is " +
+                        "ignored): " + this);
+
+                prj = prj.forNode(ctx.localNode());
+
+                break;
+
+            case REPLICATED:
+                if (nodes.size() == 1 && F.first(nodes).equals(ctx.localNode())) {
+                    GridCacheDistributionMode distributionMode = ctx.config().getDistributionMode();
+
+                    if (distributionMode == PARTITIONED_ONLY || distributionMode == NEAR_PARTITIONED)
+                        skipPrimaryCheck = true;
+                }
+
+                break;
         }
 
         closeLock.lock();
@@ -268,11 +288,13 @@ public class GridCacheContinuousQueryAdapter<K, V> implements GridCacheContinuou
 
             GridContinuousHandler hnd = ctx.kernalContext().security().enabled() ? keepPortable ?
                 new GridCacheContinuousQueryHandlerV4<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
-                    ctx.kernalContext().job().currentTaskNameHash()) :
+                    skipPrimaryCheck, ctx.kernalContext().job().currentTaskNameHash()) :
                 new GridCacheContinuousQueryHandlerV2<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
-                    ctx.kernalContext().job().currentTaskNameHash()) : keepPortable ?
-                new GridCacheContinuousQueryHandlerV3<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal) :
-                new GridCacheContinuousQueryHandler<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal);
+                    skipPrimaryCheck, ctx.kernalContext().job().currentTaskNameHash()) : keepPortable ?
+                new GridCacheContinuousQueryHandlerV3<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
+                    skipPrimaryCheck) :
+                new GridCacheContinuousQueryHandler<>(ctx.name(), topic, locCb, rmtFilter, prjPred, internal,
+                    skipPrimaryCheck);
 
             routineId = ctx.kernalContext().continuous().startRoutine(hnd, bufSize, timeInterval, autoUnsubscribe,
                 prj.predicate()).get();
