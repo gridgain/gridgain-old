@@ -166,7 +166,7 @@ public class GridClientDefaultCacheSelfTest extends GridCommonAbstractTest {
             r.close();
         }
         catch (IOException e) {
-            e.printStackTrace();
+            error("Failed to send HTTP request: " + TEST_URL + "?" + query, e);
         }
 
         // Cut node id from response.
