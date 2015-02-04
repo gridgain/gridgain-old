@@ -43,7 +43,7 @@ public class ServicesExample {
                 return;
             }
 
-            GridServices svcs = rmts.services();;
+            GridServices svcs = rmts.services();
 
             try {
                 // Deploy cluster singleton.
