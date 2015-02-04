@@ -48,10 +48,13 @@ public class GridClientDefaultCacheSelfTest extends GridCommonAbstractTest {
     /** Http port. */
     private static final int HTTP_PORT = 8081;
 
-    private static final String URLStr = "http://" + HOST + ":" + HTTP_PORT + "/gridgain";
+    /** Url address to send HTTP request. */
+    private static final String TEST_URL = "http://" + HOST + ":" + HTTP_PORT + "/gridgain";
 
+    /** Used to sent request charset. */
     private static final String CHARSET = StandardCharsets.UTF_8.name();
 
+    /** Name of node local cache. */
     private static final String LOCAL_CACHE = "local";
 
     /** {@inheritDoc} */
@@ -152,7 +155,7 @@ public class GridClientDefaultCacheSelfTest extends GridCommonAbstractTest {
         String res = "No result";
 
         try {
-            URLConnection connection = new URL(URLStr + "?" + query).openConnection();
+            URLConnection connection = new URL(TEST_URL + "?" + query).openConnection();
 
             connection.setRequestProperty("Accept-Charset", CHARSET);
 
@@ -166,6 +169,7 @@ public class GridClientDefaultCacheSelfTest extends GridCommonAbstractTest {
             e.printStackTrace();
         }
 
+        // Cut node id from response.
         return res.substring(res.indexOf("\"response\""));
     }
 
