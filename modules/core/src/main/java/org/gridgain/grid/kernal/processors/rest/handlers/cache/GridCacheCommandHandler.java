@@ -385,19 +385,19 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     }
 
     /**
-     * Handles increment and decrement commands.
+     * Handles increment and decrement commands for cache atomic long data structures.
      *
      * @param cache Cache.
-     * @param key Key.
+     * @param name Name of cache atomic long.
      * @param req Request.
      * @param decr Whether to decrement (increment otherwise).
      * @return Future of operation result.
      * @throws GridException In case of error.
      */
-    private static GridFuture<?> incrementOrDecrement(GridCacheProjection<Object, Object> cache, String key,
+    private static GridFuture<?> incrementOrDecrement(GridCacheProjection<Object, Object> cache, String name,
         GridRestCacheRequest req, final boolean decr) throws GridException {
         assert cache != null;
-        assert key != null;
+        assert name != null;
         assert req != null;
 
         Long init = req.initial();
@@ -406,7 +406,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         if (delta == null)
             throw new GridException(GridRestCommandHandlerAdapter.missingParameter("delta"));
 
-        final GridCacheAtomicLong l = cache.cache().dataStructures().atomicLong(key, init != null ? init : 0, true);
+        final GridCacheAtomicLong l = cache.cache().dataStructures().atomicLong(name, init != null ? init : 0, true);
 
         final Long d = delta;
 
