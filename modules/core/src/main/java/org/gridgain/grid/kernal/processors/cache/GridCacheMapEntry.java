@@ -11,6 +11,7 @@ package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
+import org.gridgain.grid.dr.*;
 import org.gridgain.grid.dr.cache.sender.*;
 import org.gridgain.grid.kernal.managers.deployment.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
@@ -1211,9 +1212,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                     subjId, null, taskName);
             }
 
-            GridCacheMode mode = cctx.config().getCacheMode();
-
-            if (mode == GridCacheMode.LOCAL || (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
+            if (cctx.isLocal() || cctx.isReplicated() || (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
                 cctx.continuousQueries().onEntryUpdate(this, key, val, valueBytesUnlocked(), old, oldBytes);
 
             cctx.dataStructures().onEntryUpdated(key, false);
@@ -1374,9 +1373,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                         null, taskName);
                 }
 
-                GridCacheMode mode = cctx.config().getCacheMode();
-
-                if (mode == GridCacheMode.LOCAL || (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
+                if (cctx.isLocal() || cctx.isReplicated() || (tx != null && (tx.dht() || tx.colocated()) && tx.local()))
                     cctx.continuousQueries().onEntryUpdate(this, key, null, null, old, oldBytes);
 
                 cctx.dataStructures().onEntryUpdated(key, true);

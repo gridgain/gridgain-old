@@ -1506,6 +1506,14 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
         private void onSegmentation() {
             GridSegmentationPolicy segPlc = ctx.config().getSegmentationPolicy();
 
+            // Always disconnect first.
+            try {
+                getSpi().disconnect();
+            }
+            catch (GridSpiException e) {
+                U.error(log, "Failed to disconnect discovery SPI.", e);
+            }
+
             switch (segPlc) {
                 case RECONNECT:
                     assert false;
@@ -1513,13 +1521,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
                     break;
 
                 case RESTART_JVM:
-                    try {
-                        getSpi().disconnect();
-                    }
-                    catch (GridSpiException e) {
-                        U.error(log, "Failed to disconnect discovery SPI.", e);
-                    }
-
                     U.warn(log, "Restarting JVM according to configured segmentation policy.");
 
                     restartJvm();
@@ -1527,13 +1528,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<GridDiscoverySpi> {
                     break;
 
                 case STOP:
-                    try {
-                        getSpi().disconnect();
-                    }
-                    catch (GridSpiException e) {
-                        U.error(log, "Failed to disconnect discovery SPI.", e);
-                    }
-
                     U.warn(log, "Stopping local node according to configured segmentation policy.");
 
                     stopNode();

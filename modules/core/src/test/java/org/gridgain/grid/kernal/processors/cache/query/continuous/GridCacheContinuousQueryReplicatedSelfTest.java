@@ -11,7 +11,8 @@ package org.gridgain.grid.kernal.processors.cache.query.continuous;
 
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.query.*;
-import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.cache.query.GridCacheContinuousQueryEntry;
+import org.gridgain.grid.lang.*;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -37,6 +38,7 @@ public class GridCacheContinuousQueryReplicatedSelfTest extends GridCacheContinu
     /**
      * @throws Exception If failed.
      */
+    @SuppressWarnings("unchecked")
     public void testRemoteNodeCallback() throws Exception {
         GridCache<Integer, Integer> cache1 = grid(0).cache(null);
 
@@ -47,8 +49,9 @@ public class GridCacheContinuousQueryReplicatedSelfTest extends GridCacheContinu
         final AtomicReference<Integer> val = new AtomicReference<>();
         final CountDownLatch latch = new CountDownLatch(1);
 
-        qry.callback(new P2<UUID, Collection<Map.Entry<Integer, Integer>>>() {
-            @Override public boolean apply(UUID uuid, Collection<Map.Entry<Integer, Integer>> entries) {
+        qry.localCallback(new GridBiPredicate<UUID, Collection<GridCacheContinuousQueryEntry<Integer, Integer>>>() {
+            @Override public boolean apply(UUID uuid,
+                Collection<GridCacheContinuousQueryEntry<Integer, Integer>> entries) {
                 assertEquals(1, entries.size());
 
                 Map.Entry<Integer, Integer> e = entries.iterator().next();
@@ -70,5 +73,67 @@ public class GridCacheContinuousQueryReplicatedSelfTest extends GridCacheContinu
         latch.await(LATCH_TIMEOUT, MILLISECONDS);
 
         assertEquals(10, val.get().intValue());
+    }
+
+    /**
+     * Ensure that every node see every update.
+     *
+     * @throws Exception If failed.
+     */
+    @SuppressWarnings("unchecked")
+    public void testCrossCallback() throws Exception {
+        // Prepare.
+        GridCache<Integer, Integer> cache1 = grid(0).cache(null);
+        GridCache<Integer, Integer> cache2 = grid(1).cache(null);
+
+        final int key1 = primaryKey(cache1);
+        final int key2 = primaryKey(cache2);
+
+        final CountDownLatch latch1 = new CountDownLatch(2);
+        final CountDownLatch latch2 = new CountDownLatch(2);
+
+        // Start query on the first node.
+        GridCacheContinuousQuery<Integer, Integer> qry1 = cache1.queries().createContinuousQuery();
+
+        qry1.localCallback(new GridBiPredicate<UUID, Collection<GridCacheContinuousQueryEntry<Integer, Integer>>>() {
+            @Override public boolean apply(UUID nodeID,
+                Collection<GridCacheContinuousQueryEntry<Integer, Integer>> entries) {
+                for (GridCacheContinuousQueryEntry entry : entries) {
+                    log.info("Update in cache 1: " + entry);
+
+                    if (entry.getKey() == key1 || entry.getKey() == key2)
+                        latch1.countDown();
+                }
+
+                return latch1.getCount() != 0;
+            }
+        });
+
+        qry1.execute();
+
+        // Start query on the second node.
+        GridCacheContinuousQuery<Integer, Integer> qry2 = cache2.queries().createContinuousQuery();
+
+        qry2.localCallback(new GridBiPredicate<UUID, Collection<GridCacheContinuousQueryEntry<Integer, Integer>>>() {
+            @Override public boolean apply(UUID nodeID,
+                Collection<GridCacheContinuousQueryEntry<Integer, Integer>> entries) {
+                for (GridCacheContinuousQueryEntry entry : entries) {
+                    log.info("Update in cache 2: " + entry);
+
+                    if (entry.getKey() == key1 || entry.getKey() == key2)
+                        latch2.countDown();
+                }
+
+                return latch2.getCount() != 0;
+            }
+        });
+
+        qry2.execute();
+
+        cache1.put(key1, key1);
+        cache1.put(key2, key2);
+
+        assert latch1.await(LATCH_TIMEOUT, MILLISECONDS);
+        assert latch2.await(LATCH_TIMEOUT, MILLISECONDS);
     }
 }
