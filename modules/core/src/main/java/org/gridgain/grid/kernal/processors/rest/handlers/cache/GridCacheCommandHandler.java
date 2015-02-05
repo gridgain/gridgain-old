@@ -385,10 +385,10 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     }
 
     /**
-     * Handles increment and decrement commands for atomic long data structures.
+     * Handles increment and decrement commands for cache atomic long data structures.
      *
      * @param cache Cache.
-     * @param name Name of atomic long data structure.
+     * @param name Name of cache atomic long.
      * @param req Request.
      * @param decr Whether to decrement (increment otherwise).
      * @return Future of operation result.
