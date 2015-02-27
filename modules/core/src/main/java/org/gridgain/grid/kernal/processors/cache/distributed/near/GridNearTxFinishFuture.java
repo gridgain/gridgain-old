@@ -250,7 +250,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
      * @return Synchronous flag.
      */
     private boolean isSync() {
-        return tx.syncCommit() && commit || tx.syncRollback() && !commit;
+        return cctx.config().getWriteSynchronizationMode() != GridCacheWriteSynchronizationMode.FULL_ASYNC;
     }
 
     /**

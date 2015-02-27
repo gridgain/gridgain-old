@@ -229,11 +229,10 @@ public class GridDhtColocatedTxFinishFuture<K, V> extends GridCompoundIdentityFu
     }
 
     /**
-     * @param commit {@code True} if commit.
      * @return Synchronous flag.
      */
-    private boolean isSync(boolean commit) {
-        return commit ? tx.syncCommit() : tx.syncRollback();
+    private boolean isSync() {
+        return cctx.config().getWriteSynchronizationMode() != GridCacheWriteSynchronizationMode.FULL_ASYNC;
     }
 
     /**
@@ -263,7 +262,7 @@ public class GridDhtColocatedTxFinishFuture<K, V> extends GridCompoundIdentityFu
 
             markInitialized();
 
-            if (!isSync(commit)) {
+            if (!isSync()) {
                 boolean complete = true;
 
                 for (GridFuture<?> f : pending())
@@ -349,7 +348,7 @@ public class GridDhtColocatedTxFinishFuture<K, V> extends GridCompoundIdentityFu
                 cctx.io().send(n, req);
 
                 // If we don't wait for result, then mark future as done.
-                if (!isSync(commit) && !m.explicitLock())
+                if (!isSync() && !m.explicitLock())
                     fut.onDone();
             }
             catch (GridTopologyException e) {

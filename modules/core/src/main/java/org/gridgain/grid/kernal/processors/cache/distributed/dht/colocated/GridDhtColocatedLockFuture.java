@@ -646,13 +646,21 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
                 Collection<K> distributedKeys = new ArrayList<>(mappedKeys.size());
 
                 for (K key : mappedKeys) {
+                    GridDistributedCacheEntry<K, V> entry = null;
+
+                    if (tx != null) {
+                        GridCacheTxEntry<K, V> txEntry = tx.entry(key);
+
+                        if (txEntry != null)
+                            entry = (GridDistributedCacheEntry<K, V>)txEntry.cached();
+                    }
+
                     boolean explicit;
 
                     while (true) {
-                        GridDistributedCacheEntry<K, V> entry = null;
-
                         try {
-                            entry = cctx.colocated().entryExx(key, topVer, true);
+                            if (entry == null)
+                                entry = cctx.colocated().entryExx(key, topVer, true);
 
                             if (!cctx.isAll(entry, filter)) {
                                 if (log.isDebugEnabled())
@@ -743,6 +751,8 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
                         catch (GridCacheEntryRemovedException ignored) {
                             if (log.isDebugEnabled())
                                 log.debug("Got removed entry in lockAsync(..) method (will retry): " + entry);
+
+                            entry = null;
                         }
                     }
 
