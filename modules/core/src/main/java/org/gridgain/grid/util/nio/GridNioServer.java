@@ -996,93 +996,89 @@ public class GridNioServer<T> {
             NioOperationFuture<?> req = ses.removeMeta(NIO_OPERATION.ordinal());
             UUID nodeId = ses.meta(DIFF_VER_NODE_ID_META_KEY);
 
+            if (req == null) {
+                req = (NioOperationFuture<?>)ses.pollFuture();
+
+                if (req == null && buf.position() == 0) {
+                    key.interestOps(key.interestOps() & (~SelectionKey.OP_WRITE));
+
+                    return;
+                }
+            }
+
+            GridTcpCommunicationMessageAdapter msg;
+            boolean finished = false;
+
+            if (req != null) {
+                msg = req.directMessage();
+
+                assert msg != null;
+                assert msgWriter != null;
+
+                finished = msgWriter.write(nodeId, msg, buf);
+            }
+
+            // Fill up as many messages as possible to write buffer.
             List<NioOperationFuture<?>> doneFuts = null;
 
-            while (true) {
-                if (req == null) {
-                    req = (NioOperationFuture<?>)ses.pollFuture();
+            while (finished) {
+                if (doneFuts == null)
+                    doneFuts = new ArrayList<>();
 
-                    if (req == null && buf.position() == 0) {
-                        key.interestOps(key.interestOps() & (~SelectionKey.OP_WRITE));
+                doneFuts.add(req);
 
-                        break;
-                    }
-                }
+                req = (NioOperationFuture<?>)ses.pollFuture();
 
-                GridTcpCommunicationMessageAdapter msg;
-                boolean finished = false;
-
-                if (req != null) {
-                    msg = req.directMessage();
-
-                    assert msg != null;
-                    assert msgWriter != null;
-
-                    finished = msgWriter.write(nodeId, msg, buf);
-                }
-
-                // Fill up as many messages as possible to write buffer.
-                while (finished) {
-                    if (doneFuts == null)
-                        doneFuts = new ArrayList<>();
-
-                    doneFuts.add(req);
-
-                    req = (NioOperationFuture<?>)ses.pollFuture();
-
-                    if (req == null)
-                        break;
-
-                    msg = req.directMessage();
-
-                    assert msg != null;
-                    assert msgWriter != null;
-
-                    finished = msgWriter.write(nodeId, msg, buf);
-                }
-
-                buf.flip();
-
-                assert buf.hasRemaining();
-
-                if (!skipWrite) {
-                    int cnt = sockCh.write(buf);
-
-                    if (!F.isEmpty(doneFuts)) {
-                        for (int i = 0; i < doneFuts.size(); i++)
-                            doneFuts.get(i).onDone();
-
-                        doneFuts.clear();
-                    }
-
-                    if (log.isTraceEnabled())
-                        log.trace("Bytes sent [sockCh=" + sockCh + ", cnt=" + cnt + ']');
-
-                    if (metricsLsnr != null)
-                        metricsLsnr.onBytesSent(cnt);
-
-                    ses.bytesSent(cnt);
-                }
-                else {
-                    // For test purposes only (skipWrite is set to true in tests only).
-                    try {
-                        U.sleep(50);
-                    }
-                    catch (GridInterruptedException e) {
-                        throw new IOException("Thread has been interrupted.", e);
-                    }
-                }
-
-                if (buf.hasRemaining()) {
-                    buf.compact();
-
-                    ses.addMeta(NIO_OPERATION.ordinal(), req);
-
+                if (req == null)
                     break;
-                }
-                else
-                    buf.clear();
+
+                msg = req.directMessage();
+
+                assert msg != null;
+                assert msgWriter != null;
+
+                finished = msgWriter.write(nodeId, msg, buf);
             }
+
+            buf.flip();
+
+            assert buf.hasRemaining();
+
+            if (!skipWrite) {
+                int cnt = sockCh.write(buf);
+
+                if (!F.isEmpty(doneFuts)) {
+                    for (int i = 0; i < doneFuts.size(); i++)
+                        doneFuts.get(i).onDone();
+
+                    doneFuts.clear();
+                }
+
+                if (log.isTraceEnabled())
+                    log.trace("Bytes sent [sockCh=" + sockCh + ", cnt=" + cnt + ']');
+
+                if (metricsLsnr != null)
+                    metricsLsnr.onBytesSent(cnt);
+
+                ses.bytesSent(cnt);
+            }
+            else {
+                // For test purposes only (skipWrite is set to true in tests only).
+                try {
+                    U.sleep(50);
+                }
+                catch (GridInterruptedException e) {
+                    throw new IOException("Thread has been interrupted.", e);
+                }
+            }
+
+            if (buf.hasRemaining() || !finished) {
+                buf.compact();
+
+                ses.addMeta(NIO_OPERATION.ordinal(), req);
+            }
+            else
+                buf.clear();
         }
     }
 
@@ -1090,6 +1086,9 @@ public class GridNioServer<T> {
      * Thread performing only read operations from the channel.
      */
     private abstract class AbstractNioClientWorker extends GridWorker {
+        /** */
+        protected GridLogger log;
+
         /** Queue of change requests on this selector. */
         private final Queue<NioOperationFuture> changeReqs = new ConcurrentLinkedDeque8<>();
 
@@ -1113,6 +1112,7 @@ public class GridNioServer<T> {
             selector = createSelector(null);
 
             this.idx = idx;
+            this.log = log;
         }
 
         /** {@inheritDoc} */
@@ -1238,6 +1238,15 @@ public class GridNioServer<T> {
                     if (selector.select(2000) > 0)
                         // Walk through the ready keys collection and process network events.
                         processSelectedKeys(selector.selectedKeys());
+                    else {
+                        if (log.isDebugEnabled()) {
+                            for (SelectionKey key : selector.keys()) {
+                                GridSelectorNioSessionImpl ses = (GridSelectorNioSessionImpl)key.attachment();
+
+                                log.debug("Idle session was not selected for read or write: " + ses);
+                            }
+                        }
+                    }
 
                     checkIdle(selector.keys());
                 }
@@ -1560,6 +1569,9 @@ public class GridNioServer<T> {
      * A separate thread that will accept incoming connections and schedule read to some worker.
      */
     private class GridNioAcceptWorker extends GridWorker {
+        /** */
+        protected GridLogger log;
+
         /** Selector for this thread. */
         private Selector selector;
 
@@ -1573,6 +1585,7 @@ public class GridNioServer<T> {
             super(gridName, name, log);
 
             this.selector = selector;
+            this.log = log;
         }
 
         /** {@inheritDoc} */

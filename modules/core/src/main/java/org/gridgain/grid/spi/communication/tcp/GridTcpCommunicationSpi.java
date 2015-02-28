@@ -244,7 +244,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     ", writeTimeout=" + sockWriteTimeout + ']');
 
                 if (log.isDebugEnabled())
-                    log.debug("Closing communication SPI session on write timeout [remoteAddr=" + ses.remoteAddress() +
+                    log.debug("Closing communication SPI session on write timeout [ses=" + ses +
                         ", writeTimeout=" + sockWriteTimeout + ']');
 
                 ses.close();
@@ -278,7 +278,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                     if (!recoveryData.messagesFutures().isEmpty()) {
                                         if (log.isDebugEnabled())
                                             log.debug("Session was closed but there are unacknowledged messages, " +
-                                                "will try to reconnect [rmtNode=" + recoveryData.node().id() + ']');
+                                                "will try to reconnect [ses=" + ses +
+                                                "rmtNode=" + recoveryData.node().id() + ']');
 
                                         recoveryWorker.addReconnectRequest(recoveryData);
                                     }
@@ -311,7 +312,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                     }
 
                     if (log.isDebugEnabled())
-                        log.debug("Remote node ID received: " + sndId);
+                        log.debug("Remote node ID received [ses=" + ses + ", sndId=" + sndId + ']');
 
                     final UUID old = ses.addMeta(NODE_ID_META, sndId);
 
@@ -348,7 +349,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                             if (oldClient instanceof GridTcpNioCommunicationClient) {
                                 if (log.isDebugEnabled())
                                     log.debug("Received incoming connection when already connected " +
-                                            "to this node, rejecting [locNode=" + locNode.id() +
+                                            "to this node, rejecting [ses=" + ses + ", locNode=" + locNode.id() +
                                             ", rmtNode=" + sndId + ']');
 
                                 ses.send(new RecoveryLastReceivedMessage(-1));
@@ -379,8 +380,8 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                 if (oldClient instanceof GridTcpNioCommunicationClient) {
                                     if (log.isDebugEnabled())
                                         log.debug("Received incoming connection when already connected " +
-                                                "to this node, rejecting [locNode=" + locNode.id() +
-                                                ", rmtNode=" + sndId + ']');
+                                            "to this node, rejecting [ses=" + ses +
+                                            ", locNode=" + locNode.id() + ", rmtNode=" + sndId + ']');
 
                                     ses.send(new RecoveryLastReceivedMessage(-1));
 
