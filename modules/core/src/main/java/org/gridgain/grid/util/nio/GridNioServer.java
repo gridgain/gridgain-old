@@ -783,8 +783,6 @@ public class GridNioServer<T> {
 
             ses.bytesReceived(cnt);
 
-            // Sets limit to current position and
-            // resets position to 0.
             readBuf.flip();
 
             try {

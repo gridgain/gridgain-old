@@ -279,7 +279,7 @@ public class GridTcpCommunicationSpi extends GridSpiAdapter
                                         if (log.isDebugEnabled())
                                             log.debug("Session was closed but there are unacknowledged messages, " +
                                                 "will try to reconnect [ses=" + ses +
-                                                "rmtNode=" + recoveryData.node().id() + ']');
+                                                ", rmtNode=" + recoveryData.node().id() + ']');
 
                                         recoveryWorker.addReconnectRequest(recoveryData);
                                     }
