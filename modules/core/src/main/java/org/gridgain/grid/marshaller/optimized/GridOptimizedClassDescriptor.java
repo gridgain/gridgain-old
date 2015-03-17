@@ -1016,6 +1016,9 @@ class GridOptimizedClassDescriptor {
         /** Fields. */
         private final List<List<FieldInfo>> fields;
 
+        /** Own fields (excluding inherited). */
+        private final List<Field> ownFields;
+
         /**
          * Creates new instance.
          *
@@ -1023,6 +1026,18 @@ class GridOptimizedClassDescriptor {
          */
         Fields(List<List<FieldInfo>> fields) {
             this.fields = fields;
+
+            if (fields.isEmpty())
+                ownFields = null;
+            else {
+                ownFields = new ArrayList<>(fields.size());
+
+                for (FieldInfo f : fields.get(fields.size() - 1)) {
+                    if (f.field() != null)
+                        ownFields.add(f.field);
+                }
+            }
+
         }
 
         /**
@@ -1031,17 +1046,7 @@ class GridOptimizedClassDescriptor {
          * @return List of fields or {@code null} if fields list is empty.
          */
         List<Field> ownFields() {
-            if (fields.isEmpty())
-                return null;
-
-            List<Field> res = new ArrayList<>();
-
-            for (FieldInfo f : fields.get(fields.size() - 1)) {
-                if (f.field() != null)
-                    res.add(f.field);
-            }
-
-            return res;
+            return ownFields;
         }
 
         /**
