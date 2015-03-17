@@ -13,6 +13,7 @@ import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.io.*;
 import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -749,8 +750,11 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         /** Stream. */
         private final GridOptimizedObjectOutputStream out;
 
-        /** Field info map. */
+        /** Fields info. */
         private final List<GridOptimizedClassDescriptor.FieldInfo> curFields;
+
+        /** Fields names. */
+        private final Map<String, Integer> nameToIndex;
 
         /** Values. */
         private final GridBiTuple<GridOptimizedFieldType, Object>[] objs;
@@ -764,6 +768,11 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
             this.out = out;
 
             curFields = out.curFields;
+
+            nameToIndex = U.newHashMap(curFields.size());
+
+            for (int i = 0; i < curFields.size(); ++i)
+                nameToIndex.put(curFields.get(i).name(), i);
 
             objs = new GridBiTuple[curFields.size()];
         }
@@ -826,13 +835,12 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
          * @param val Value.
          */
         private void value(String name, Object val) {
-            //TODO: gg-9924
-            for (int i = 0; i < curFields.size(); ++i) {
-                GridOptimizedClassDescriptor.FieldInfo info = curFields.get(i);
+            int i = nameToIndex.get(name);
 
-                if (info.name().equals(name))
-                    objs[i] = F.t(info.type(), val);
-            }
+            GridOptimizedClassDescriptor.FieldInfo info = curFields.get(i);
+
+            if (info.name().equals(name))
+                objs[i] = F.t(info.type(), val);
         }
     }
 }
