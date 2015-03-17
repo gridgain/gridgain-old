@@ -213,12 +213,12 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
         for (int i = 0; i < fieldOffs.size(); i++) {
             GridOptimizedClassDescriptor.FieldInfo t = fieldOffs.get(i);
 
-            switch ((t.fieldType())) {
+            switch ((t.type())) {
                 case BYTE:
                     byte resByte = readByte();
 
                     if (t.field() != null)
-                        setByte(obj, t.fieldOffs(), resByte);
+                        setByte(obj, t.offset(), resByte);
 
                     break;
 
@@ -226,7 +226,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     short resShort = readShort();
 
                     if (t.field() != null)
-                        setShort(obj, t.fieldOffs(), resShort);
+                        setShort(obj, t.offset(), resShort);
 
                     break;
 
@@ -234,7 +234,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     int resInt = readInt();
 
                     if (t.field() != null)
-                        setInt(obj, t.fieldOffs(), resInt);
+                        setInt(obj, t.offset(), resInt);
 
                     break;
 
@@ -242,7 +242,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     long resLong = readLong();
 
                     if (t.field() != null)
-                        setLong(obj, t.fieldOffs(), resLong);
+                        setLong(obj, t.offset(), resLong);
 
                     break;
 
@@ -250,7 +250,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     float resFloat = readFloat();
 
                     if (t.field() != null)
-                        setFloat(obj, t.fieldOffs(), resFloat);
+                        setFloat(obj, t.offset(), resFloat);
 
                     break;
 
@@ -258,7 +258,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     double resDouble = readDouble();
 
                     if (t.field() != null)
-                        setDouble(obj, t.fieldOffs(), resDouble);
+                        setDouble(obj, t.offset(), resDouble);
 
                     break;
 
@@ -266,7 +266,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     char resChar = readChar();
 
                     if (t.field() != null)
-                        setChar(obj, t.fieldOffs(), resChar);
+                        setChar(obj, t.offset(), resChar);
 
                     break;
 
@@ -274,7 +274,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     boolean resBoolean = readBoolean();
 
                     if (t.field() != null)
-                        setBoolean(obj, t.fieldOffs(), resBoolean);
+                        setBoolean(obj, t.offset(), resBoolean);
 
                     break;
 
@@ -282,7 +282,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                     Object resObject = readObject();
 
                     if (t.field() != null)
-                        setObject(obj, t.fieldOffs(), resObject);
+                        setObject(obj, t.offset(), resObject);
             }
         }
     }
@@ -903,7 +903,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
 
                 Object obj = null;
 
-                switch (t.fieldType()) {
+                switch (t.type()) {
                     case BYTE:
                         obj = in.readByte();
 
@@ -948,7 +948,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                         obj = in.readObject();
                 }
 
-                objs.put(t.fieldName(), obj);
+                objs.put(t.name(), obj);
             }
         }
 

@@ -421,58 +421,58 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         for (int i = 0; i < fieldOffs.size(); i++) {
             GridOptimizedClassDescriptor.FieldInfo t = fieldOffs.get(i);
 
-            switch (t.fieldType()) {
+            switch (t.type()) {
                 case BYTE:
                     if (t.field() != null)
-                        writeByte(getByte(obj, t.fieldOffs()));
+                        writeByte(getByte(obj, t.offset()));
 
                     break;
 
                 case SHORT:
                     if (t.field() != null)
-                        writeShort(getShort(obj, t.fieldOffs()));
+                        writeShort(getShort(obj, t.offset()));
 
                     break;
 
                 case INT:
                     if (t.field() != null)
-                        writeInt(getInt(obj, t.fieldOffs()));
+                        writeInt(getInt(obj, t.offset()));
 
                     break;
 
                 case LONG:
                     if (t.field() != null)
-                        writeLong(getLong(obj, t.fieldOffs()));
+                        writeLong(getLong(obj, t.offset()));
 
                     break;
 
                 case FLOAT:
                     if (t.field() != null)
-                        writeFloat(getFloat(obj, t.fieldOffs()));
+                        writeFloat(getFloat(obj, t.offset()));
 
                     break;
 
                 case DOUBLE:
                     if (t.field() != null)
-                        writeDouble(getDouble(obj, t.fieldOffs()));
+                        writeDouble(getDouble(obj, t.offset()));
 
                     break;
 
                 case CHAR:
                     if (t.field() != null)
-                        writeChar(getChar(obj, t.fieldOffs()));
+                        writeChar(getChar(obj, t.offset()));
 
                     break;
 
                 case BOOLEAN:
                     if (t.field() != null)
-                        writeBoolean(getBoolean(obj, t.fieldOffs()));
+                        writeBoolean(getBoolean(obj, t.offset()));
 
                     break;
 
                 case OTHER:
                     if (t.field() != null)
-                        writeObject0(getObject(obj, t.fieldOffs()));
+                        writeObject0(getObject(obj, t.offset()));
             }
         }
     }
@@ -830,8 +830,8 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
             for (int i = 0; i < curFields.size(); ++i) {
                 GridOptimizedClassDescriptor.FieldInfo info = curFields.get(i);
 
-                if (info.fieldName().equals(name)) {
-                    objs[i] = F.t(info.fieldType(), val);
+                if (info.name().equals(name)) {
+                    objs[i] = F.t(info.type(), val);
                 }
             }
         }

@@ -525,9 +525,8 @@ class GridOptimizedClassDescriptor {
                         }
 
                         Collections.sort(clsFields, new Comparator<FieldInfo>() {
-                            @Override
-                            public int compare(FieldInfo t1, FieldInfo t2) {
-                                return t1.fieldName().compareTo(t2.fieldName());
+                            @Override public int compare(FieldInfo t1, FieldInfo t2) {
+                                return t1.name().compareTo(t2.name());
                             }
                         });
 
@@ -966,6 +965,12 @@ class GridOptimizedClassDescriptor {
         /** Field name. */
         private final String fieldName;
 
+        /**
+         * @param field Field.
+         * @param name Field name.
+         * @param offset Field offset.
+         * @param type Grid optimized field type.
+         */
         FieldInfo(Field field, String name, long offset, GridOptimizedFieldType type) {
             this.field = field;
             fieldOffs = offset;
@@ -973,19 +978,31 @@ class GridOptimizedClassDescriptor {
             fieldName = name;
         }
 
+        /**
+         * @return Returns field.
+         */
         Field field() {
             return field;
         }
 
-        long fieldOffs() {
+        /**
+         * @return Offset.
+         */
+        long offset() {
             return fieldOffs;
         }
 
-        GridOptimizedFieldType fieldType() {
+        /**
+         * @return Type.
+         */
+        GridOptimizedFieldType type() {
             return fieldType;
         }
 
-        String fieldName() {
+        /**
+         * @return Name.
+         */
+        String name() {
             return fieldName;
         }
     }
