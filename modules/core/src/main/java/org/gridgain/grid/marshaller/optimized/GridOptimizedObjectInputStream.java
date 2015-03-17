@@ -43,7 +43,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
     private Object curObj;
 
     /** */
-    private List<GridOptimizedClassDescriptor.FieldInfo> curFields;
+    private GridOptimizedClassDescriptor.ClassFields curFields;
 
     /** */
     private Class<?> curCls;
@@ -208,7 +208,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
      * @throws IOException In case of error.
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    void readFields(Object obj, List<GridOptimizedClassDescriptor.FieldInfo> fieldOffs) throws ClassNotFoundException,
+    void readFields(Object obj, GridOptimizedClassDescriptor.ClassFields fieldOffs) throws ClassNotFoundException,
         IOException {
         for (int i = 0; i < fieldOffs.size(); i++) {
             GridOptimizedClassDescriptor.FieldInfo t = fieldOffs.get(i);
@@ -882,10 +882,10 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
      */
     private static class GetFieldImpl extends GetField {
         /** Field info map. */
-        private final List<GridOptimizedClassDescriptor.FieldInfo> fieldInfo;
+        private final GridOptimizedClassDescriptor.ClassFields fieldInfo;
 
         /** Values. */
-        private final Map<String, Object> objs;
+        private final Object[] objs;
 
         /**
          * @param in Stream.
@@ -896,7 +896,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
         private GetFieldImpl(GridOptimizedObjectInputStream in) throws IOException, ClassNotFoundException {
             fieldInfo = in.curFields;
 
-            objs = new HashMap(fieldInfo.size());
+            objs = new Object[fieldInfo.size()];
 
             for (int i = 0; i < fieldInfo.size(); i++) {
                 GridOptimizedClassDescriptor.FieldInfo t = fieldInfo.get(i);
@@ -948,7 +948,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                         obj = in.readObject();
                 }
 
-                objs.put(t.name(), obj);
+                objs[fieldInfo.getIndex(t.name())] = obj;
             }
         }
 
@@ -959,7 +959,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
 
         /** {@inheritDoc} */
         @Override public boolean defaulted(String name) throws IOException {
-            return objs.containsKey(name);
+            return objs[fieldInfo.getIndex(name)] == null;
         }
 
         /** {@inheritDoc} */
@@ -1013,7 +1013,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
          * @return Value.
          */
         private <T> T value(String name, T dflt) {
-            return objs.containsKey(name) ? (T)objs.get(name) : dflt;
+            return objs[fieldInfo.getIndex(name)] != null ? (T)objs[fieldInfo.getIndex(name)] : dflt;
         }
     }
 }

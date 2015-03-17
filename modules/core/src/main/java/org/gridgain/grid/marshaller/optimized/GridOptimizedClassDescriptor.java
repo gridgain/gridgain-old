@@ -12,6 +12,7 @@ package org.gridgain.grid.marshaller.optimized;
 import org.gridgain.grid.marshaller.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import sun.misc.*;
 
 import java.io.*;
@@ -415,7 +416,7 @@ class GridOptimizedClassDescriptor {
 
                     writeObjMtds = new ArrayList<>();
                     readObjMtds = new ArrayList<>();
-                    List<List<FieldInfo>> fields = new ArrayList<>();
+                    List<ClassFields> fields = new ArrayList<>();
 
                     for (c = cls; c != null && !c.equals(Object.class); c = c.getSuperclass()) {
                         Method mtd;
@@ -531,7 +532,7 @@ class GridOptimizedClassDescriptor {
                             }
                         });
 
-                        fields.add(clsFields);
+                        fields.add(new ClassFields(clsFields));
                     }
 
                     Collections.reverse(writeObjMtds);
@@ -1009,12 +1010,67 @@ class GridOptimizedClassDescriptor {
     }
 
     /**
+     * Information about one class.
+     */
+    static class ClassFields {
+        /** Fields. */
+        private final List<FieldInfo> fields;
+
+        private final Map<String, Integer> nameToIndex;
+
+        /**
+         * @param fields Field infos.
+         */
+        ClassFields(List<FieldInfo> fields) {
+            this.fields = fields;
+
+            nameToIndex = U.newHashMap(fields.size());
+
+            for (int i = 0; i < fields.size(); ++i)
+                nameToIndex.put(fields.get(i).name(), i);
+        }
+
+        /**
+         * @return Class fields.
+         */
+        List<FieldInfo> fields() {
+            return fields;
+        }
+
+        /**
+         * @return Fields count.
+         */
+        int size() {
+            return fields.size();
+        }
+
+        /**
+         * @param i Field's index.
+         * @return FieldInfo.
+         */
+        FieldInfo get(int i) {
+            return fields.get(i);
+        }
+
+        /**
+         * @param name Field's name.
+         * @return Field's index.
+         */
+        int getIndex(String name) {
+            if (!nameToIndex.containsKey(name))
+                return -1;
+
+            return nameToIndex.get(name);
+        }
+    }
+
+    /**
      * Encapsulates data about class fields.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     static class Fields {
         /** Fields. */
-        private final List<List<FieldInfo>> fields;
+        private final List<ClassFields> fields;
 
         /** Own fields (excluding inherited). */
         private final List<Field> ownFields;
@@ -1024,7 +1080,7 @@ class GridOptimizedClassDescriptor {
          *
          * @param fields Fields.
          */
-        Fields(List<List<FieldInfo>> fields) {
+        Fields(List<ClassFields> fields) {
             this.fields = fields;
 
             if (fields.isEmpty())
@@ -1032,7 +1088,7 @@ class GridOptimizedClassDescriptor {
             else {
                 ownFields = new ArrayList<>(fields.size());
 
-                for (FieldInfo f : fields.get(fields.size() - 1)) {
+                for (FieldInfo f : fields.get(fields.size() - 1).fields()) {
                     if (f.field() != null)
                         ownFields.add(f.field);
                 }
@@ -1055,7 +1111,7 @@ class GridOptimizedClassDescriptor {
          * @param i hierarchy level where 0 corresponds to top level.
          * @return list of pairs where first value is field type and second value is its offset.
          */
-        List<FieldInfo> fields(int i) {
+        ClassFields fields(int i) {
             return fields.get(i);
         }
     }

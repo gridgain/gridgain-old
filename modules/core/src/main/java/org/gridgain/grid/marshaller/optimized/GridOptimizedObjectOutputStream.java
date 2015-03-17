@@ -13,7 +13,6 @@ import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.io.*;
 import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -45,7 +44,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
     private Object curObj;
 
     /** */
-    private List<GridOptimizedClassDescriptor.FieldInfo> curFields;
+    private GridOptimizedClassDescriptor.ClassFields curFields;
 
     /** */
     private PutFieldImpl curPut;
@@ -414,13 +413,13 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
      * Writes all non-static and non-transient field values to this stream.
      *
      * @param obj Object.
-     * @param fieldOffs Field offsets.
+     * @param fields Field offsets.
      * @throws IOException In case of error.
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    private void writeFields(Object obj, List<GridOptimizedClassDescriptor.FieldInfo> fieldOffs) throws IOException {
-        for (int i = 0; i < fieldOffs.size(); i++) {
-            GridOptimizedClassDescriptor.FieldInfo t = fieldOffs.get(i);
+    private void writeFields(Object obj, GridOptimizedClassDescriptor.ClassFields fields) throws IOException {
+        for (int i = 0; i < fields.size(); i++) {
+            GridOptimizedClassDescriptor.FieldInfo t = fields.get(i);
 
             switch (t.type()) {
                 case BYTE:
@@ -751,28 +750,19 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         private final GridOptimizedObjectOutputStream out;
 
         /** Fields info. */
-        private final List<GridOptimizedClassDescriptor.FieldInfo> curFields;
-
-        /** Fields names. */
-        private final Map<String, Integer> nameToIndex;
+        private final GridOptimizedClassDescriptor.ClassFields curFields;
 
         /** Values. */
         private final GridBiTuple<GridOptimizedFieldType, Object>[] objs;
 
         /**
          * @param out Output stream.
-         * @throws IOException In case of error.
          */
         @SuppressWarnings("unchecked")
         private PutFieldImpl(GridOptimizedObjectOutputStream out) {
             this.out = out;
 
             curFields = out.curFields;
-
-            nameToIndex = U.newHashMap(curFields.size());
-
-            for (int i = 0; i < curFields.size(); ++i)
-                nameToIndex.put(curFields.get(i).name(), i);
 
             objs = new GridBiTuple[curFields.size()];
         }
@@ -835,7 +825,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
          * @param val Value.
          */
         private void value(String name, Object val) {
-            int i = nameToIndex.get(name);
+            int i = curFields.getIndex(name);
 
             GridOptimizedClassDescriptor.FieldInfo info = curFields.get(i);
 
