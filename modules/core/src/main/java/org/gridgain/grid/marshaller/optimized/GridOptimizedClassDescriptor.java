@@ -456,29 +456,14 @@ class GridOptimizedClassDescriptor {
 
                         Field[] clsFields0 = c.getDeclaredFields();
 
-                        Arrays.sort(clsFields0, new Comparator<Field>() {
-                            @Override public int compare(Field f1, Field f2) {
-                                return f1.getName().compareTo(f2.getName());
-                            }
-                        });
+                        Map<String, Field> fieldNames = new HashMap<>();
+
+                        for (Field f : clsFields0)
+                            fieldNames.put(f.getName(), f);
+
                         List<FieldInfo> clsFields = new ArrayList<>(clsFields0.length);
 
-                        Set<String> existingFields = new HashSet<>(clsFields0.length);
-
-                        for (int i = 0; i < clsFields0.length; i++) {
-                            Field f = clsFields0[i];
-
-                            int mod = f.getModifiers();
-
-                            if (!isStatic(mod) && !isTransient(mod)) {
-                                FieldInfo fieldInfo = new FieldInfo(f, f.getName(),
-                                    UNSAFE.objectFieldOffset(f), fieldType(f.getType()));
-
-                                clsFields.add(fieldInfo);
-
-                                existingFields.add(f.getName());
-                            }
-                        }
+                        boolean hasSerialPersistentFields  = false;
 
                         try {
                             Field serFieldsDesc = c.getDeclaredField("serialPersistentFields");
@@ -487,19 +472,32 @@ class GridOptimizedClassDescriptor {
 
                             if (serFieldsDesc.getType() == ObjectStreamField[].class &&
                                 isPrivate(mod) && isStatic(mod) && isFinal(mod)) {
+                                hasSerialPersistentFields = true;
+
                                 serFieldsDesc.setAccessible(true);
 
-                                ObjectStreamField[] serFields = (ObjectStreamField[])serFieldsDesc.get(null);
+                                ObjectStreamField[] serFields = (ObjectStreamField[]) serFieldsDesc.get(null);
 
                                 for (int i = 0; i < serFields.length; i++) {
                                     ObjectStreamField serField = serFields[i];
 
-                                    if (!existingFields.contains(serField.getName())) {
-                                        FieldInfo fieldInfo = new FieldInfo(null, serField.getName(),
-                                            -1, fieldType(serField.getType()));
+                                    FieldInfo fieldInfo;
 
-                                        clsFields.add(fieldInfo);
+                                    if (!fieldNames.containsKey(serField.getName()))
+                                        fieldInfo = new FieldInfo(null,
+                                            serField.getName(),
+                                            -1,
+                                            fieldType(serField.getType()));
+                                    else {
+                                        Field f = fieldNames.get(serField.getName());
+
+                                        fieldInfo = new FieldInfo(f,
+                                            serField.getName(),
+                                            UNSAFE.objectFieldOffset(f),
+                                            fieldType(serField.getType()));
                                     }
+
+                                    clsFields.add(fieldInfo);
                                 }
                             }
                         }
@@ -511,14 +509,29 @@ class GridOptimizedClassDescriptor {
                                 cls.getName(), e);
                         }
 
-                        fields.add(clsFields);
+                        if (!hasSerialPersistentFields) {
+                            for (int i = 0; i < clsFields0.length; i++) {
+                                Field f = clsFields0[i];
+
+                                int mod = f.getModifiers();
+
+                                if (!isStatic(mod) && !isTransient(mod)) {
+                                    FieldInfo fieldInfo = new FieldInfo(f, f.getName(),
+                                        UNSAFE.objectFieldOffset(f), fieldType(f.getType()));
+
+                                    clsFields.add(fieldInfo);
+                                }
+                            }
+                        }
 
                         Collections.sort(clsFields, new Comparator<FieldInfo>() {
-                            @Override public int compare(FieldInfo t1, FieldInfo t2) {
+                            @Override
+                            public int compare(FieldInfo t1, FieldInfo t2) {
                                 return t1.fieldName().compareTo(t2.fieldName());
                             }
                         });
 
+                        fields.add(clsFields);
                     }
 
                     Collections.reverse(writeObjMtds);

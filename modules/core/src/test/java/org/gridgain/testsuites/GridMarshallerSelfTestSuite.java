@@ -31,6 +31,7 @@ public class GridMarshallerSelfTestSuite extends TestSuite {
         suite.addTest(new TestSuite(GridOptimizedMarshallerTest.class));
         suite.addTest(new TestSuite(GridOptimizedObjectStreamSelfTest.class));
         suite.addTest(new TestSuite(GridUnsafeDataOutputArraySizingSelfTest.class));
+        suite.addTest(new TestSuite(OptimizedMarshallerSerialPersistentFieldsSelfTest.class));
 
         return suite;
     }
