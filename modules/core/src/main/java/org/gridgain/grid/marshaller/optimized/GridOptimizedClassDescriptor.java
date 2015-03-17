@@ -1093,7 +1093,6 @@ class GridOptimizedClassDescriptor {
                         ownFields.add(f.field);
                 }
             }
-
         }
 
         /**
