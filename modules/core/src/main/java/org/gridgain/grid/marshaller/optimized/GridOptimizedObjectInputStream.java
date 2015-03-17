@@ -754,7 +754,10 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
         if (curObj == null)
             throw new NotActiveException("Not in readObject() call.");
 
-        readFields(curObj, curFields);
+        if (curFields.size() != 0)
+            readFields(curObj, curFields);
+        else
+            readFields();
     }
 
     /** {@inheritDoc} */
