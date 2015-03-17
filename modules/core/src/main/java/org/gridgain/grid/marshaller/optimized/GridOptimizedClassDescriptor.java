@@ -483,11 +483,12 @@ class GridOptimizedClassDescriptor {
 
                                     FieldInfo fieldInfo;
 
-                                    if (!fieldNames.containsKey(serField.getName()))
+                                    if (!fieldNames.containsKey(serField.getName())) {
                                         fieldInfo = new FieldInfo(null,
                                             serField.getName(),
                                             -1,
                                             fieldType(serField.getType()));
+                                    }
                                     else {
                                         Field f = fieldNames.get(serField.getName());
 
