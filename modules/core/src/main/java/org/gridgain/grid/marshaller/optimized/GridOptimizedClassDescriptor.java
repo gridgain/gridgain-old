@@ -9,7 +9,6 @@
 
 package org.gridgain.grid.marshaller.optimized;
 
-import org.gridgain.grid.lang.*;
 import org.gridgain.grid.marshaller.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.typedef.*;
@@ -416,10 +415,7 @@ class GridOptimizedClassDescriptor {
 
                     writeObjMtds = new ArrayList<>();
                     readObjMtds = new ArrayList<>();
-                    List<List<Field>> fields = new ArrayList<>();
-                    List<List<T2<GridOptimizedFieldType, Long>>> fieldOffs = new ArrayList<>();
-                    List<Map<String, GridBiTuple<Integer, GridOptimizedFieldType>>> fieldInfoMaps = new ArrayList<>();
-                    List<List<GridBiTuple<Integer, GridOptimizedFieldType>>> fieldInfoLists = new ArrayList<>();
+                    List<List<FieldInfo>> fields = new ArrayList<>();
 
                     for (c = cls; c != null && !c.equals(Object.class); c = c.getSuperclass()) {
                         Method mtd;
@@ -465,10 +461,9 @@ class GridOptimizedClassDescriptor {
                                 return f1.getName().compareTo(f2.getName());
                             }
                         });
+                        List<FieldInfo> clsFields = new ArrayList<>(clsFields0.length);
 
-                        List<Field> clsFields = new ArrayList<>(clsFields0.length);
-                        List<T2<GridOptimizedFieldType, Long>> clsFieldOffs =
-                            new ArrayList<>(clsFields0.length);
+                        Set<String> existingFields = new HashSet<>(clsFields0.length);
 
                         for (int i = 0; i < clsFields0.length; i++) {
                             Field f = clsFields0[i];
@@ -476,17 +471,14 @@ class GridOptimizedClassDescriptor {
                             int mod = f.getModifiers();
 
                             if (!isStatic(mod) && !isTransient(mod)) {
-                                GridOptimizedFieldType type = fieldType(f.getType());
+                                FieldInfo fieldInfo = new FieldInfo(f, f.getName(),
+                                    UNSAFE.objectFieldOffset(f), fieldType(f.getType()));
 
-                                clsFields.add(f);
-                                clsFieldOffs.add(new T2<>(type, UNSAFE.objectFieldOffset(f)));
+                                clsFields.add(fieldInfo);
+
+                                existingFields.add(f.getName());
                             }
                         }
-
-                        fields.add(clsFields);
-                        fieldOffs.add(clsFieldOffs);
-
-                        Map<String, GridBiTuple<Integer, GridOptimizedFieldType>> fieldInfoMap = null;
 
                         try {
                             Field serFieldsDesc = c.getDeclaredField("serialPersistentFields");
@@ -499,12 +491,15 @@ class GridOptimizedClassDescriptor {
 
                                 ObjectStreamField[] serFields = (ObjectStreamField[])serFieldsDesc.get(null);
 
-                                fieldInfoMap = new HashMap<>();
-
                                 for (int i = 0; i < serFields.length; i++) {
                                     ObjectStreamField serField = serFields[i];
 
-                                    fieldInfoMap.put(serField.getName(), F.t(i, fieldType(serField.getType())));
+                                    if (!existingFields.contains(serField.getName())) {
+                                        FieldInfo fieldInfo = new FieldInfo(null, serField.getName(),
+                                            -1, fieldType(serField.getType()));
+
+                                        clsFields.add(fieldInfo);
+                                    }
                                 }
                             }
                         }
@@ -516,39 +511,21 @@ class GridOptimizedClassDescriptor {
                                 cls.getName(), e);
                         }
 
-                        if (fieldInfoMap == null) {
-                            fieldInfoMap = new HashMap<>();
+                        fields.add(clsFields);
 
-                            for (int i = 0; i < clsFields.size(); i++) {
-                                Field f = clsFields.get(i);
-
-                                fieldInfoMap.put(f.getName(), F.t(i, fieldType(f.getType())));
-                            }
-                        }
-
-                        fieldInfoMaps.add(fieldInfoMap);
-
-                        List<GridBiTuple<Integer, GridOptimizedFieldType>> fieldInfoList =
-                            new ArrayList<>(fieldInfoMap.values());
-
-                        Collections.sort(fieldInfoList, new Comparator<GridBiTuple<Integer, GridOptimizedFieldType>>() {
-                            @Override public int compare(GridBiTuple<Integer, GridOptimizedFieldType> t1,
-                                GridBiTuple<Integer, GridOptimizedFieldType> t2) {
-                                return t1.get1().compareTo(t2.get1());
+                        Collections.sort(clsFields, new Comparator<FieldInfo>() {
+                            @Override public int compare(FieldInfo t1, FieldInfo t2) {
+                                return t1.fieldName().compareTo(t2.fieldName());
                             }
                         });
 
-                        fieldInfoLists.add(fieldInfoList);
                     }
 
                     Collections.reverse(writeObjMtds);
                     Collections.reverse(readObjMtds);
                     Collections.reverse(fields);
-                    Collections.reverse(fieldOffs);
-                    Collections.reverse(fieldInfoMaps);
-                    Collections.reverse(fieldInfoLists);
 
-                    this.fields = new Fields(fields, fieldOffs, fieldInfoLists, fieldInfoMaps);
+                    this.fields = new Fields(fields);
                 }
             }
         }
@@ -960,37 +937,61 @@ class GridOptimizedClassDescriptor {
     }
 
     /**
+     * Information about one field.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    static class FieldInfo {
+        /** Field. */
+        private final Field field;
+
+        /** Field offset. */
+        private final long fieldOffs;
+
+        /** Field type. */
+        private final GridOptimizedFieldType fieldType;
+
+        /** Field name. */
+        private final String fieldName;
+
+        FieldInfo(Field field, String name, long offset, GridOptimizedFieldType type) {
+            this.field = field;
+            fieldOffs = offset;
+            fieldType = type;
+            fieldName = name;
+        }
+
+        Field field() {
+            return field;
+        }
+
+        long fieldOffs() {
+            return fieldOffs;
+        }
+
+        GridOptimizedFieldType fieldType() {
+            return fieldType;
+        }
+
+        String fieldName() {
+            return fieldName;
+        }
+    }
+
+    /**
      * Encapsulates data about class fields.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     static class Fields {
         /** Fields. */
-        private final List<List<Field>> fields;
-
-        /** Fields offsets. */
-        private final List<List<T2<GridOptimizedFieldType, Long>>> fieldOffs;
-
-        /** Fields details lists. */
-        private final List<List<GridBiTuple<Integer, GridOptimizedFieldType>>> fieldInfoLists;
-
-        /** Fields details maps. */
-        private final List<Map<String, GridBiTuple<Integer, GridOptimizedFieldType>>> fieldInfoMaps;
+        private final List<List<FieldInfo>> fields;
 
         /**
          * Creates new instance.
          *
          * @param fields Fields.
-         * @param fieldOffs Field offsets.
-         * @param fieldInfoLists List of field details sequences for each type in the object's class hierarchy.
-         * @param fieldInfoMaps List of field details maps for each type in the object's class hierarchy.
          */
-        Fields(List<List<Field>> fields, List<List<T2<GridOptimizedFieldType, Long>>> fieldOffs,
-            List<List<GridBiTuple<Integer, GridOptimizedFieldType>>> fieldInfoLists,
-            List<Map<String, GridBiTuple<Integer, GridOptimizedFieldType>>> fieldInfoMaps) {
+        Fields(List<List<FieldInfo>> fields) {
             this.fields = fields;
-            this.fieldOffs = fieldOffs;
-            this.fieldInfoLists = fieldInfoLists;
-            this.fieldInfoMaps = fieldInfoMaps;
         }
 
         /**
@@ -999,7 +1000,17 @@ class GridOptimizedClassDescriptor {
          * @return List of fields or {@code null} if fields list is empty.
          */
         List<Field> ownFields() {
-            return fields.isEmpty() ? null : fields.get(fields.size() - 1);
+            if (fields.isEmpty())
+                return null;
+
+            List<Field> res = new ArrayList<>();
+
+            for (FieldInfo f : fields.get(fields.size() - 1)) {
+                if (f.field() != null)
+                    res.add(f.field);
+            }
+
+            return res;
         }
 
         /**
@@ -1008,28 +1019,8 @@ class GridOptimizedClassDescriptor {
          * @param i hierarchy level where 0 corresponds to top level.
          * @return list of pairs where first value is field type and second value is its offset.
          */
-        List<T2<GridOptimizedFieldType, Long>> fieldOffs(int i) {
-            return fieldOffs.get(i);
-        }
-
-        /**
-         * Returns field sequence numbers and their types as list.
-         *
-         * @param i hierarchy level where 0 corresponds to top level.
-         * @return list of pairs (field number, field type) for the given hierarchy level.
-         */
-        List<GridBiTuple<Integer, GridOptimizedFieldType>> fieldInfoList(int i) {
-            return fieldInfoLists.get(i);
-        }
-
-        /**
-         * Returns field sequence numbers and their types as map where key is a field name,
-         *
-         * @param i hierarchy level where 0 corresponds to top level.
-         * @return map of field names and their details.
-         */
-        Map<String, GridBiTuple<Integer, GridOptimizedFieldType>> fieldInfoMap(int i) {
-            return fieldInfoMaps.get(i);
+        List<FieldInfo> fields(int i) {
+            return fields.get(i);
         }
     }
 }

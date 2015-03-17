@@ -44,10 +44,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
     private Object curObj;
 
     /** */
-    private List<T2<GridOptimizedFieldType, Long>> curFields;
-
-    /** */
-    private Map<String, GridBiTuple<Integer, GridOptimizedFieldType>> curFieldInfoMap;
+    private List<GridOptimizedClassDescriptor.FieldInfo> curFields;
 
     /** */
     private PutFieldImpl curPut;
@@ -141,7 +138,6 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         curObj = null;
         curFields = null;
         curPut = null;
-        curFieldInfoMap = null;
 
         if (obj == null)
             writeByte(NULL);
@@ -275,8 +271,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
 
             if (mtd != null) {
                 curObj = obj;
-                curFields = fields.fieldOffs(i);
-                curFieldInfoMap = fields.fieldInfoMap(i);
+                curFields = fields.fields(i);
 
                 try {
                     mtd.invoke(obj, this);
@@ -289,7 +284,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
                 }
             }
             else
-                writeFields(obj, fields.fieldOffs(i));
+                writeFields(obj, fields.fields(i));
         }
     }
 
@@ -422,53 +417,62 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
      * @throws IOException In case of error.
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    private void writeFields(Object obj, List<T2<GridOptimizedFieldType, Long>> fieldOffs) throws IOException {
+    private void writeFields(Object obj, List<GridOptimizedClassDescriptor.FieldInfo> fieldOffs) throws IOException {
         for (int i = 0; i < fieldOffs.size(); i++) {
-            T2<GridOptimizedFieldType, Long> t = fieldOffs.get(i);
+            GridOptimizedClassDescriptor.FieldInfo t = fieldOffs.get(i);
 
-            switch (t.get1()) {
+            switch (t.fieldType()) {
                 case BYTE:
-                    writeByte(getByte(obj, t.get2()));
+                    if (t.field() != null)
+                        writeByte(getByte(obj, t.fieldOffs()));
 
                     break;
 
                 case SHORT:
-                    writeShort(getShort(obj, t.get2()));
+                    if (t.field() != null)
+                        writeShort(getShort(obj, t.fieldOffs()));
 
                     break;
 
                 case INT:
-                    writeInt(getInt(obj, t.get2()));
+                    if (t.field() != null)
+                        writeInt(getInt(obj, t.fieldOffs()));
 
                     break;
 
                 case LONG:
-                    writeLong(getLong(obj, t.get2()));
+                    if (t.field() != null)
+                        writeLong(getLong(obj, t.fieldOffs()));
 
                     break;
 
                 case FLOAT:
-                    writeFloat(getFloat(obj, t.get2()));
+                    if (t.field() != null)
+                        writeFloat(getFloat(obj, t.fieldOffs()));
 
                     break;
 
                 case DOUBLE:
-                    writeDouble(getDouble(obj, t.get2()));
+                    if (t.field() != null)
+                        writeDouble(getDouble(obj, t.fieldOffs()));
 
                     break;
 
                 case CHAR:
-                    writeChar(getChar(obj, t.get2()));
+                    if (t.field() != null)
+                        writeChar(getChar(obj, t.fieldOffs()));
 
                     break;
 
                 case BOOLEAN:
-                    writeBoolean(getBoolean(obj, t.get2()));
+                    if (t.field() != null)
+                        writeBoolean(getBoolean(obj, t.fieldOffs()));
 
                     break;
 
                 case OTHER:
-                    writeObject0(getObject(obj, t.get2()));
+                    if (t.field() != null)
+                        writeObject0(getObject(obj, t.fieldOffs()));
             }
         }
     }
@@ -716,7 +720,6 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         curObj = null;
         curFields = null;
         curPut = null;
-        curFieldInfoMap = null;
     }
 
     /** {@inheritDoc} */
@@ -747,7 +750,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         private final GridOptimizedObjectOutputStream out;
 
         /** Field info map. */
-        private final Map<String, GridBiTuple<Integer, GridOptimizedFieldType>> fieldInfoMap;
+        private final List<GridOptimizedClassDescriptor.FieldInfo> curFields;
 
         /** Values. */
         private final GridBiTuple<GridOptimizedFieldType, Object>[] objs;
@@ -760,9 +763,9 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
         private PutFieldImpl(GridOptimizedObjectOutputStream out) {
             this.out = out;
 
-            fieldInfoMap = out.curFieldInfoMap;
+            curFields = out.curFields;
 
-            objs = new GridBiTuple[fieldInfoMap.size()];
+            objs = new GridBiTuple[curFields.size()];
         }
 
         /** {@inheritDoc} */
@@ -823,9 +826,14 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
          * @param val Value.
          */
         private void value(String name, Object val) {
-            GridBiTuple<Integer, GridOptimizedFieldType> info = fieldInfoMap.get(name);
+            //TODO: gg-9924
+            for (int i = 0; i < curFields.size(); ++i) {
+                GridOptimizedClassDescriptor.FieldInfo info = curFields.get(i);
 
-            objs[info.get1()] = F.t(info.get2(), val);
+                if (info.fieldName().equals(name)) {
+                    objs[i] = F.t(info.fieldType(), val);
+                }
+            }
         }
     }
 }

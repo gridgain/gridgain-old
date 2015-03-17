@@ -9,10 +9,8 @@
 
 package org.gridgain.grid.marshaller.optimized;
 
-import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.io.*;
-import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import sun.misc.*;
 
@@ -45,13 +43,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
     private Object curObj;
 
     /** */
-    private List<T2<GridOptimizedFieldType, Long>> curFields;
-
-    /** */
-    private List<GridBiTuple<Integer, GridOptimizedFieldType>> curFieldInfoList;
-
-    /** */
-    private Map<String, GridBiTuple<Integer, GridOptimizedFieldType>> curFieldInfoMap;
+    private List<GridOptimizedClassDescriptor.FieldInfo> curFields;
 
     /** */
     private Class<?> curCls;
@@ -112,16 +104,12 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
 
         curObj = null;
         curFields = null;
-        curFieldInfoList = null;
-        curFieldInfoMap = null;
     }
 
     /** {@inheritDoc} */
     @Override public Object readObjectOverride() throws ClassNotFoundException, IOException {
         curObj = null;
         curFields = null;
-        curFieldInfoList = null;
-        curFieldInfoMap = null;
 
         byte ref = in.readByte();
 
@@ -220,54 +208,81 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
      * @throws IOException In case of error.
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    void readFields(Object obj, List<T2<GridOptimizedFieldType, Long>> fieldOffs) throws ClassNotFoundException,
+    void readFields(Object obj, List<GridOptimizedClassDescriptor.FieldInfo> fieldOffs) throws ClassNotFoundException,
         IOException {
         for (int i = 0; i < fieldOffs.size(); i++) {
-            T2<GridOptimizedFieldType, Long> t = fieldOffs.get(i);
+            GridOptimizedClassDescriptor.FieldInfo t = fieldOffs.get(i);
 
-            switch ((t.get1())) {
+            switch ((t.fieldType())) {
                 case BYTE:
-                    setByte(obj, t.get2(), readByte());
+                    byte resByte = readByte();
+
+                    if (t.field() != null)
+                        setByte(obj, t.fieldOffs(), resByte);
 
                     break;
 
                 case SHORT:
-                    setShort(obj, t.get2(), readShort());
+                    short resShort = readShort();
+
+                    if (t.field() != null)
+                        setShort(obj, t.fieldOffs(), resShort);
 
                     break;
 
                 case INT:
-                    setInt(obj, t.get2(), readInt());
+                    int resInt = readInt();
+
+                    if (t.field() != null)
+                        setInt(obj, t.fieldOffs(), resInt);
 
                     break;
 
                 case LONG:
-                    setLong(obj, t.get2(), readLong());
+                    long resLong = readLong();
+
+                    if (t.field() != null)
+                        setLong(obj, t.fieldOffs(), resLong);
 
                     break;
 
                 case FLOAT:
-                    setFloat(obj, t.get2(), readFloat());
+                    float resFloat = readFloat();
+
+                    if (t.field() != null)
+                        setFloat(obj, t.fieldOffs(), resFloat);
 
                     break;
 
                 case DOUBLE:
-                    setDouble(obj, t.get2(), readDouble());
+                    double resDouble = readDouble();
+
+                    if (t.field() != null)
+                        setDouble(obj, t.fieldOffs(), resDouble);
 
                     break;
 
                 case CHAR:
-                    setChar(obj, t.get2(), readChar());
+                    char resChar = readChar();
+
+                    if (t.field() != null)
+                        setChar(obj, t.fieldOffs(), resChar);
 
                     break;
 
                 case BOOLEAN:
-                    setBoolean(obj, t.get2(), readBoolean());
+                    boolean resBoolean = readBoolean();
+
+                    if (t.field() != null)
+                        setBoolean(obj, t.fieldOffs(), resBoolean);
 
                     break;
 
                 case OTHER:
-                    setObject(obj, t.get2(), readObject());
+                    Object resObject = readObject();
+
+                    if (t.field() != null)
+                        setObject(obj, t.fieldOffs(), resObject);
             }
         }
     }
@@ -342,9 +357,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
 
             if (mtd != null) {
                 curObj = obj;
-                curFields = fields.fieldOffs(i);
-                curFieldInfoList = fields.fieldInfoList(i);
-                curFieldInfoMap = fields.fieldInfoMap(i);
+                curFields = fields.fields(i);
 
                 try {
                     mtd.invoke(obj, this);
@@ -354,7 +367,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                 }
             }
             else
-                readFields(obj, fields.fieldOffs(i));
+                readFields(obj, fields.fields(i));
         }
 
         if (readResolveMtd != null) {
@@ -754,10 +767,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
         if (curObj == null)
             throw new NotActiveException("Not in readObject() call.");
 
-        if (curFields.size() != 0)
-            readFields(curObj, curFields);
-        else
-            readFields();
+        readFields(curObj, curFields);
     }
 
     /** {@inheritDoc} */
@@ -872,10 +882,10 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
      */
     private static class GetFieldImpl extends GetField {
         /** Field info map. */
-        private final Map<String, GridBiTuple<Integer, GridOptimizedFieldType>> fieldInfoMap;
+        private final List<GridOptimizedClassDescriptor.FieldInfo> fieldInfo;
 
         /** Values. */
-        private final Object[] objs;
+        private final Map<String, Object> objs;
 
         /**
          * @param in Stream.
@@ -884,18 +894,16 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
          */
         @SuppressWarnings("ForLoopReplaceableByForEach")
         private GetFieldImpl(GridOptimizedObjectInputStream in) throws IOException, ClassNotFoundException {
-            fieldInfoMap = in.curFieldInfoMap;
+            fieldInfo = in.curFields;
 
-            List<GridBiTuple<Integer, GridOptimizedFieldType>> infos = in.curFieldInfoList;
+            objs = new HashMap(fieldInfo.size());
 
-            objs = new Object[infos.size()];
-
-            for (int i = 0; i < infos.size(); i++) {
-                GridBiTuple<Integer, GridOptimizedFieldType> t = infos.get(i);
+            for (int i = 0; i < fieldInfo.size(); i++) {
+                GridOptimizedClassDescriptor.FieldInfo t = fieldInfo.get(i);
 
                 Object obj = null;
 
-                switch (t.get2()) {
+                switch (t.fieldType()) {
                     case BYTE:
                         obj = in.readByte();
 
@@ -940,7 +948,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                         obj = in.readObject();
                 }
 
-                objs[t.get1()] = obj;
+                objs.put(t.fieldName(), obj);
             }
         }
 
@@ -951,7 +959,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
 
         /** {@inheritDoc} */
         @Override public boolean defaulted(String name) throws IOException {
-            return objs[fieldInfoMap.get(name).get1()] == null;
+            return objs.containsKey(name);
         }
 
         /** {@inheritDoc} */
@@ -1005,7 +1013,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
          * @return Value.
          */
         private <T> T value(String name, T dflt) {
-            return objs[fieldInfoMap.get(name).get1()] != null ? (T)objs[fieldInfoMap.get(name).get1()] : dflt;
+            return objs.containsKey(name) ? (T)objs.get(name) : dflt;
         }
     }
 }
