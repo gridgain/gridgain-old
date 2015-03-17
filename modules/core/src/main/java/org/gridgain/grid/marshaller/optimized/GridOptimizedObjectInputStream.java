@@ -948,7 +948,7 @@ class GridOptimizedObjectInputStream extends ObjectInputStream {
                         obj = in.readObject();
                 }
 
-                objs[fieldInfo.getIndex(t.name())] = obj;
+                objs[i] = obj;
             }
         }
 

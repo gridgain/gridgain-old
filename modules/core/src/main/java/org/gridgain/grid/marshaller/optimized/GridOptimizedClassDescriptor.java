@@ -1057,8 +1057,7 @@ class GridOptimizedClassDescriptor {
          * @return Field's index.
          */
         int getIndex(String name) {
-            if (!nameToIndex.containsKey(name))
-                return -1;
+            assert nameToIndex.containsKey(name);
 
             return nameToIndex.get(name);
         }

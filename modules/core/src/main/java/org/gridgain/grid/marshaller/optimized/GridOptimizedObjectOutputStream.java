@@ -829,8 +829,7 @@ class GridOptimizedObjectOutputStream extends ObjectOutputStream {
 
             GridOptimizedClassDescriptor.FieldInfo info = curFields.get(i);
 
-            if (info.name().equals(name))
-                objs[i] = F.t(info.type(), val);
+            objs[i] = F.t(info.type(), val);
         }
     }
 }
