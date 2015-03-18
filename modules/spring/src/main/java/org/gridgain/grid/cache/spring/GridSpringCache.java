@@ -12,6 +12,7 @@ package org.gridgain.grid.cache.spring;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.*;
 import org.springframework.cache.*;
 import org.springframework.cache.support.*;
@@ -23,6 +24,12 @@ import java.io.*;
  */
 class GridSpringCache implements Cache, Serializable {
     /** */
+    private static final boolean DEBUG = Boolean.getBoolean(GridSystemProperties.GG_SPRING_CACHE_DEBUG);
+
+    /** */
+    private GridLogger log;
+
+    /** */
     private String name;
 
     /** */
@@ -32,13 +39,16 @@ class GridSpringCache implements Cache, Serializable {
     private GridClosure<Object, Object> keyFactory;
 
     /**
+     * @param log Logger.
      * @param name Cache name.
      * @param cache Cache.
      * @param keyFactory Key factory.
      */
-    GridSpringCache(String name, GridCacheProjection<?, ?> cache, GridClosure<Object, Object> keyFactory) {
+    GridSpringCache(GridLogger log, String name, GridCacheProjection<?, ?> cache,
+        GridClosure<Object, Object> keyFactory) {
         assert cache != null;
 
+        this.log = log;
         this.name = name;
         this.cache = (GridCacheProjection<Object, Object>)cache;
         this.keyFactory = keyFactory != null ? keyFactory : F.identity();
@@ -57,7 +67,18 @@ class GridSpringCache implements Cache, Serializable {
     /** {@inheritDoc} */
     @Override public ValueWrapper get(Object key) {
         try {
+            long s = DEBUG ? System.currentTimeMillis() : 0;
+
             Object val = cache.get(keyFactory.apply(key));
+
+            if (DEBUG) {
+                long d = System.currentTimeMillis() - s;
+
+                System.out.println(">>> Get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+
+                if (log.isDebugEnabled())
+                    log.debug(">>> Get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+            }
 
             return val != null ? new SimpleValueWrapper(val) : null;
         }
@@ -70,7 +91,18 @@ class GridSpringCache implements Cache, Serializable {
     /** {@inheritDoc} */
     @Override public <T> T get(Object key, Class<T> type) {
         try {
+            long s = DEBUG ? System.currentTimeMillis() : 0;
+
             Object val = cache.get(keyFactory.apply(key));
+
+            if (DEBUG) {
+                long d = System.currentTimeMillis() - s;
+
+                System.out.println(">>> Typed get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+
+                if (log.isDebugEnabled())
+                    log.debug(">>> Typed get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+            }
 
             if (val != null && type != null && !type.isInstance(val))
                 throw new IllegalStateException("Cached value is not of required type [cacheName=" + cache.name() +
@@ -87,7 +119,18 @@ class GridSpringCache implements Cache, Serializable {
     /** {@inheritDoc} */
     @Override public void put(Object key, Object val) {
         try {
+            long s = DEBUG ? System.currentTimeMillis() : 0;
+
             cache.putx(keyFactory.apply(key), val);
+
+            if (DEBUG) {
+                long d = System.currentTimeMillis() - s;
+
+                System.out.println(">>> Put [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+
+                if (log.isDebugEnabled())
+                    log.debug(">>> Put [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+            }
         }
         catch (GridException e) {
             throw new GridRuntimeException("Failed to put value to cache [cacheName=" + cache.name() +
@@ -98,7 +141,18 @@ class GridSpringCache implements Cache, Serializable {
     /** {@inheritDoc} */
     @Override public ValueWrapper putIfAbsent(Object key, Object val) {
         try {
+            long s = DEBUG ? System.currentTimeMillis() : 0;
+
             Object old = cache.putIfAbsent(keyFactory.apply(key), val);
+
+            if (DEBUG) {
+                long d = System.currentTimeMillis() - s;
+
+                System.out.println(">>> Put if absent [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+
+                if (log.isDebugEnabled())
+                    log.debug(">>> Put if absent [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+            }
 
             return old != null ? new SimpleValueWrapper(old) : null;
         }

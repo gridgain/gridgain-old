@@ -11,7 +11,6 @@ package org.gridgain.grid.cache.spring;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
-import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.tostring.*;
@@ -96,7 +95,7 @@ public class GridSpringDynamicCacheManager extends GridSpringCacheManager {
     @Override public void afterPropertiesSet() throws Exception {
         super.afterPropertiesSet();
 
-        metaCache = ((GridEx)grid).utilityCache(MetaKey.class, Cache.class);
+        metaCache = grid.utilityCache(MetaKey.class, Cache.class);
         dataCache = grid.cache(dataCacheName);
     }
 
@@ -113,7 +112,8 @@ public class GridSpringDynamicCacheManager extends GridSpringCacheManager {
             cache = metaCache.get(key);
 
             if (cache == null) {
-                cache = new GridSpringCache(name, dataCache.projection(new ProjectionFilter(name)),
+                cache = new GridSpringCache(grid.log().getLogger(getClass()), name,
+                    dataCache.projection(new ProjectionFilter(name)),
                     new GridClosure<Object, Object>() {
                         @Override public Object apply(Object o) {
                             return new DataKey(name, o);
