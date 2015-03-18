@@ -279,6 +279,9 @@ public class GridTcpCommunicationMessageState {
     /** */
     public int readItems;
 
+    /** */
+    private byte[] valBytesArr;
+
     /**
      * @param msgWriter Message writer.
      * @param nodeId Node ID (provided only if versions are different).
@@ -1019,26 +1022,31 @@ public class GridTcpCommunicationMessageState {
      * @return Whether value was fully written.
      */
     public final boolean putValueBytes(@Nullable GridCacheValueBytes bytes) {
-        byte[] arr = null;
+        if (valBytesArr == null) {
+            if (bytes != null) {
+                if (bytes.get() != null) {
+                    int len = bytes.get().length;
 
-        if (bytes != null) {
-            if (bytes.get() != null) {
-                int len = bytes.get().length;
+                    valBytesArr = new byte[len + 2];
 
-                arr = new byte[len + 2];
+                    UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF, true);
+                    UNSAFE.copyMemory(bytes.get(), BYTE_ARR_OFF, valBytesArr, BYTE_ARR_OFF + 1, len);
+                    UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF + 1 + len, bytes.isPlain());
+                }
+                else {
+                    valBytesArr = new byte[1];
 
-                UNSAFE.putBoolean(arr, BYTE_ARR_OFF, true);
-                UNSAFE.copyMemory(bytes.get(), BYTE_ARR_OFF, arr, BYTE_ARR_OFF + 1, len);
-                UNSAFE.putBoolean(arr, BYTE_ARR_OFF + 1 + len, bytes.isPlain());
-            }
-            else {
-                arr = new byte[1];
-
-                UNSAFE.putBoolean(arr, BYTE_ARR_OFF, false);
+                    UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF, false);
+                }
             }
         }
 
-        return putByteArray(arr);
+        boolean finished = putByteArray(valBytesArr);
+
+        if (finished)
+            valBytesArr = null;
+
+        return finished;
     }
 
     /**
