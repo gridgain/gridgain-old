@@ -297,7 +297,7 @@ public class GridDataLoaderProcessorSelfTest extends GridCommonAbstractTest {
      *
      * @throws Exception If failed.
      */
-    public void _testReplicatedMultiThreaded() throws Exception {
+    public void testReplicatedMultiThreaded() throws Exception {
         mode = REPLICATED;
 
         checkLoaderMultithreaded(1, 2);
