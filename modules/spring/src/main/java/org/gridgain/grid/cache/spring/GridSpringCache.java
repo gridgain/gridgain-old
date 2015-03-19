@@ -14,6 +14,7 @@ import org.gridgain.grid.cache.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.springframework.cache.*;
 import org.springframework.cache.support.*;
 
@@ -74,10 +75,7 @@ class GridSpringCache implements Cache, Serializable {
             if (DEBUG) {
                 long d = System.currentTimeMillis() - s;
 
-                System.out.println(">>> Get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
-
-                if (log.isDebugEnabled())
-                    log.debug(">>> Get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+                debug("Spring Cache Get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
             }
 
             return val != null ? new SimpleValueWrapper(val) : null;
@@ -98,10 +96,7 @@ class GridSpringCache implements Cache, Serializable {
             if (DEBUG) {
                 long d = System.currentTimeMillis() - s;
 
-                System.out.println(">>> Typed get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
-
-                if (log.isDebugEnabled())
-                    log.debug(">>> Typed get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+                debug(">>> Spring Cache Typed Get [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
             }
 
             if (val != null && type != null && !type.isInstance(val))
@@ -126,10 +121,7 @@ class GridSpringCache implements Cache, Serializable {
             if (DEBUG) {
                 long d = System.currentTimeMillis() - s;
 
-                System.out.println(">>> Put [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
-
-                if (log.isDebugEnabled())
-                    log.debug(">>> Put [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+                debug("Spring Cache Put [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
             }
         }
         catch (GridException e) {
@@ -148,10 +140,7 @@ class GridSpringCache implements Cache, Serializable {
             if (DEBUG) {
                 long d = System.currentTimeMillis() - s;
 
-                System.out.println(">>> Put if absent [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
-
-                if (log.isDebugEnabled())
-                    log.debug(">>> Put if absent [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
+                debug("Spring Cache Put-If-Absent [cache=" + name + ", key=" + key + ", time=" + d + "ms.]");
             }
 
             return old != null ? new SimpleValueWrapper(old) : null;
@@ -181,6 +170,16 @@ class GridSpringCache implements Cache, Serializable {
         catch (GridException e) {
             throw new GridRuntimeException("Failed to clear cache [cacheName=" + cache.name() + ']', e);
         }
+    }
+
+    /**
+     * @param msg Message.
+     */
+    private void debug(String msg) {
+        if (log.isDebugEnabled())
+            log.debug(msg);
+
+        System.out.println(U.debugPrefix() + msg);
     }
 
     /**
