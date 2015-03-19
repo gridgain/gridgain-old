@@ -524,13 +524,13 @@ class GridOptimizedClassDescriptor {
                                     clsFields.add(fieldInfo);
                                 }
                             }
-                        }
 
-                        Collections.sort(clsFields, new Comparator<FieldInfo>() {
-                            @Override public int compare(FieldInfo t1, FieldInfo t2) {
-                                return t1.name().compareTo(t2.name());
-                            }
-                        });
+                            Collections.sort(clsFields, new Comparator<FieldInfo>() {
+                                @Override public int compare(FieldInfo t1, FieldInfo t2) {
+                                    return t1.name().compareTo(t2.name());
+                                }
+                            });
+                        }
 
                         fields.add(new ClassFields(clsFields));
                     }
