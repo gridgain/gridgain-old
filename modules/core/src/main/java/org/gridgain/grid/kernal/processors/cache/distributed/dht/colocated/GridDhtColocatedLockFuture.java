@@ -651,8 +651,15 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
                     if (tx != null) {
                         GridCacheTxEntry<K, V> txEntry = tx.entry(key);
 
-                        if (txEntry != null)
+                        if (txEntry != null) {
                             entry = (GridDistributedCacheEntry<K, V>)txEntry.cached();
+
+                            if (entry != null && !(loc ^ entry.detached())) {
+                                entry = cctx.colocated().entryExx(key, topVer, true);
+
+                                txEntry.cached(entry, entry.keyBytes());
+                            }
+                        }
                     }
 
                     boolean explicit;

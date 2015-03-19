@@ -11,6 +11,7 @@ package org.gridgain.grid.cache.spring;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
+import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.typedef.*;
 import org.springframework.beans.factory.*;
@@ -131,7 +132,7 @@ public class GridSpringCacheManager implements CacheManager, InitializingBean {
     private String gridName;
 
     /** Grid instance. */
-    protected Grid grid;
+    protected GridEx grid;
 
     /**
      * Gets configuration file path.
@@ -200,11 +201,11 @@ public class GridSpringCacheManager implements CacheManager, InitializingBean {
         }
 
         if (cfgPath != null)
-            grid = GridGain.start(cfgPath);
+            grid = (GridEx)GridGain.start(cfgPath);
         else if (cfg != null)
-            grid = GridGain.start(cfg);
+            grid = (GridEx)GridGain.start(cfg);
         else
-            grid = GridGain.grid(gridName);
+            grid = (GridEx)GridGain.grid(gridName);
     }
 
     /** {@inheritDoc} */
@@ -212,7 +213,7 @@ public class GridSpringCacheManager implements CacheManager, InitializingBean {
         assert grid != null;
 
         try {
-            return new GridSpringCache(name, grid.cache(name), null);
+            return new GridSpringCache(grid.log().getLogger(getClass()), name, grid.cache(name), null);
         }
         catch (IllegalArgumentException ignored) {
             return null;
