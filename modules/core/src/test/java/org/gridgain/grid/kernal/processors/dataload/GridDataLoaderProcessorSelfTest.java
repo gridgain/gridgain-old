@@ -293,8 +293,6 @@ public class GridDataLoaderProcessorSelfTest extends GridCommonAbstractTest {
     }
 
     /**
-     * TODO GG-4121
-     *
      * @throws Exception If failed.
      */
     public void testReplicatedMultiThreaded() throws Exception {
