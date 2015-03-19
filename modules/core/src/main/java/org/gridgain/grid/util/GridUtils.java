@@ -741,7 +741,7 @@ public abstract class GridUtils {
     /**
      * @return Common prefix for debug messages.
      */
-    private static String debugPrefix() {
+    public static String debugPrefix() {
         return '<' + DEBUG_DATE_FMT.format(new Date(System.currentTimeMillis())) + "><DEBUG><" +
             Thread.currentThread().getName() + '>' + ' ';
     }

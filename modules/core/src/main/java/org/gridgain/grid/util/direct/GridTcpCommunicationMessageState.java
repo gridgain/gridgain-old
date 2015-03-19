@@ -1022,22 +1022,20 @@ public class GridTcpCommunicationMessageState {
      * @return Whether value was fully written.
      */
     public final boolean putValueBytes(@Nullable GridCacheValueBytes bytes) {
-        if (valBytesArr == null) {
-            if (bytes != null) {
-                if (bytes.get() != null) {
-                    int len = bytes.get().length;
+        if (valBytesArr == null && bytes != null) {
+            if (bytes.get() != null) {
+                int len = bytes.get().length;
 
-                    valBytesArr = new byte[len + 2];
+                valBytesArr = new byte[len + 2];
 
-                    UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF, true);
-                    UNSAFE.copyMemory(bytes.get(), BYTE_ARR_OFF, valBytesArr, BYTE_ARR_OFF + 1, len);
-                    UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF + 1 + len, bytes.isPlain());
-                }
-                else {
-                    valBytesArr = new byte[1];
+                UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF, true);
+                UNSAFE.copyMemory(bytes.get(), BYTE_ARR_OFF, valBytesArr, BYTE_ARR_OFF + 1, len);
+                UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF + 1 + len, bytes.isPlain());
+            }
+            else {
+                valBytesArr = new byte[1];
 
-                    UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF, false);
-                }
+                UNSAFE.putBoolean(valBytesArr, BYTE_ARR_OFF, false);
             }
         }
 

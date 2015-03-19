@@ -464,6 +464,12 @@ public final class GridSystemProperties {
     public static final String GG_MBEAN_APPEND_JVM_ID = "GRIDGAIN_MBEAN_APPEND_JVM_ID";
 
     /**
+     * Set this system property to true to enable debug for Spring
+     * cache abstraction.
+     */
+    public static final String GG_SPRING_CACHE_DEBUG = "GRIDGAIN_SPRING_CACHE_DEBUG";
+
+    /**
      * Enforces singleton.
      */
     private GridSystemProperties() {
