@@ -12,6 +12,7 @@ package org.gridgain.grid.marshaller.optimized;
 import org.gridgain.testframework.junits.common.*;
 
 import java.io.*;
+import java.net.InetAddress;
 
 /**
  * Test that Optimized Marshaller works with classes with serialPersistentFields.
@@ -28,6 +29,10 @@ public class OptimizedMarshallerSerialPersistentFieldsSelfTest extends GridCommo
         TestClass2 val = m.unmarshal(m.marshal(new TestClass2()), TestClass2.class.getClassLoader());
 
         assertNull(val.field3);
+
+        m.unmarshal(m.marshal(new TestClass3()), TestClass3.class.getClassLoader());
+
+        m.unmarshal(m.marshal(InetAddress.getByName("127.0.0.1")), null);
     }
 
     /**
@@ -95,6 +100,90 @@ public class OptimizedMarshallerSerialPersistentFieldsSelfTest extends GridCommo
             s.defaultReadObject();
 
             s.readObject();
+        }
+    }
+
+    /**
+     * Test class with serialPersistentFields fields.
+     */
+    private static class TestClass3 implements Serializable {
+        private static final long serialVersionUID = 0L;
+
+        final transient InetAddressHolder holder;
+
+        public TestClass3() {
+            holder = new InetAddressHolder();
+        }
+
+        private static final ObjectStreamField[] serialPersistentFields = {
+                new ObjectStreamField("hostName", String.class),
+                new ObjectStreamField("address", int.class),
+                new ObjectStreamField("family", int.class),
+        };
+
+        /**
+         * @param s Object output stream.
+         */
+        private void writeObject(ObjectOutputStream s) throws IOException {
+            ObjectOutputStream.PutField pf = s.putFields();
+            pf.put("hostName", "Name");
+            pf.put("address", 1);
+            pf.put("family", 2);
+            s.writeFields();
+        }
+
+        /**
+         * @param s Object input stream.
+         */
+        private void readObject(ObjectInputStream s) throws IOException, ClassNotFoundException {
+            ObjectInputStream.GetField gf = s.readFields();
+            String host = (String)gf.get("hostName", null);
+            int address= gf.get("address", 0);
+            int family= gf.get("family", 0);
+            InetAddressHolder h = new InetAddressHolder(host, address, family);
+        }
+
+        static class InetAddressHolder {
+
+            InetAddressHolder() {}
+
+            InetAddressHolder(String hostName, int address, int family) {
+                this.hostName = hostName;
+                this.address = address;
+                this.family = family;
+            }
+
+            void init(String hostName, int family) {
+                this.hostName = hostName;
+                if (family != -1) {
+                    this.family = family;
+                }
+            }
+
+            String hostName;
+
+            String getHostName() {
+                return hostName;
+            }
+
+            /**
+             * Holds a 32-bit IPv4 address.
+             */
+            int address;
+
+            int getAddress() {
+                return address;
+            }
+
+            /**
+             * Specifies the address family type, for instance, '1' for IPv4
+             * addresses, and '2' for IPv6 addresses.
+             */
+            int family;
+
+            int getFamily() {
+                return family;
+            }
         }
     }
 }
