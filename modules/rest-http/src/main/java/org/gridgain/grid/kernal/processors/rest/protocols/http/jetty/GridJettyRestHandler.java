@@ -15,6 +15,7 @@ import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.kernal.processors.rest.*;
+import org.gridgain.grid.kernal.processors.rest.client.message.*;
 import org.gridgain.grid.kernal.processors.rest.request.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
@@ -45,6 +46,17 @@ public class GridJettyRestHandler extends AbstractHandler {
 
         @Override public Object processObjectValue(String s, Object o, JsonConfig jsonConfig) {
             return o;
+        }
+    };
+
+    /** JSON value processor for {@link GridClientTaskResultBean} that does not transform input object. */
+    private static final JsonValueProcessor SKIP_CTRB_WITH_STR_VAL_PROC = new JsonValueProcessor() {
+        @Override public Object processArrayValue(Object o, JsonConfig jsonConfig) {
+            return ((GridClientTaskResultBean)o).getResult();
+        }
+
+        @Override public Object processObjectValue(String s, Object o, JsonConfig jsonConfig) {
+            return ((GridClientTaskResultBean)o).getResult();
         }
     };
 
@@ -271,6 +283,10 @@ public class GridJettyRestHandler extends AbstractHandler {
         // Workaround for not needed transformation of string into JSON object.
         if (cmdRes.getResponse() instanceof String)
             cfg.registerJsonValueProcessor(cmdRes.getClass(), "response", SKIP_STR_VAL_PROC);
+
+        if (cmdRes.getResponse() instanceof GridClientTaskResultBean 
+            && ((GridClientTaskResultBean)cmdRes.getResponse()).getResult() instanceof String)
+            cfg.registerJsonValueProcessor(cmdRes.getClass(), "response", SKIP_CTRB_WITH_STR_VAL_PROC);
 
         JSON json;
 
