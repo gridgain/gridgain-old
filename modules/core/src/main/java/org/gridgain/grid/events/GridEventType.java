@@ -545,6 +545,8 @@ public interface GridEventType {
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
+     *
+     * @see GridCacheEvent
      */
     public static final int EVT_CACHE_OBJECT_TO_OFFHEAP = 76;
 
@@ -553,6 +555,8 @@ public interface GridEventType {
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
+     *
+     * @see GridCacheEvent
      */
     public static final int EVT_CACHE_OBJECT_FROM_OFFHEAP = 77;
 
@@ -562,7 +566,7 @@ public interface GridEventType {
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
      *
-     * @see GridSwapSpaceEvent
+     * @see GridCachePreloadingEvent
      */
     public static final int EVT_CACHE_PRELOAD_STARTED = 80;
 
@@ -572,7 +576,7 @@ public interface GridEventType {
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
      *
-     * @see GridSwapSpaceEvent
+     * @see GridCachePreloadingEvent
      */
     public static final int EVT_CACHE_PRELOAD_STOPPED = 81;
 
@@ -582,7 +586,7 @@ public interface GridEventType {
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
      *
-     * @see GridSwapSpaceEvent
+     * @see GridCachePreloadingEvent
      */
     public static final int EVT_CACHE_PRELOAD_PART_LOADED = 82;
 
@@ -591,6 +595,8 @@ public interface GridEventType {
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
+     *
+     * @see GridCachePreloadingEvent
      */
     public static final int EVT_CACHE_PRELOAD_PART_UNLOADED = 83;
 
@@ -599,6 +605,8 @@ public interface GridEventType {
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
+     *
+     * @see GridCacheEvent
      */
     public static final int EVT_CACHE_PRELOAD_OBJECT_LOADED = 84;
 
@@ -607,6 +615,8 @@ public interface GridEventType {
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal GridGain events and should not be used by user-defined events.
+     *
+     * @see GridCacheEvent
      */
     public static final int EVT_CACHE_PRELOAD_OBJECT_UNLOADED = 85;
 
@@ -1007,7 +1017,8 @@ public interface GridEventType {
     public static final int EVT_AUTHORIZATION_FAILED = 129;
 
     /**
-     * Built-in event type: all nodes that hold partition left topology.
+     * Built-in event type: all nodes that hold partition left topology and
+     * partition has not been fully loaded.
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal Ignite events and should not be used by user-defined events.
@@ -1015,8 +1026,8 @@ public interface GridEventType {
     public static final int EVT_CACHE_PRELOAD_PART_DATA_LOST = 130;
 
     /**
-     * Built-in event type: all data nodes left topology, but local node has CLIENT_ONLY or NEAR_ONLY cache. All cache
-     * data lost.
+     * Built-in event type: all data nodes left topology,
+     * All cache data has been lost.
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
      * internal Ignite events and should not be used by user-defined events.
