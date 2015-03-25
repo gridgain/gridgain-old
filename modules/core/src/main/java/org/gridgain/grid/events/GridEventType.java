@@ -1007,6 +1007,14 @@ public interface GridEventType {
     public static final int EVT_AUTHORIZATION_FAILED = 129;
 
     /**
+     * Built-in event type: all nodes that hold partition left topology.
+     * <p>
+     * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
+     * internal Ignite events and should not be used by user-defined events.
+     */
+    public static final int EVT_CACHE_PRELOAD_PART_DATA_LOST = 130;
+
+    /**
      * All license events. This array can be directly passed into
      * {@link GridEvents#localListen(GridPredicate, int...)} method to
      * subscribe to all license events.

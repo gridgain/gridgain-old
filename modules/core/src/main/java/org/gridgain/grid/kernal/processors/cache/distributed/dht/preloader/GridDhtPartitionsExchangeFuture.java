@@ -357,7 +357,7 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
     /**
      * @return Discovery event.
      */
-    GridDiscoveryEvent discoveryEvent() {
+    public GridDiscoveryEvent discoveryEvent() {
         return discoEvt;
     }
 
@@ -378,7 +378,7 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
     /**
      * @return Exchange ID.
      */
-    GridDhtPartitionExchangeId exchangeId() {
+    public GridDhtPartitionExchangeId exchangeId() {
         return exchId;
     }
 

@@ -65,11 +65,11 @@ public interface GridDhtPartitionTopology<K, V> {
     /**
      * Post-initializes this topology.
      *
-     * @param exchId Exchange ID for this post-initialization.
+     * @param exchFut Exchange future.
      * @return {@code True} if mapping was changed.
      * @throws GridException If failed.
      */
-    public boolean afterExchange(GridDhtPartitionExchangeId exchId) throws GridException;
+    public boolean afterExchange(GridDhtPartitionsExchangeFuture exchFut) throws GridException;
 
     /**
      * @param topVer Topology version at the time of creation.

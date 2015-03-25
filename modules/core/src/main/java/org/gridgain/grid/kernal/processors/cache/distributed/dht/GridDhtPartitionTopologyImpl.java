@@ -10,6 +10,7 @@
 package org.gridgain.grid.kernal.processors.cache.distributed.dht;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.events.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.preloader.*;
 import org.gridgain.grid.logger.*;
@@ -24,6 +25,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
+import static org.gridgain.grid.events.GridEventType.*;
 import static org.gridgain.grid.kernal.processors.cache.distributed.dht.GridDhtPartitionState.*;
 
 /**
@@ -351,7 +353,9 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology<K, 
     }
 
     /** {@inheritDoc} */
-    @Override public boolean afterExchange(GridDhtPartitionExchangeId exchId) throws GridException {
+    @Override public boolean afterExchange(GridDhtPartitionsExchangeFuture exchFut) throws GridException {
+        GridDhtPartitionExchangeId exchId = exchFut.exchangeId();
+
         boolean changed = waitForRent();
 
         GridNode loc = cctx.localNode();
@@ -401,6 +405,13 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology<K, 
                                 updateLocal(p, loc.id(), locPart.state(), updateSeq);
 
                                 changed = true;
+
+                                if (cctx.events().isRecordable(EVT_CACHE_PRELOAD_PART_DATA_LOST)) {
+                                    GridDiscoveryEvent discoEvt = exchFut.discoveryEvent();
+
+                                    cctx.events().addPreloadEvent(p, EVT_CACHE_PRELOAD_PART_DATA_LOST, discoEvt.eventNode(),
+                                        discoEvt.type(), discoEvt.timestamp());
+                                }
 
                                 if (log.isDebugEnabled())
                                     log.debug("Owned partition: " + locPart);

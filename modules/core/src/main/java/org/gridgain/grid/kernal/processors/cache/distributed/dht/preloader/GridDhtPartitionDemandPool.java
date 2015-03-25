@@ -1273,7 +1273,7 @@ public class GridDhtPartitionDemandPool<K, V> {
                             // Just pick first worker to do this, so we don't
                             // invoke topology callback more than once for the
                             // same event.
-                            if (top.afterExchange(exchFut.exchangeId()) && futQ.isEmpty())
+                            if (top.afterExchange(exchFut) && futQ.isEmpty())
                                 resendPartitions(); // Force topology refresh.
 
                             // Preload event notification.
@@ -1362,6 +1362,13 @@ public class GridDhtPartitionDemandPool<K, V> {
 
                     if (picked.isEmpty()) {
                         top.own(part);
+
+                        if (cctx.events().isRecordable(EVT_CACHE_PRELOAD_PART_DATA_LOST)) {
+                            GridDiscoveryEvent discoEvt = exchFut.discoveryEvent();
+
+                            cctx.events().addPreloadEvent(p, EVT_CACHE_PRELOAD_PART_DATA_LOST, discoEvt.eventNode(),
+                                discoEvt.type(), discoEvt.timestamp());
+                        }
 
                         if (log.isDebugEnabled())
                             log.debug("Owning partition as there are no other owners: " + part);
