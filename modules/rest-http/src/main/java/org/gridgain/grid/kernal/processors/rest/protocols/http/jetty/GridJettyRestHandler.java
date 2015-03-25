@@ -49,17 +49,6 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
     };
 
-    /** JSON value processor for {@link GridClientTaskResultBean} that does not transform input object. */
-    private static final JsonValueProcessor SKIP_CTRB_WITH_STR_VAL_PROC = new JsonValueProcessor() {
-        @Override public Object processArrayValue(Object o, JsonConfig jsonConfig) {
-            return ((GridClientTaskResultBean)o).getResult();
-        }
-
-        @Override public Object processObjectValue(String s, Object o, JsonConfig jsonConfig) {
-            return ((GridClientTaskResultBean)o).getResult();
-        }
-    };
-
     /** Logger. */
     private final GridLogger log;
 
@@ -284,9 +273,9 @@ public class GridJettyRestHandler extends AbstractHandler {
         if (cmdRes.getResponse() instanceof String)
             cfg.registerJsonValueProcessor(cmdRes.getClass(), "response", SKIP_STR_VAL_PROC);
 
-        if (cmdRes.getResponse() instanceof GridClientTaskResultBean 
+        if (cmdRes.getResponse() instanceof GridClientTaskResultBean
             && ((GridClientTaskResultBean)cmdRes.getResponse()).getResult() instanceof String)
-            cfg.registerJsonValueProcessor(cmdRes.getClass(), "response", SKIP_CTRB_WITH_STR_VAL_PROC);
+            cfg.registerJsonValueProcessor(cmdRes.getResponse().getClass(), "result", SKIP_STR_VAL_PROC);
 
         JSON json;
 
