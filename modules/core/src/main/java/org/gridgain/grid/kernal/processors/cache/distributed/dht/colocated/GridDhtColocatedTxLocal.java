@@ -842,6 +842,8 @@ public class GridDhtColocatedTxLocal<K, V> extends GridDhtTxLocalAdapter<K, V> {
      * @return {@code True} if mapping was found.
      */
     boolean markExplicit(UUID nodeId) {
+        explicitLock = true;
+
         GridDistributedTxMapping<K, V> m = mappings.get(nodeId);
 
         if (m != null) {

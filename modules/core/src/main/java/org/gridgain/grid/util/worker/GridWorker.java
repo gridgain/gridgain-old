@@ -11,6 +11,7 @@ package org.gridgain.grid.util.worker;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.logger.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.*;
 import org.jetbrains.annotations.*;
@@ -149,7 +150,10 @@ public abstract class GridWorker implements Runnable {
         // Catch everything to make sure that it gets logged properly and
         // not to kill any threads from the underlying thread pool.
         catch (Throwable e) {
-            U.error(log, "Runtime error caught during grid runnable execution: " + this, e);
+            if (!X.hasCause(e, InterruptedException.class) && !X.hasCause(e, GridInterruptedException.class))
+                U.error(log, "Runtime error caught during grid runnable execution: " + this, e);
+            else
+                U.warn(log, "Runtime exception occurred during grid runnable execution caused by thread interruption: " + e.getMessage());
         }
         finally {
             synchronized (mux) {

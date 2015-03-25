@@ -240,13 +240,6 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
     }
 
     /**
-     * Completes this future.
-     */
-    void complete() {
-        onComplete();
-    }
-
-    /**
      * Initializes future.
      */
     public void finish() {
@@ -274,6 +267,9 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
     private boolean finish(Map<UUID, GridDistributedTxMapping<K, V>> dhtMap,
         Map<UUID, GridDistributedTxMapping<K, V>> nearMap) {
         boolean sync = commit ? tx.syncCommit() : tx.syncRollback(); // Cached sync flag.
+
+        if (tx.explicitLock())
+            sync = true;
 
         boolean res = false;
 

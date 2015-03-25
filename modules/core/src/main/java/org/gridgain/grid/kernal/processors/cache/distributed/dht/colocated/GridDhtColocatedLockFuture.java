@@ -514,8 +514,10 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
      */
     void map() {
         // Obtain the topology version to use.
-        GridDiscoveryTopologySnapshot snapshot = tx != null ? tx.topologySnapshot() :
-            cctx.mvcc().lastExplicitLockTopologySnapshot(threadId);
+        GridDiscoveryTopologySnapshot snapshot = cctx.mvcc().lastExplicitLockTopologySnapshot(threadId);
+
+        if (snapshot == null && tx != null)
+            snapshot = tx.topologySnapshot();
 
         if (snapshot != null) {
             // Continue mapping on the same topology version as it was before.
@@ -954,6 +956,8 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
         // Assign keys to primary nodes.
         Collection<K> distributedKeys = new ArrayList<>(keys.size());
 
+        boolean explicit = false;
+
         for (K key : keys) {
             if (!cctx.affinity().primary(cctx.localNode(), key, topVer)) {
                 // Remove explicit locks added so far.
@@ -963,13 +967,16 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
                 return false;
             }
 
-            addLocalKey(key, topVer, distributedKeys);
+            explicit |= addLocalKey(key, topVer, distributedKeys);
 
             if (isDone())
                 return true;
         }
 
         trackable = false;
+
+        if (explicit)
+            tx.markExplicit(cctx.localNodeId());
 
         if (!distributedKeys.isEmpty()) {
             if (tx != null) {

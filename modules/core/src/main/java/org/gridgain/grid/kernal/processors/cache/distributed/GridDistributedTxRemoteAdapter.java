@@ -374,14 +374,14 @@ public class GridDistributedTxRemoteAdapter<K, V> extends GridCacheTxAdapter<K, 
             }
             // Either lock is explicit or this is additional backup records.
             else {
-                // Add locks for missing entry.
-                if (e.explicitVersion() == null && !groupLock()) {
+                try {
                     int part = cctx.affinity().partition(e.key());
 
-                    try {
-                        GridDhtLocalPartition<K, V> locPart = cctx.topology().localPartition(part, topologyVersion(),
+                    GridDhtLocalPartition<K, V> locPart = cctx.topology().localPartition(part, topologyVersion(),
                             false);
 
+                    // Add locks for missing entry.
+                    if (e.explicitVersion() == null && !groupLock()) {
                         if (locPart != null && locPart.reserve()) {
                             try {
                                 while (true) {
@@ -425,16 +425,16 @@ public class GridDistributedTxRemoteAdapter<K, V> extends GridCacheTxAdapter<K, 
                             }
                         }
                     }
-                    catch (GridDhtInvalidPartitionException ignore) {
-                        if (log.isDebugEnabled())
-                            log.debug("Got invalid partition for remote write (will ignore): " + e);
+                    else {
+                        e.cached(cctx.cache().entryEx(e.key()), null);
+
+                        // explicit lock.
+                        writeMap.put(e.key(), e);
                     }
                 }
-                else {
-                    e.cached(cctx.cache().entryEx(e.key()), null);
-
-                    // explicit lock.
-                    writeMap.put(e.key(), e);
+                catch (GridDhtInvalidPartitionException ignore) {
+                    if (log.isDebugEnabled())
+                        log.debug("Got invalid partition for remote write (will ignore): " + e);
                 }
             }
         }
