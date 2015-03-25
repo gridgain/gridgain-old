@@ -57,7 +57,7 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
     private long dhtThreadId;
 
     /** */
-    private boolean explicitLock;
+    protected boolean explicitLock;
 
     /** */
     private boolean needsCompletedVers;
@@ -225,6 +225,13 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
      */
     boolean explicitLock() {
         return explicitLock;
+    }
+
+    /**
+     * @param explicitLock Explicit lock flag.
+     */
+    void explicitLock(boolean explicitLock) {
+        this.explicitLock = explicitLock;
     }
 
     /**
@@ -866,6 +873,6 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
     /** {@inheritDoc} */
     @Override public String toString() {
         return GridToStringBuilder.toString(GridDhtTxLocalAdapter.class, this, "nearNodes", nearMap.keySet(),
-            "dhtNodes", dhtMap.keySet(), "super", super.toString());
+            "dhtNodes", dhtMap.keySet(), "explicitLock", explicitLock, "super", super.toString());
     }
 }

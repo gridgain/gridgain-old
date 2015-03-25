@@ -38,9 +38,6 @@ import static org.gridgain.grid.kernal.processors.dr.GridDrType.*;
 public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Boolean>
     implements GridCacheMvccFuture<K, V, Boolean>, GridDhtFuture<Boolean>, GridCacheMappedVersion {
     /** */
-    private static GridProductVersion SKIP_DUPLICATE_BACKUP_LOCKS_SINCE = GridProductVersion.fromString("6.5.6-p1");
-
-    /** */
     private static final long serialVersionUID = 0L;
 
     /** Logger reference. */
@@ -765,10 +762,8 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
                 }
             }
 
-            Map<GridNode, Set<K>> updateMap = null;
-
             if (tx != null) {
-                updateMap = tx.addDhtMapping(dhtMap);
+                tx.addDhtMapping(dhtMap);
                 tx.addNearMapping(nearMap);
 
                 tx.needsCompletedVersions(hasRmtNodes);
@@ -801,8 +796,6 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
 
                 List<GridDhtCacheEntry<K, V>> dhtMapping = mapped.getValue();
 
-                Set<K> newMapping = updateMap == null ? null : updateMap.get(n);
-
                 int cnt = F.size(dhtMapping);
 
                 if (cnt > 0) {
@@ -830,11 +823,6 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
                                 assert false : "Entry cannot become obsolete when DHT local candidate is added " +
                                     "[e=" + e + ", ex=" + ex + ']';
                             }
-
-                            // Skip entry if it is not new and is not present in updated mapping.
-                            if (tx != null && !isNewLocked && (newMapping == null || !newMapping.contains(e.key())) &&
-                                n.version().compareTo(SKIP_DUPLICATE_BACKUP_LOCKS_SINCE) >= 0)
-                                continue;
 
                             boolean invalidateRdr = e.readerId(n.id()) != null;
 

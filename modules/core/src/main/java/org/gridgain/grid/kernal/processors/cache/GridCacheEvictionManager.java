@@ -296,8 +296,9 @@ public class GridCacheEvictionManager<K, V> extends GridCacheManagerAdapter<K, V
 
         if (plcEnabled && evictSync && !cctx.isNear()) {
             // Add dummy event to worker.
-            backupWorker.addEvent(new GridDiscoveryEvent(cctx.localNode(), "Dummy event.",
-                EVT_NODE_JOINED, cctx.localNode()));
+            GridDiscoveryEvent discoEVt = cctx.discovery().localJoinEvent();
+
+            backupWorker.addEvent(discoEVt);
 
             backupWorkerThread = new GridThread(backupWorker);
             backupWorkerThread.start();
@@ -1414,6 +1415,13 @@ public class GridCacheEvictionManager<K, V> extends GridCacheManagerAdapter<K, V
             assert !cctx.isNear() && evictSync;
 
             GridNode loc = cctx.localNode();
+
+            try {
+                cctx.affinity().affinityReadyFuture(cctx.discovery().topologyVersion()).get();
+            }
+            catch (GridException e) {
+                U.error(log, "Failed to wait for affinity ready future to complete.", e);
+            }
 
             // Initialize.
             primaryParts.addAll(cctx.affinity().primaryPartitions(cctx.localNodeId(),

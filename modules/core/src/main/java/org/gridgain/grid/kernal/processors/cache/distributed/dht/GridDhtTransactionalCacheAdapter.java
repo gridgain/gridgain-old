@@ -365,6 +365,10 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
 
                     tx.topologyVersion(req.topologyVersion());
                 }
+                else {
+                    if (req.explicitLock())
+                        tx.explicitLock(req.explicitLock());
+                }
 
                 if (!tx.markFinalizing(USER_FINISH)) {
                     if (log.isDebugEnabled())
@@ -486,7 +490,8 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             }
         }
         catch (Throwable e) {
-            U.error(log, "Failed completing transaction [commit=" + req.commit() + ", tx=" + tx + ']', e);
+            U.error(log, "Failed completing transaction [commit=" + req.commit() + ", tx=" + tx + ", req=" + req + ']',
+                e);
 
             // Mark transaction for invalidate.
             tx.invalidate(true);
@@ -1149,7 +1154,33 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
         if (nearTx != null && isNearEnabled(cacheCfg))
             finish(near().context(), nodeId, (GridDistributedTxRemoteAdapter<K, V>)nearTx, req, req.nearWrites());
 
-        sendReply(nodeId, req);
+        if (req.replyRequired()) {
+            GridCompoundFuture completeFut = null;
+
+            GridFuture<GridCacheTx> dhtFin = dhtTx == null ? null : dhtTx.finishFuture();
+            GridFuture<GridCacheTx> nearFin = nearTx == null ? null : nearTx.finishFuture();
+
+            if ((dhtFin != null && !dhtFin.isDone()) || (nearFin != null && !nearFin.isDone())) {
+                completeFut = new GridCompoundFuture(ctx.kernalContext());
+
+                if (dhtFin != null)
+                    completeFut.add(dhtFin);
+
+                if (nearFin != null)
+                    completeFut.add(nearFin);
+
+                completeFut.markInitialized();
+            }
+
+            if (completeFut == null || completeFut.isDone())
+                sendReply(nodeId, req);
+            else
+                completeFut.listenAsync(new CI1<GridFuture>() {
+                    @Override public void apply(GridFuture gridFuture) {
+                        sendReply(nodeId, req);
+                    }
+                });
+        }
     }
 
     /**
@@ -2009,13 +2040,9 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                 while (true) {
                     GridDistributedCacheEntry<K, V> entry = peekExx(key);
 
-                    boolean created = false;
-
-                    if (entry == null) {
-                        entry = entryExx(key);
-
-                        created = true;
-                    }
+                    if (entry == null)
+                        // Nothing to unlock.
+                        break;
 
                     try {
                         entry.doneRemote(
@@ -2038,9 +2065,6 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                                 log.debug("Received unlock request for unknown candidate " +
                                     "(added to cancelled locks set): " + req);
                         }
-
-                        if (created && entry.markObsolete(req.version()))
-                            removeEntry(entry);
 
                         ctx.evicts().touch(entry, ctx.affinity().affinityTopologyVersion());
 

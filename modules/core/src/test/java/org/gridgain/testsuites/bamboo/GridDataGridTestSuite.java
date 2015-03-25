@@ -14,6 +14,7 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.cache.affinity.fair.*;
 import org.gridgain.grid.cache.store.*;
 import org.gridgain.grid.cache.store.jdbc.*;
+import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
@@ -216,6 +217,8 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheValueConsistencyTransactionalSelfTest.class);
         suite.addTestSuite(GridCacheValueConsistencyTransactionalNearEnabledSelfTest.class);
         suite.addTestSuite(GridCacheValueBytesPreloadingSelfTest.class);
+
+        suite.addTestSuite(GridMultiTxLockSelfTest.class);
 
         // Replicated cache.
         suite.addTestSuite(GridCacheReplicatedBasicApiTest.class);
