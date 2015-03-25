@@ -19,8 +19,10 @@ import org.gridgain.grid.cache.store.*;
 import org.gridgain.grid.dr.cache.receiver.*;
 import org.gridgain.grid.dr.cache.sender.*;
 import org.gridgain.grid.dr.hub.sender.*;
+import org.gridgain.grid.events.*;
 import org.gridgain.grid.ggfs.*;
 import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.kernal.managers.eventstorage.*;
 import org.gridgain.grid.kernal.processors.*;
 import org.gridgain.grid.kernal.processors.cache.datastructures.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.*;
@@ -723,6 +725,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         sysCaches.add(CU.UTILITY_CACHE_NAME);
 
+        final Collection<String> nearOrClientCaches = new ArrayList<>();
+
         GridCacheConfiguration[] cfgs = ctx.config().getCacheConfiguration();
 
         for (int i = 0; i < cfgs.length; i++) {
@@ -734,6 +738,10 @@ public class GridCacheProcessor extends GridProcessorAdapter {
             // Skip suggestions for system caches.
             if (!sysCaches.contains(cfg.getName()))
                 suggestOptimizations(cfg);
+
+            if (cfg.getCacheMode() != LOCAL
+                && (cfg.getDistributionMode() == CLIENT_ONLY || cfg.getDistributionMode() == NEAR_ONLY))
+                nearOrClientCaches.add(cfg.getName());
 
             validate(ctx.config(), cfg);
 
@@ -1000,6 +1008,24 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
             if (log.isInfoEnabled())
                 log.info("Started cache [name=" + cfg.getName() + ", mode=" + cfg.getCacheMode() + ']');
+        }
+
+        if (!nearOrClientCaches.isEmpty()) {
+            ctx.event().addLocalEventListener(new GridLocalEventListener() {
+                @Override public void onEvent(GridEvent evt) {
+                    GridDiscoveryEvent discoEvt = (GridDiscoveryEvent)evt;
+
+                    for (String cacheName : nearOrClientCaches) {
+                        if (ctx.discovery().cacheAffinityNodes(cacheName, discoEvt.topologyVersion()).isEmpty()) {
+                            if (ctx.event().isRecordable(GridEventType.EVT_CACHE_DATA_LOST)) {
+                                ctx.event().record(new GridCacheEvent(cacheName, ctx.discovery().localNode(),
+                                    discoEvt.eventNode(), "All data nodes left", GridEventType.EVT_CACHE_DATA_LOST, 0,
+                                    false, null, null, null, null, false, null, false, null, null, null));
+                            }
+                        }
+                    }
+                }
+            }, GridEventType.EVT_NODE_LEFT, GridEventType.EVT_NODE_FAILED);
         }
 
         for (Map.Entry<String, GridCacheAdapter<?, ?>> e : caches.entrySet()) {
