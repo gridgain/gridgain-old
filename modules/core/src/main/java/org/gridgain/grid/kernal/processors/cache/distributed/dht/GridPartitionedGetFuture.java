@@ -12,6 +12,7 @@ package org.gridgain.grid.kernal.processors.cache.distributed.dht;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.kernal.processors.cache.*;
+import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
@@ -594,16 +595,29 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
             if (log.isDebugEnabled())
                 log.debug("Remote node left grid while sending or waiting for reply (will retry): " + this);
 
-            long updTopVer = ctx.discovery().topologyVersion();
+            final long updTopVer = ctx.discovery().topologyVersion();
 
-            assert updTopVer > topVer : "Got topology exception but topology version did " +
-                "not change [topVer=" + topVer + ", updTopVer=" + updTopVer +
-                ", nodeId=" + node.id() + ']';
+            final GridFutureRemapTimeoutObject timeout = new GridFutureRemapTimeoutObject(this,
+                cctx.kernalContext().config().getNetworkTimeout(),
+                updTopVer,
+                e);
 
-            // Remap.
-            map(keys.keySet(), F.t(node, keys), updTopVer);
+            cctx.affinity().affinityReadyFuture(updTopVer).listenAsync(
+                new CI1<GridFuture<Long>>() {
+                    @Override public void apply(GridFuture<Long> fut) {
+                        if (timeout.finish()) {
+                            cctx.kernalContext().timeout().removeTimeoutObject(timeout);
 
-            onDone(Collections.<K, V>emptyMap());
+                            // Remap.
+                            map(keys.keySet(), F.t(node, keys), updTopVer);
+
+                            onDone(Collections.<K, V>emptyMap());
+                        }
+                    }
+                }
+            );
+
+            cctx.kernalContext().timeout().addTimeoutObject(timeout);
         }
 
         /**
