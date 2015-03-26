@@ -40,6 +40,7 @@
             <includes>
                 <include>org.gridgain:gridgain-visor-console</include>
             </includes>
+
             <sources>
                 <includeModuleDirectory>false</includeModuleDirectory>
                 <fileSets>
@@ -90,15 +91,22 @@
                 <include>org.gridgain:gridgain-ssh</include>
                 <include>org.gridgain:gridgain-spring</include>
             </includes>
+
             <sources>
                 <includeModuleDirectory>false</includeModuleDirectory>
                 <fileSets>
+                    <fileSet>
+                        <directory>target/libs</directory>
+                        <outputDirectory>/visor-common</outputDirectory>
+                    </fileSet>
+
                     <fileSet>
                         <directory>target</directory>
                         <outputDirectory>/visor-common</outputDirectory>
                         <includes>
                             <include>*.jar</include>
                         </includes>
+
                         <excludes>
                             <exclude>*-tests.jar</exclude>
                             <exclude>*-javadoc.jar</exclude>
