@@ -36,7 +36,7 @@ import static org.gridgain.grid.events.GridEventType.*;
  */
 public class TxLockOneKeyExample {
 
-    public static long testDuration = GridSystemProperties.getLong("duration", 5);
+    public static long testDuration = GridSystemProperties.getLong("duration", 60);
 
     /**
      * Executes example.
