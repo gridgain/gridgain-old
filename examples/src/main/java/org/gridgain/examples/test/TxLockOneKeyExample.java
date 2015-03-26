@@ -12,17 +12,11 @@ package org.gridgain.examples.test;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.compute.*;
-import org.gridgain.grid.events.*;
-import org.gridgain.grid.kernal.*;
-import org.gridgain.grid.kernal.processors.cache.*;
-import org.gridgain.grid.lang.*;
 import org.gridgain.grid.resources.*;
-import org.gridgain.grid.util.typedef.internal.*;
+import org.jetbrains.annotations.*;
 
 import java.util.*;
 import java.util.concurrent.*;
-
-import static org.gridgain.grid.events.GridEventType.*;
 
 /**
  * Demonstrates event consume API that allows to register event listeners on remote nodes.
@@ -56,8 +50,32 @@ public class TxLockOneKeyExample {
     /**
      * @throws Exception If failed.
      */
-    public static void checkExplicitLock(Grid grid, int keys) throws Exception {
-        GridFuture<?> fut = grid.compute().broadcast(new CacheOperationsClosure(testDuration * 1000, keys));
+    public static void checkExplicitLock(Grid grid, final int keys) throws Exception {
+        GridFuture<?> fut = grid.compute().withNoFailover().execute(new GridComputeTaskAdapter<Object, Object>() {
+            @Nullable @Override public Map<? extends GridComputeJob, GridNode> map(List<GridNode> subgrid,
+                @Nullable Object arg) {
+
+                Map<GridComputeJob, GridNode> res = new HashMap<>();
+
+                for (GridNode node : subgrid)
+                    res.put(new CacheOperationsJob(testDuration * 1000, keys), node);
+
+                return res;
+            }
+
+            @Override public GridComputeJobResultPolicy result(GridComputeJobResult res,
+                List<GridComputeJobResult> rcvd) {
+
+                System.out.println("Result [node=" + res.getNode().id() + ", err=" + res.getException() + ", res="
+                    + res.getData() + "]");
+
+                return GridComputeJobResultPolicy.WAIT;
+            }
+
+            @Nullable @Override public Object reduce(List<GridComputeJobResult> results) {
+                return null;
+            }
+        }, null);
 
         long timeout = testDuration * 2;
 
@@ -74,9 +92,9 @@ public class TxLockOneKeyExample {
     }
 
     /** */
-    public static class CacheOperationsClosure implements GridRunnable {
+    public static class CacheOperationsJob implements GridComputeJob {
         /** */
-        private final long duration;
+        private long duration;
 
         /** */
         private final int keyCnt;
@@ -88,13 +106,38 @@ public class TxLockOneKeyExample {
          * @param duration Duration.
          * @param keyCnt Key count.
          */
-        public CacheOperationsClosure(long duration, int keyCnt) {
+        public CacheOperationsJob(long duration, int keyCnt) {
             this.duration = duration;
             this.keyCnt = keyCnt;
         }
 
+        /**
+         * @param cnt Number of keys to generate.
+         * @return Map.
+         */
+        private TreeMap<Integer, String> generateValues(int cnt) {
+            TreeMap<Integer, String> res = new TreeMap<>();
+
+            ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+            while (res.size() < cnt) {
+                int key = rnd.nextInt(0, 100);
+
+                res.put(key, String.valueOf(key));
+            }
+
+            return res;
+        }
+
         /** {@inheritDoc} */
-        @Override public void run() {
+        @Override public void cancel() {
+            System.out.println("Job canceled.");
+
+            duration = 0;
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public Object execute() throws GridException {
             System.out.println("Cache operation closure started");
 
             GridCache<Object, Object> cache = grid.cache("part_cache");
@@ -117,39 +160,18 @@ public class TxLockOneKeyExample {
                         else
                             cache.removeAll(vals.keySet());
                     }
-                    catch (Exception e) {
-                        e.printStackTrace();
-                    }
                     finally {
                         cache.unlock(vals.firstKey());
                     }
                 }
-                catch (Exception e){
-                    e.printStackTrace();
+                catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             } while (startTime + duration > System.currentTimeMillis());
 
             System.out.println("Cache operation closure finished");
-        }
 
-        /**
-         * @param cnt Number of keys to generate.
-         * @return Map.
-         */
-        private TreeMap<Integer, String> generateValues(int cnt) {
-            TreeMap<Integer, String> res = new TreeMap<>();
-
-            ThreadLocalRandom rnd = ThreadLocalRandom.current();
-
-            while (res.size() < cnt) {
-                int key = rnd.nextInt(0, 100);
-
-                res.put(key, String.valueOf(key));
-            }
-
-            return res;
+            return "Ok";
         }
     }
-
-
 }
