@@ -638,8 +638,12 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
         singleMsgs.clear();
         fullMsgs.clear();
         rcvdIds.clear();
-        rmtNodes.clear();
         oldestNode.set(null);
+
+        Collection<GridNode> rmtNodes = this.rmtNodes;
+        if (rmtNodes != null)
+            rmtNodes.clear();
+
         partReleaseFut = null;
     }
 
