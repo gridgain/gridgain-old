@@ -80,11 +80,11 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
     public GridNearTxFinishFuture(GridCacheContext<K, V> cctx, GridNearTxLocal<K, V> tx, boolean commit) {
         super(cctx.kernalContext(), F.<GridCacheTx>identityReducer(tx));
 
-        assert cctx != null;
-
         this.cctx = cctx;
         this.tx = tx;
         this.commit = commit;
+
+        ignoreInterrupts(true);
 
         mappings = tx.mappings();
 

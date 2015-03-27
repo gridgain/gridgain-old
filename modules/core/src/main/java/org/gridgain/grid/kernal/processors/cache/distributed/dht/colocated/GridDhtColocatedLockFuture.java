@@ -134,6 +134,8 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
         this.timeout = timeout;
         this.filter = filter;
 
+        ignoreInterrupts(true);
+
         threadId = tx == null ? Thread.currentThread().getId() : tx.threadId();
 
         lockVer = tx != null ? tx.xidVersion() : cctx.versions().next();

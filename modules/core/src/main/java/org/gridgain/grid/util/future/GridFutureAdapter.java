@@ -82,6 +82,9 @@ public class GridFutureAdapter<R> extends AbstractQueuedSynchronizer implements 
     private volatile boolean concurNotify = CONCUR_NOTIFY;
 
     /** */
+    private boolean ignoreInterrupts;
+
+    /** */
     private final Object mux = new Object();
 
     /**
@@ -152,6 +155,13 @@ public class GridFutureAdapter<R> extends AbstractQueuedSynchronizer implements 
     }
 
     /**
+     * @param ignoreInterrupts Ignore interrupts flag.
+     */
+    public void ignoreInterrupts(boolean ignoreInterrupts) {
+        this.ignoreInterrupts = ignoreInterrupts;
+    }
+
+    /**
      * Checks that future is in usable state.
      */
     protected void checkValid() {
@@ -190,8 +200,12 @@ public class GridFutureAdapter<R> extends AbstractQueuedSynchronizer implements 
         checkValid();
 
         try {
-            if (endTime == 0)
-                acquireSharedInterruptibly(0);
+            if (endTime == 0) {
+                if (ignoreInterrupts)
+                    acquireShared(0);
+                else
+                    acquireSharedInterruptibly(0);
+            }
 
             if (getState() == CANCELLED)
                 throw new GridFutureCancelledException("Future was cancelled: " + this);

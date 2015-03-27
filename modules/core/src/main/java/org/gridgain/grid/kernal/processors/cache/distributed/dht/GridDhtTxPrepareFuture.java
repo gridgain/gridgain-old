@@ -121,8 +121,6 @@ public final class GridDhtTxPrepareFuture<K, V> extends GridCompoundIdentityFutu
             }
         });
 
-        assert cctx != null;
-
         this.cctx = cctx;
         this.tx = tx;
         this.dhtVerMap = dhtVerMap;

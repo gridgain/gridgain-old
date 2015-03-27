@@ -397,13 +397,37 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                 return tx.commitAsync();
             }
             else {
-                assert tx != null : "Transaction is null for near rollback request [nodeId=" +
+                assert tx != null || req.explicitLock() : "Transaction is null for near rollback request [nodeId=" +
                     nodeId + ", req=" + req + "]";
 
-                tx.nearFinishFutureId(req.futureId());
-                tx.nearFinishMiniId(req.miniId());
+                if (tx != null) {
+                    tx.nearFinishFutureId(req.futureId());
+                    tx.nearFinishMiniId(req.miniId());
 
-                return tx.rollbackAsync();
+                    return tx.rollbackAsync();
+                }
+                else {
+                    // Always send finish response.
+                    GridCacheMessage<K, V> res = new GridNearTxFinishResponse<>(req.version(), req.threadId(),
+                        req.futureId(), req.miniId(), null);
+
+                    try {
+                        ctx.io().send(nodeId, res);
+                    }
+                    catch (Throwable e) {
+                        // Double-check.
+                        if (ctx.discovery().node(nodeId) == null) {
+                            if (log.isDebugEnabled())
+                                log.debug("Node left while sending finish response [nodeId=" + nodeId + ", res=" + res +
+                                        ']');
+                        }
+                        else
+                            U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " +
+                                    "res=" + res + ']', e);
+                    }
+
+                    return null;
+                }
             }
         }
         catch (Throwable e) {

@@ -76,10 +76,10 @@ public class GridDhtColocatedTxFinishFuture<K, V> extends GridCompoundIdentityFu
     public GridDhtColocatedTxFinishFuture(GridCacheContext<K, V> cctx, GridDhtColocatedTxLocal<K, V> tx) {
         super(cctx.kernalContext(), F.<GridCacheTx>identityReducer(tx));
 
-        assert cctx != null;
-
         this.cctx = cctx;
         this.tx = tx;
+
+        ignoreInterrupts(true);
 
         mappings = tx.mappings();
 

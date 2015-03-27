@@ -85,6 +85,25 @@ public class GridConcurrentLinkedHashMapSelfTest extends GridCommonAbstractTest 
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testIteratorRehash() throws Exception {
+        ConcurrentLinkedHashMap<Integer, Date> map = new ConcurrentLinkedHashMap<>(10);
+
+        for (int i = 0; i < 10; i++)
+            map.put(i, new Date(0));
+
+        for (Date date : map.values())
+            assertEquals(0, date.getTime());
+
+        for (int i = 0; i < 1000; i++)
+            map.put(i, new Date(1));
+
+        for (Date date : map.values())
+            assertEquals(1, date.getTime());
+    }
+
+    /**
      * Tests order of elements in map.
      *
      * @param update {@code true} if test should update map via iterator.

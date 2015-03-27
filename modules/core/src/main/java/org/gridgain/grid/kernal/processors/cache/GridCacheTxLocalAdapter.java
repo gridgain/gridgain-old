@@ -37,6 +37,7 @@ import static org.gridgain.grid.kernal.processors.dr.GridDrType.*;
 /**
  * Transaction adapter for cache transactions.
  */
+@SuppressWarnings("unchecked")
 public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K, V>
     implements GridCacheTxLocalEx<K, V> {
     /** */
@@ -2464,14 +2465,14 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
                 if (fut.isDone()) {
                     try {
-                        return plc1.apply(fut.get(), null);
+                        return nonInterruptable(plc1.apply(fut.get(), null));
                     }
                     catch (GridClosureException e) {
                         return new GridFinishedFuture<>(cctx.kernalContext(), e.unwrap());
                     }
                     catch (GridException e) {
                         try {
-                            return plc1.apply(false, e);
+                            return nonInterruptable(plc1.apply(false, e));
                         }
                         catch (Exception e1) {
                             return new GridFinishedFuture<>(cctx.kernalContext(), e1);
@@ -2479,17 +2480,17 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
                     }
                 }
                 else
-                    return new GridEmbeddedFuture<>(
+                    return nonInterruptable(new GridEmbeddedFuture<>(
                         fut,
                         plc1,
-                        cctx.kernalContext());
+                        cctx.kernalContext()));
             }
             else {
                 // Write-through (if there is cache-store, persist asynchronously).
                 if (isSingleUpdate()) {
                     // Note that we can't have filter here, because if there was filter,
                     // it would not pass initial 'checkValid' validation for optimistic mode.
-                    return new GridEmbeddedFuture<>(
+                    return nonInterruptable(new GridEmbeddedFuture<>(
                         cctx.kernalContext(),
                         loadFut,
                         new CX2<Set<K>, Exception, GridCacheReturn<V>>() {
@@ -2513,16 +2514,16 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
                                 return ret;
                             }
-                        });
+                        }));
                 }
 
-                return loadFut.chain(new CX1<GridFuture<Set<K>>, GridCacheReturn<V>>() {
+                return nonInterruptable(loadFut.chain(new CX1<GridFuture<Set<K>>, GridCacheReturn<V>>() {
                     @Override public GridCacheReturn<V> applyx(GridFuture<Set<K>> f) throws GridException {
                         f.get();
 
                         return ret;
                     }
-                });
+                }));
             }
         }
         catch (GridException e) {
@@ -2669,14 +2670,14 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
                 if (fut.isDone()) {
                     try {
-                        return plc1.apply(fut.get(), null);
+                        return nonInterruptable(plc1.apply(fut.get(), null));
                     }
                     catch (GridClosureException e) {
                         return new GridFinishedFuture<>(cctx.kernalContext(), e.unwrap());
                     }
                     catch (GridException e) {
                         try {
-                            return plc1.apply(false, e);
+                            return nonInterruptable(plc1.apply(false, e));
                         }
                         catch (Exception e1) {
                             return new GridFinishedFuture<>(cctx.kernalContext(), e1);
@@ -2684,17 +2685,17 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
                     }
                 }
                 else
-                    return new GridEmbeddedFuture<>(
+                    return nonInterruptable(new GridEmbeddedFuture<>(
                         fut,
                         plc1,
-                        cctx.kernalContext());
+                        cctx.kernalContext()));
             }
             else {
                 // Write-through (if there is cache-store, persist asynchronously).
                 if (isSingleUpdate()) {
                     // Note that we can't have filter here, because if there was filter,
                     // it would not pass initial 'checkValid' validation for optimistic mode.
-                    return new GridEmbeddedFuture<>(
+                    return nonInterruptable(new GridEmbeddedFuture<>(
                         cctx.kernalContext(),
                         loadFut,
                         new CX2<Set<K>, Exception, GridCacheReturn<V>>() {
@@ -2713,16 +2714,16 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
                                 return ret;
                             }
-                        });
+                        }));
                 }
 
-                return loadFut.chain(new CX1<GridFuture<Set<K>>, GridCacheReturn<V>>() {
+                return nonInterruptable(loadFut.chain(new CX1<GridFuture<Set<K>>, GridCacheReturn<V>>() {
                     @Override public GridCacheReturn<V> applyx(GridFuture<Set<K>> f) throws GridException {
                         f.get();
 
                         return ret;
                     }
-                });
+                }));
             }
         }
         catch (GridException e) {
@@ -2730,6 +2731,18 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
             return new GridFinishedFuture<>(cctx.kernalContext(), e);
         }
+    }
+
+    /**
+     * @param fut Future.
+     * @return Future ignoring interrupts.
+     */
+    private <T> GridFuture<T> nonInterruptable(GridFuture<T> fut) {
+        // Safety
+        if (fut instanceof GridFutureAdapter)
+            ((GridFutureAdapter)fut).ignoreInterrupts(true);
+
+        return fut;
     }
 
     /**
@@ -3032,7 +3045,8 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
             if (explicitCand != null) {
                 GridCacheVersion explicitVer = explicitCand.version();
 
-                if (!explicitVer.equals(xidVer) && explicitCand.threadId() == threadId && !explicitCand.tx()) {
+                if (!explicitVer.equals(xidVer) && explicitCand.threadId() == threadId &&
+                    cctx.localNodeId().equals(explicitCand.otherNodeId()) && !explicitCand.tx()) {
                     txEntry.explicitVersion(explicitVer);
 
                     if (explicitVer.isLess(minVer))
@@ -3320,7 +3334,8 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
                 if (!locked)
                     throw new GridClosureException(new GridCacheTxTimeoutException("Failed to acquire lock " +
-                        "within provided timeout for transaction [timeout=" + timeout() + ", tx=" + this + ']'));
+                        "within provided timeout for transaction [timeout=" + timeout() +
+                        ", tx=" + GridCacheTxLocalAdapter.this + ']'));
 
                 GridFuture<T> fut = postLock();
 

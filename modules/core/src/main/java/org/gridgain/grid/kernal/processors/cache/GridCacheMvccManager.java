@@ -154,17 +154,6 @@ public class GridCacheMvccManager<K, V> extends GridCacheManagerAdapter<K, V> {
             if (log.isDebugEnabled())
                 log.debug("Processing node left [nodeId=" + discoEvt.eventNode().id() + "]");
 
-            for (GridDistributedCacheEntry<K, V> entry : locked.values()) {
-                try {
-                    entry.removeExplicitNodeLocks(discoEvt.eventNode().id());
-                }
-                catch (GridCacheEntryRemovedException ignore) {
-                    if (log.isDebugEnabled())
-                        log.debug("Attempted to remove node locks from removed entry in mvcc manager " +
-                            "disco callback (will ignore): " + entry);
-                }
-            }
-
             for (Collection<GridCacheFuture<?>> futsCol : futs.values()) {
                 for (GridCacheFuture<?> fut : futsCol) {
                     if (!fut.trackable()) {
@@ -217,6 +206,22 @@ public class GridCacheMvccManager<K, V> extends GridCacheManagerAdapter<K, V> {
      */
     public GridCacheMvccCallback<K, V> callback() {
         return cb;
+    }
+
+    /**
+     * @param leftNodeId Left node ID.
+     */
+    public void removeExplicitNodeLocks(UUID leftNodeId) {
+        for (GridDistributedCacheEntry<K, V> entry : locked.values()) {
+            try {
+                entry.removeExplicitNodeLocks(leftNodeId);
+            }
+            catch (GridCacheEntryRemovedException ignore) {
+                if (log.isDebugEnabled())
+                    log.debug("Attempted to remove node locks from removed entry in mvcc manager " +
+                            "disco callback (will ignore): " + entry);
+            }
+        }
     }
 
     /**

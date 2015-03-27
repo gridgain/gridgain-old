@@ -133,7 +133,6 @@ public final class GridNearLockFuture<K, V> extends GridCompoundIdentityFuture<B
         long timeout,
         GridPredicate<GridCacheEntry<K, V>>[] filter) {
         super(cctx.kernalContext(), CU.boolReducer());
-        assert cctx != null;
         assert keys != null;
 
         this.cctx = cctx;
@@ -143,6 +142,8 @@ public final class GridNearLockFuture<K, V> extends GridCompoundIdentityFuture<B
         this.retval = retval;
         this.timeout = timeout;
         this.filter = filter;
+
+        ignoreInterrupts(true);
 
         threadId = tx == null ? Thread.currentThread().getId() : tx.threadId();
 
