@@ -178,7 +178,7 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
             lockVer = cctx.mvcc().mappedVersion(nearLockVer);
 
             if (lockVer == null)
-                lockVer = cctx.versions().onReceivedAndNext(nearNodeId, nearLockVer);
+                lockVer = nearLockVer;
         }
 
         futId = GridUuid.randomUuid();

@@ -11,7 +11,6 @@ package org.gridgain.grid.kernal.processors.cache;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
-import org.gridgain.grid.dr.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.lang.*;
@@ -1066,7 +1065,8 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public void onTimeout() {
-        state(MARKED_ROLLBACK, true);
+        if (local() && !dht())
+            state(MARKED_ROLLBACK, true);
     }
 
     /** {@inheritDoc} */
