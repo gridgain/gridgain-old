@@ -472,9 +472,15 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
 
                 assert !n.isLocal();
 
-                if (!F.isEmpty(req.keyBytes()) || !F.isEmpty(req.keys()))
-                    // We don't wait for reply to this message.
-                    ctx.io().send(n, req);
+                if (!F.isEmpty(req.keyBytes()) || !F.isEmpty(req.keys())) {
+                    try {
+                        // We don't wait for reply to this message.
+                        ctx.io().send(n, req);
+                    }
+                    catch (GridException e) {
+                        U.error(log, "Failed to send unlock request [keys=" + req.keys() + ", node=" + n + ']', e);
+                    }
+                }
             }
         }
         catch (GridException ex) {
@@ -555,8 +561,13 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                 if (!F.isEmpty(req.keyBytes()) || !F.isEmpty(req.keys())) {
                     req.completedVersions(committed, rolledback);
 
-                    // We don't wait for reply to this message.
-                    ctx.io().send(n, req);
+                    try {
+                        // We don't wait for reply to this message.
+                        ctx.io().send(n, req);
+                    }
+                    catch (GridException e) {
+                        U.error(log, "Failed to send unlock request [keys=" + req.keys() + ", node=" + n + ']', e);
+                    }
                 }
             }
         }
