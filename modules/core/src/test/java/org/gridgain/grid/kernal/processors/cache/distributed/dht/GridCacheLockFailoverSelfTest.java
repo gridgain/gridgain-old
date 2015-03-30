@@ -65,7 +65,7 @@ public class GridCacheLockFailoverSelfTest extends GridCacheAbstractSelfTest {
 
         final AtomicBoolean stop = new AtomicBoolean();
 
-        GridTestUtils.runAsync(new Callable<Object>() {
+        GridFuture<?> restartFut = GridTestUtils.runAsync(new Callable<Object>() {
             @Override public Object call() throws Exception {
                 while (!stop.get()) {
                     stopGrid(1);
@@ -111,6 +111,8 @@ public class GridCacheLockFailoverSelfTest extends GridCacheAbstractSelfTest {
         }
         finally {
             stop.set(true);
+
+            restartFut.get();
         }
     }
 }
