@@ -7,17 +7,21 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.grid.kernal.processors.cache;
+package org.gridgain.grid.kernal.processors.cache.ttl;
 
 import org.gridgain.grid.cache.*;
 
 /**
- * TTL test with offheap.
+ * TTL test with onheap.
  */
-public abstract class GridCacheTtlOffheapAtomicAbstractSelfTest extends GridCacheTtlOffheapAbstractSelfTest {
+public class GridCacheTtlOnheapAtomicLocalSelfTest extends GridCacheTtlOnheapAtomicAbstractSelfTest {
+    /** {@inheritDoc} */
+    @Override protected GridCacheMode cacheMode() {
+        return GridCacheMode.LOCAL;
+    }
 
     /** {@inheritDoc} */
-    @Override protected GridCacheAtomicityMode atomicityMode() {
-        return GridCacheAtomicityMode.ATOMIC;
+    protected int gridCount() {
+        return 1;
     }
 }

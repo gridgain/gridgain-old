@@ -6,7 +6,7 @@
  *  / /_/ /  _  /    _  /  / /_/ /  / /_/ /  / /_/ / _  /  _  / / /
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
-package org.gridgain.grid.kernal.processors.cache;
+package org.gridgain.grid.kernal.processors.cache.ttl;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
@@ -14,6 +14,7 @@ import org.gridgain.grid.cache.eviction.lru.*;
 import org.gridgain.grid.spi.discovery.tcp.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
+import org.gridgain.grid.spi.indexing.h2.*;
 import org.gridgain.testframework.junits.common.*;
 
 import java.util.*;
@@ -47,6 +48,7 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
         cache.setOffHeapMaxMemory(0);
         cache.setDefaultTimeToLive(DEFAULT_TIME_TO_LIVE);
         cache.setEvictionPolicy(new GridCacheLruEvictionPolicy(MAX_CACHE_SIZE));
+        cache.setQueryIndexEnabled(true);
 
         cfg.setCacheConfiguration(cache);
 
@@ -55,6 +57,12 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
         disco.setIpFinder(IP_FINDER);
 
         cfg.setDiscoverySpi(disco);
+
+        GridH2IndexingSpi indexingSpi = new GridH2IndexingSpi();
+
+        indexingSpi.setDefaultIndexPrimitiveKey(true);
+
+        cfg.setIndexingSpi(indexingSpi);
 
         return cfg;
     }
@@ -190,6 +198,8 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
             assertEquals(size > MAX_CACHE_SIZE ? MAX_CACHE_SIZE : size, cache.size());
             assertEquals(size > MAX_CACHE_SIZE ? size - MAX_CACHE_SIZE : 0, cache.offHeapEntriesCount());
         }
+
+        assertFalse(cache.queries().createSqlQuery(Integer.class, "_val >= 0").execute().get().isEmpty());
     }
 
     /**
@@ -202,7 +212,7 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
             assertEquals(0, cache.size());
             assertEquals(0, cache.offHeapEntriesCount());
             assertEquals(0, cache.swapSize());
-            assertEquals(0, cache.queries().createScanQuery(null).execute().get().size());
+            assertEquals(0, cache.queries().createSqlQuery(Integer.class, "_val >= 0").execute().get().size());
         }
     }
 }
