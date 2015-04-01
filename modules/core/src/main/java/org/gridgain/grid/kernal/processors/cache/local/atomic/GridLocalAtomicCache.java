@@ -292,7 +292,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
         updateAllInternal(UPDATE,
             m.keySet(),
             m.values(),
-            0,
+            -1,
             false,
             false,
             filter,
@@ -304,7 +304,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
         @Nullable GridPredicate<GridCacheEntry<K, V>>[] filter) {
         ctx.denyOnLocalRead();
 
-        return updateAllAsync0(m, null, false, false, 0, filter);
+        return updateAllAsync0(m, null, false, false, -1, filter);
     }
 
     /** {@inheritDoc} */

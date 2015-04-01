@@ -40,7 +40,7 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         GridCacheConfiguration cache = new GridCacheConfiguration();
 
-        cache.setCacheMode(GridCacheMode.PARTITIONED);
+        cache.setCacheMode(cacheMode());
         cache.setAtomicityMode(atomicityMode());
         cache.setDistributionMode(GridCacheDistributionMode.PARTITIONED_ONLY);
         cache.setMemoryMode(memoryMode());
@@ -60,30 +60,40 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
     }
 
     /**
-     * @return Atomicity mode for cache configuration.
+     * @return Atomicity mode.
      */
     protected abstract GridCacheAtomicityMode atomicityMode();
 
     /**
-     * @return Memory mode for cache configuration.
+     * @return Memory mode.
      */
     protected abstract GridCacheMemoryMode memoryMode();
 
+    /**
+     * @return Cache mode.
+     */
+    protected abstract GridCacheMode cacheMode();
+
+    /**
+     * @return GridCount
+     */
+    protected abstract int gridCount();
+
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
-        startGrid();
+        startGrids(gridCount());
     }
 
     /** {@inheritDoc} */
     @Override protected void afterTest() throws Exception {
-        stopGrid();
+        stopAllGrids();
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testTtl() throws Exception {
-        GridCache<Integer, Integer> cache = cache();
+        GridCache<Integer, Integer> cache = cache(0);
 
         for (int i = 0; i < SIZE; i++) {
             GridCacheEntry<Integer, Integer> e = cache.entry(i);
@@ -95,14 +105,14 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         Thread.sleep(DEFAULT_TIME_TO_LIVE + 500);
 
-        checkSizeAfterLive(cache);
+        checkSizeAfterLive();
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testDefaultTimeToLivePut() throws Exception {
-        GridCache<Integer, Integer> cache = cache();
+        GridCache<Integer, Integer> cache = cache(0);
 
         cache.put(1, 1);
 
@@ -110,14 +120,14 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         Thread.sleep(DEFAULT_TIME_TO_LIVE + 500);
 
-        checkSizeAfterLive(cache);
+        checkSizeAfterLive();
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testDefaultTimeToLivePutAll() throws Exception {
-        GridCache<Integer, Integer> cache = cache();
+        GridCache<Integer, Integer> cache = cache(0);
 
         Map<Integer, Integer> entries = new HashMap<>();
 
@@ -130,14 +140,14 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         Thread.sleep(DEFAULT_TIME_TO_LIVE + 500);
 
-        checkSizeAfterLive(cache);
+        checkSizeAfterLive();
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testTimeToLiveTtl() throws Exception {
-        GridCache<Integer, Integer> cache = cache();
+        GridCache<Integer, Integer> cache = cache(0);
 
         long time = DEFAULT_TIME_TO_LIVE + 2000;
 
@@ -157,7 +167,7 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         Thread.sleep(time - DEFAULT_TIME_TO_LIVE + 500);
 
-        checkSizeAfterLive(cache);
+        checkSizeAfterLive();
     }
 
     /**
@@ -177,9 +187,14 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
     /**
      * @throws Exception If failed.
      */
-    private void checkSizeAfterLive(GridCache<Integer, Integer> cache) throws Exception {
-        assertEquals(0, cache.size());
-        assertEquals(0, cache.offHeapEntriesCount());
-        assertEquals(0, cache.swapSize());
+    private void checkSizeAfterLive() throws Exception {
+        for (int i = 0; i < gridCount(); ++i) {
+            GridCache<Integer, Integer> cache = cache(0);
+
+            assertEquals(0, cache.size());
+            assertEquals(0, cache.offHeapEntriesCount());
+            assertEquals(0, cache.swapSize());
+            assertEquals(0, cache.queries().createScanQuery(null).execute().get().size());
+        }
     }
 }

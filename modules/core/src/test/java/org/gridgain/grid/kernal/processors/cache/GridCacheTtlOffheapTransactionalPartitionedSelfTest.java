@@ -12,13 +12,16 @@ package org.gridgain.grid.kernal.processors.cache;
 import org.gridgain.grid.cache.*;
 
 /**
- * TTL test with onheap.
+ * TTL test with offheap.
  */
-public abstract class GridCacheTtlOnheapAbstractSelfTest extends GridCacheTtlAbstractSelfTest {
+public class GridCacheTtlOffheapTransactionalPartitionedSelfTest extends GridCacheTtlOffheapTransactionalAbstractSelfTest {
     /** {@inheritDoc} */
-    @Override protected GridCacheMemoryMode memoryMode() {
-        return GridCacheMemoryMode.ONHEAP_TIERED;
+    @Override protected GridCacheMode cacheMode() {
+        return GridCacheMode.PARTITIONED;
     }
 
-
+    /** {@inheritDoc} */
+    @Override protected int gridCount() {
+        return 1;
+    }
 }

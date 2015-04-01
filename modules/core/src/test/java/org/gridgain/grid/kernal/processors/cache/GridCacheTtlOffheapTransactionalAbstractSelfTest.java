@@ -14,7 +14,7 @@ import org.gridgain.grid.cache.*;
 /**
  * TTL test with offheap.
  */
-public class GridCacheTtlOffheapTransactionalSelfTest extends GridCacheTtlOffheapAbstractSelfTest {
+public abstract class GridCacheTtlOffheapTransactionalAbstractSelfTest extends GridCacheTtlOffheapAbstractSelfTest {
 
     /** {@inheritDoc} */
     @Override protected GridCacheAtomicityMode atomicityMode() {

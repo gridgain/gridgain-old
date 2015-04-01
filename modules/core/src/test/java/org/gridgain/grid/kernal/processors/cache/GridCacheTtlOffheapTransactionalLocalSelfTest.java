@@ -14,10 +14,14 @@ import org.gridgain.grid.cache.*;
 /**
  * TTL test with offheap.
  */
-public class GridCacheTtlOffheapAtomicSelfTest extends GridCacheTtlOffheapAbstractSelfTest {
+public class GridCacheTtlOffheapTransactionalLocalSelfTest extends GridCacheTtlOffheapTransactionalAbstractSelfTest {
+    /** {@inheritDoc} */
+    @Override protected GridCacheMode cacheMode() {
+        return GridCacheMode.LOCAL;
+    }
 
     /** {@inheritDoc} */
-    @Override protected GridCacheAtomicityMode atomicityMode() {
-        return GridCacheAtomicityMode.ATOMIC;
+    protected int gridCount() {
+        return 1;
     }
 }

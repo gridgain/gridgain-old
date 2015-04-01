@@ -12,9 +12,9 @@ package org.gridgain.grid.kernal.processors.cache;
 import org.gridgain.grid.cache.*;
 
 /**
- * TTL test with onheap.
+ * TTL test with offheap.
  */
-public class GridCacheTtlOnheapAtomicSelfTest extends GridCacheTtlOnheapAbstractSelfTest {
+public abstract class GridCacheTtlOffheapAtomicAbstractSelfTest extends GridCacheTtlOffheapAbstractSelfTest {
 
     /** {@inheritDoc} */
     @Override protected GridCacheAtomicityMode atomicityMode() {

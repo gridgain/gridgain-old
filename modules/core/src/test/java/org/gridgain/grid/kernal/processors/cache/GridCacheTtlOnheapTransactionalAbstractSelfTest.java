@@ -14,11 +14,10 @@ import org.gridgain.grid.cache.*;
 /**
  * TTL test with onheap.
  */
-public abstract class GridCacheTtlOnheapAbstractSelfTest extends GridCacheTtlAbstractSelfTest {
+public abstract class GridCacheTtlOnheapTransactionalAbstractSelfTest extends GridCacheTtlOnheapAbstractSelfTest {
+
     /** {@inheritDoc} */
-    @Override protected GridCacheMemoryMode memoryMode() {
-        return GridCacheMemoryMode.ONHEAP_TIERED;
+    @Override protected GridCacheAtomicityMode atomicityMode() {
+        return GridCacheAtomicityMode.TRANSACTIONAL;
     }
-
-
 }

@@ -410,7 +410,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
     /** {@inheritDoc} */
     @Override public GridFuture<?> putAllAsync(Map<? extends K, ? extends V> m,
         @Nullable GridPredicate<GridCacheEntry<K, V>>[] filter) {
-        return updateAllAsync0(m, null, null, null, false, false, null, 0, filter);
+        return updateAllAsync0(m, null, null, null, false, false, null, -1, filter);
     }
 
     /** {@inheritDoc} */
@@ -422,7 +422,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
     @Override public GridFuture<?> putAllDrAsync(Map<? extends K, GridCacheDrInfo<V>> drMap) {
         metrics.onReceiveCacheEntriesReceived(drMap.size());
 
-        return updateAllAsync0(null, null, drMap, null, false, false, null, 0, null);
+        return updateAllAsync0(null, null, drMap, null, false, false, null, -1, null);
     }
 
     /** {@inheritDoc} */
