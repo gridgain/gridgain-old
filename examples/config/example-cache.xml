@@ -52,33 +52,6 @@
             <list>
                 <!-- Partitioned cache example configuration (Atomic mode). -->
                 <bean parent="cache-template">
-                    <property name="name" value="part_cache"/>
-                    <property name="defaultTimeToLive" value="120000"/>
-                    <property name="atomicityMode" value="TRANSACTIONAL"/>
-                    <property name="writeSynchronizationMode" value="PRIMARY_SYNC"/>
-                    <property name="queryIndexEnabled" value="false"/>
-                    <property name="backups" value="2"/>
-                    <property name="cacheMode" value="PARTITIONED"/>
-                    <property name="startSize" value="100000"/>
-                    <property name="defaultTxTimeout" value="3000"/>
-                    <property name="defaultLockTimeout" value="3000"/>
-                    <property name="nearEvictionPolicy">
-                        <bean class="org.gridgain.grid.cache.eviction.lru.GridCacheLruEvictionPolicy">
-                            <constructor-arg value="10000"/>
-                        </bean>
-                    </property>
-                    <property name="evictNearSynchronized" value="true"/>
-                    <property name="evictionPolicy">
-                        <bean class="org.gridgain.grid.cache.eviction.lru.GridCacheLruEvictionPolicy">
-                            <constructor-arg value="100000"/>
-                        </bean>
-                    </property>
-                    <property name="evictSynchronized" value="true"/>
-                    <property name="distributionMode" value="PARTITIONED_ONLY"/>
-                </bean>
-
-                <!-- Partitioned cache example configuration (Atomic mode). -->
-                <bean parent="cache-template">
                     <property name="name" value="partitioned"/>
                     <property name="cacheMode" value="PARTITIONED"/>
                     <property name="atomicityMode" value="ATOMIC"/>
