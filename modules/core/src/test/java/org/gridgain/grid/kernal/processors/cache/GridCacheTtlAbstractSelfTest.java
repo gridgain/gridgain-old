@@ -95,8 +95,10 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
     public void testTtl() throws Exception {
         GridCache<Integer, Integer> cache = cache(0);
 
+        List<Integer> keys = primaryKeys(cache, SIZE);
+
         for (int i = 0; i < SIZE; i++) {
-            GridCacheEntry<Integer, Integer> e = cache.entry(i);
+            GridCacheEntry<Integer, Integer> e = cache.entry(keys.get(i));
 
             e.setx(i);
         }
@@ -181,11 +183,11 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
      */
     private void checkSizeBeforeLive(GridCache<Integer, Integer> cache, int size) throws Exception {
         if (memoryMode() == GridCacheMemoryMode.OFFHEAP_TIERED) {
-            assertEquals(0, cache.globalSize());
+            assertEquals(0, cache.size());
             assertEquals(size, cache.offHeapEntriesCount());
         }
         else {
-            assertEquals(size > MAX_CACHE_SIZE ? MAX_CACHE_SIZE : size, cache.globalSize());
+            assertEquals(size > MAX_CACHE_SIZE ? MAX_CACHE_SIZE : size, cache.size());
             assertEquals(size > MAX_CACHE_SIZE ? size - MAX_CACHE_SIZE : 0, cache.offHeapEntriesCount());
         }
     }
