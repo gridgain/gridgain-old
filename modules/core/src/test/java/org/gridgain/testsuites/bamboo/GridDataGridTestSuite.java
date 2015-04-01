@@ -69,6 +69,10 @@ public class GridDataGridTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheGetStoreErrorSelfTest.class);
         suite.addTestSuite(GridCacheAsyncOperationsLimitSelfTest.class);
         suite.addTestSuite(GridCacheTtlManagerSelfTest.class);
+        suite.addTestSuite(GridCacheTtlOffheapAtomicSelfTest.class);
+        suite.addTestSuite(GridCacheTtlOffheapTransactionalSelfTest.class);
+        suite.addTestSuite(GridCacheTtlOnheapTransactionalSelfTest.class);
+        suite.addTestSuite(GridCacheTtlOnheapAtomicSelfTest.class);
         suite.addTestSuite(GridCacheLifecycleAwareSelfTest.class);
         suite.addTestSuite(GridCacheStopSelfTest.class);
         suite.addTestSuite(GridCacheAtomicStopBusySelfTest.class);
