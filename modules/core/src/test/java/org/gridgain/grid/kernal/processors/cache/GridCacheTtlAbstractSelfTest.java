@@ -114,7 +114,9 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
     public void testDefaultTimeToLivePut() throws Exception {
         GridCache<Integer, Integer> cache = cache(0);
 
-        cache.put(1, 1);
+        List<Integer> keys = primaryKeys(cache, 1);
+
+        cache.put(keys.get(0), 1);
 
         checkSizeBeforeLive(cache, 1);
 
@@ -131,8 +133,10 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         Map<Integer, Integer> entries = new HashMap<>();
 
+        List<Integer> keys = primaryKeys(cache, SIZE);
+
         for (int i = 0; i < SIZE; ++i)
-            entries.put(i, i);
+            entries.put(keys.get(i), i);
 
         cache.putAll(entries);
 
@@ -151,8 +155,10 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
 
         long time = DEFAULT_TIME_TO_LIVE + 2000;
 
+        List<Integer> keys = primaryKeys(cache, SIZE);
+
         for (int i = 0; i < SIZE; i++) {
-            GridCacheEntry<Integer, Integer> e = cache.entry(i);
+            GridCacheEntry<Integer, Integer> e = cache.entry(keys.get(i));
 
             e.timeToLive(time);
 
@@ -175,11 +181,11 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
      */
     private void checkSizeBeforeLive(GridCache<Integer, Integer> cache, int size) throws Exception {
         if (memoryMode() == GridCacheMemoryMode.OFFHEAP_TIERED) {
-            assertEquals(0, cache.size());
+            assertEquals(0, cache.globalSize());
             assertEquals(size, cache.offHeapEntriesCount());
         }
         else {
-            assertEquals(size > MAX_CACHE_SIZE ? MAX_CACHE_SIZE : size, cache.size());
+            assertEquals(size > MAX_CACHE_SIZE ? MAX_CACHE_SIZE : size, cache.globalSize());
             assertEquals(size > MAX_CACHE_SIZE ? size - MAX_CACHE_SIZE : 0, cache.offHeapEntriesCount());
         }
     }
@@ -189,7 +195,7 @@ public abstract class GridCacheTtlAbstractSelfTest extends GridCommonAbstractTes
      */
     private void checkSizeAfterLive() throws Exception {
         for (int i = 0; i < gridCount(); ++i) {
-            GridCache<Integer, Integer> cache = cache(0);
+            GridCache<Integer, Integer> cache = cache(i);
 
             assertEquals(0, cache.size());
             assertEquals(0, cache.offHeapEntriesCount());

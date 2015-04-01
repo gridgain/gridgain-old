@@ -22,6 +22,6 @@ public class GridCacheTtlOffheapTransactionalPartitionedSelfTest extends GridCac
 
     /** {@inheritDoc} */
     @Override protected int gridCount() {
-        return 1;
+        return 2;
     }
 }

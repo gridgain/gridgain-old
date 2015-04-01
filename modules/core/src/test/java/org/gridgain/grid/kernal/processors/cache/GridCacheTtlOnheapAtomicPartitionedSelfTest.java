@@ -22,6 +22,6 @@ public class GridCacheTtlOnheapAtomicPartitionedSelfTest extends GridCacheTtlOnh
 
     /** {@inheritDoc} */
     @Override protected int gridCount() {
-        return 1;
+        return 2;
     }
 }
