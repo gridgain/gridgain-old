@@ -19,6 +19,4 @@ public abstract class GridCacheTtlOnheapAbstractSelfTest extends GridCacheTtlAbs
     @Override protected GridCacheMemoryMode memoryMode() {
         return GridCacheMemoryMode.ONHEAP_TIERED;
     }
-
-
 }

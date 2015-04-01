@@ -21,7 +21,7 @@ public class GridCacheTtlOffheapAtomicLocalSelfTest extends GridCacheTtlOffheapA
     }
 
     /** {@inheritDoc} */
-    protected int gridCount() {
+    @Override protected int gridCount() {
         return 1;
     }
 }

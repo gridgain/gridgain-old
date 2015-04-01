@@ -21,7 +21,7 @@ public class GridCacheTtlOnheapTransactionalLocalSelfTest extends GridCacheTtlOn
     }
 
     /** {@inheritDoc} */
-    protected int gridCount() {
+    @Override protected int gridCount() {
         return 1;
     }
 }
