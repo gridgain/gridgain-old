@@ -3045,8 +3045,14 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
             if (explicitCand != null) {
                 GridCacheVersion explicitVer = explicitCand.version();
 
-                if (!explicitVer.equals(xidVer) && explicitCand.threadId() == threadId &&
-                    cctx.localNodeId().equals(explicitCand.otherNodeId()) && !explicitCand.tx()) {
+                boolean locCand = false;
+
+                if (explicitCand.nearLocal())
+                    locCand = cctx.localNodeId().equals(explicitCand.nodeId());
+                else if (explicitCand.dhtLocal())
+                    locCand = cctx.localNodeId().equals(explicitCand.otherNodeId());
+
+                if (!explicitVer.equals(xidVer) && explicitCand.threadId() == threadId && locCand && !explicitCand.tx()) {
                     txEntry.explicitVersion(explicitVer);
 
                     if (explicitVer.isLess(minVer))

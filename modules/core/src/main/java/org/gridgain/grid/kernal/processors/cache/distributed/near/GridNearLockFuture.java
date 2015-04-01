@@ -640,6 +640,11 @@ public final class GridNearLockFuture<K, V> extends GridCompoundIdentityFuture<B
         // Obtain the topology version to use.
         GridDiscoveryTopologySnapshot snapshot = cctx.mvcc().lastExplicitLockTopologySnapshot(Thread.currentThread().getId());
 
+        if (snapshot != null && tx != null) {
+            tx.topologySnapshot(snapshot);
+            tx.topologyVersion(snapshot.topologyVersion());
+        }
+
         if (snapshot == null && tx != null)
             snapshot = tx.topologySnapshot();
 

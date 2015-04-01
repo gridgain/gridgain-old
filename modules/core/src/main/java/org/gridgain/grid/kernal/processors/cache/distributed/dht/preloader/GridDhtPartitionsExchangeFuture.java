@@ -608,7 +608,7 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
             cctx.affinity().cleanUpCache(res - 10);
 
         if (exchId.isLeft())
-            cctx.mvcc().removeExplicitNodeLocks(exchId.nodeId());
+            cctx.mvcc().removeExplicitNodeLocks(exchId.nodeId(), exchId.topologyVersion());
 
         if (super.onDone(res, err) && !dummy && !forcePreload) {
             if (exchId.event() == GridEventType.EVT_NODE_FAILED || exchId.event() == GridEventType.EVT_NODE_LEFT)
