@@ -478,7 +478,16 @@ public class GridNearCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
                 return null;
 
             // Local lock for near cache is a local lock.
-            cand = mvcc.addNearLocal(this, locId, dhtNodeId, threadId, ver, timeout, tx, implicitSingle);
+            cand = mvcc.addNearLocal(
+                this,
+                locId,
+                dhtNodeId,
+                threadId,
+                ver,
+                timeout,
+                tx,
+                implicitSingle
+            );
 
             owner = mvcc.anyOwner();
 
