@@ -154,20 +154,29 @@ public class TxLockOneKeyExample {
                     cache.lock(vals.firstKey(), 0);
 
                     try {
-                        // Put or remove.
-                        if (ThreadLocalRandom.current().nextDouble(1) < 0.65)
-                            cache.putAll(vals);
-                        else
-                            cache.removeAll(vals.keySet());
+                        try {
+                            // Put or remove.
+                            if (ThreadLocalRandom.current().nextDouble(1) < 0.65)
+                                cache.putAll(vals);
+                            else
+                                cache.removeAll(vals.keySet());
+                        }
+                        catch (GridTopologyException | GridCacheTxRollbackException e) {
+                            System.err.println("Expected error, will ignore: " + e);
+                        }
                     }
                     finally {
                         cache.unlock(vals.firstKey());
                     }
                 }
+                catch (GridTopologyException e) {
+                    System.err.println("Expected error, will ignore: " + e);
+                }
                 catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-            } while (startTime + duration > System.currentTimeMillis());
+            }
+            while (startTime + duration > System.currentTimeMillis());
 
             System.out.println("Cache operation closure finished");
 

@@ -211,10 +211,12 @@ public class GridCacheMvccManager<K, V> extends GridCacheManagerAdapter<K, V> {
     /**
      * @param leftNodeId Left node ID.
      */
-    public void removeExplicitNodeLocks(UUID leftNodeId) {
+    public void removeExplicitNodeLocks(UUID leftNodeId, long topVer) {
         for (GridDistributedCacheEntry<K, V> entry : locked.values()) {
             try {
                 entry.removeExplicitNodeLocks(leftNodeId);
+
+                entry.context().evicts().touch(entry, topVer);
             }
             catch (GridCacheEntryRemovedException ignore) {
                 if (log.isDebugEnabled())

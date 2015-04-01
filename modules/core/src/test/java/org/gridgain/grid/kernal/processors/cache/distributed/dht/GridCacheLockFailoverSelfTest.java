@@ -11,6 +11,7 @@ package org.gridgain.grid.kernal.processors.cache.distributed.dht;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
+import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.testframework.*;
@@ -99,6 +100,10 @@ public class GridCacheLockFailoverSelfTest extends GridCacheAbstractSelfTest {
                     U.sleep(1);
                 }
                 catch (GridFutureTimeoutException e) {
+                    GridCacheAdapter<Object, Object> ca = ((GridKernal) grid(0)).internalCache(null);
+
+                    info("Entry: " + ca.peekEx(key));
+
                     fail("Lock timeout [fut=" + fut + ", err=" + e + ']');
                 }
                 catch (GridException e) {
@@ -114,5 +119,28 @@ public class GridCacheLockFailoverSelfTest extends GridCacheAbstractSelfTest {
 
             restartFut.get();
         }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testUnlockPrimaryLeft() throws Exception {
+        GridCache<Integer, Integer> cache = grid(0).cache(null);
+
+        Integer key = backupKey(cache);
+
+        cache.lock(key, 0);
+
+        stopGrid(1);
+
+        cache.unlock(key);
+
+        GridCacheAdapter<Object, Object> ca = ((GridKernal) grid(0)).internalCache(null);
+
+        GridCacheEntryEx<Object, Object> entry = ca.peekEx(key);
+
+        assertTrue("Remote MVCC is not empty: " + entry, entry == null || entry.remoteMvccSnapshot().isEmpty());
+
+        startGrid(1);
     }
 }

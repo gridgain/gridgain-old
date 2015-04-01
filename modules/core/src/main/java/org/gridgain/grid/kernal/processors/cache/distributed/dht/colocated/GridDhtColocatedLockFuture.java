@@ -518,6 +518,11 @@ public final class GridDhtColocatedLockFuture<K, V> extends GridCompoundIdentity
         // Obtain the topology version to use.
         GridDiscoveryTopologySnapshot snapshot = cctx.mvcc().lastExplicitLockTopologySnapshot(threadId);
 
+        if (snapshot != null && tx != null) {
+            tx.topologySnapshot(snapshot);
+            tx.topologyVersion(snapshot.topologyVersion());
+        }
+
         if (snapshot == null && tx != null)
             snapshot = tx.topologySnapshot();
 
