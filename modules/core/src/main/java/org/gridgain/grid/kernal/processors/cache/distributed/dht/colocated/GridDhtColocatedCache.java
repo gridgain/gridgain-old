@@ -477,6 +477,11 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                         // We don't wait for reply to this message.
                         ctx.io().send(n, req);
                     }
+                    catch (GridTopologyException e) {
+                        if (log.isDebugEnabled())
+                            log.debug("Failed to send unlock request, node left" +
+                                " [keys=" + req.keys() + ", node=" + n + ", err=" + e + ']');
+                    }
                     catch (GridException e) {
                         U.error(log, "Failed to send unlock request [keys=" + req.keys() + ", node=" + n + ']', e);
                     }
@@ -564,6 +569,11 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                     try {
                         // We don't wait for reply to this message.
                         ctx.io().send(n, req);
+                    }
+                    catch (GridTopologyException e) {
+                        if (log.isDebugEnabled())
+                            log.debug("Failed to send unlock request " +
+                                "[keys=" + req.keys() + ", node=" + n + ", err=" + e + ']');
                     }
                     catch (GridException e) {
                         U.error(log, "Failed to send unlock request [keys=" + req.keys() + ", node=" + n + ']', e);
