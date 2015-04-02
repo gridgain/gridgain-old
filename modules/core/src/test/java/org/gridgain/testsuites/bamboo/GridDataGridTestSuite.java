@@ -188,6 +188,7 @@ public class GridDataGridTestSuite extends TestSuite {
 //        suite.addTest(new TestSuite(GridCachePartitionedTopologyChangeSelfTest.class)); TODO-gg-5489
         suite.addTest(new TestSuite(GridCachePartitionedPreloadEventsSelfTest.class));
         suite.addTest(new TestSuite(GridCachePartitionNotLoadedEventSelfTest.class));
+        suite.addTest(new TestSuite(GridCacheDataLostEventSelfTest.class));
         suite.addTest(new TestSuite(GridCachePartitionedUnloadEventsSelfTest.class));
         suite.addTest(new TestSuite(GridCachePartitionedAffinityHashIdResolverSelfTest.class));
         suite.addTest(new TestSuite(GridCacheColocatedOptimisticTransactionSelfTest.class));
