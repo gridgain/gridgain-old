@@ -9,22 +9,29 @@
 
 package org.gridgain.grid.kernal.processors.cache.distributed;
 
-import org.eclipse.jetty.util.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.affinity.*;
 import org.gridgain.grid.events.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.spi.discovery.tcp.*;
+import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
+import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
 import org.gridgain.testframework.junits.common.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 
+import static java.util.concurrent.TimeUnit.*;
 import static org.gridgain.grid.events.GridEventType.*;
 
 /**
  *
  */
 public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstractTest {
+    /** */
+    private static final GridTcpDiscoveryIpFinder IP_FINDER = new GridTcpDiscoveryVmIpFinder(true);
+
     /** */
     private int backupCnt;
 
@@ -50,6 +57,12 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
         cacheCfg.setBackups(backupCnt);
 
         cfg.setCacheConfiguration(cacheCfg);
+
+        GridTcpDiscoverySpi disco = new GridTcpDiscoverySpi();
+
+        disco.setIpFinder(IP_FINDER);
+
+        cfg.setDiscoverySpi(disco);
 
         return cfg;
     }
@@ -95,7 +108,7 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
 
         assert !cache.containsKey(key);
 
-        assert !lsnr.lostParts.isEmpty();
+        assert lsnr.latch.await(5, SECONDS);
     }
 
     /**
@@ -125,7 +138,7 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
 
         assert !cache(1).containsKey(key);
 
-        assert !lsnr.lostParts.isEmpty();
+        assert lsnr.latch.await(5, SECONDS);
     }
 
     /**
@@ -133,11 +146,11 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
      */
     private static class PartitionNotFullyLoadedListener implements GridPredicate<GridEvent> {
         /** */
-        private Collection<Integer> lostParts = new ConcurrentHashSet<>();
+        private final CountDownLatch latch = new CountDownLatch(1);
 
         /** {@inheritDoc} */
         @Override public boolean apply(GridEvent evt) {
-            lostParts.add(((GridCachePreloadingEvent)evt).partition());
+            latch.countDown();
 
             return true;
         }
