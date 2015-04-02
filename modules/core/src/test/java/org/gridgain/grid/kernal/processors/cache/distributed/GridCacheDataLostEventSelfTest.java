@@ -13,6 +13,9 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.events.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.spi.discovery.tcp.*;
+import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
+import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
 import org.gridgain.testframework.junits.common.*;
 
 import java.util.*;
@@ -21,6 +24,9 @@ import java.util.*;
  *
  */
 public class GridCacheDataLostEventSelfTest extends GridCommonAbstractTest {
+    /** */
+    private static final GridTcpDiscoveryIpFinder IP_FINDER = new GridTcpDiscoveryVmIpFinder(true);
+
     /** */
     private int backupCnt;
 
@@ -51,6 +57,12 @@ public class GridCacheDataLostEventSelfTest extends GridCommonAbstractTest {
         cacheCfg.setDistributionMode(distr);
 
         cfg.setCacheConfiguration(cacheCfg);
+
+        GridTcpDiscoverySpi disco = new GridTcpDiscoverySpi();
+
+        disco.setIpFinder(IP_FINDER);
+
+        cfg.setDiscoverySpi(disco);
 
         return cfg;
     }
