@@ -283,6 +283,8 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
      * Calls {@link GridDhtLocalPartition#onUnlock()} for this entry's partition.
      */
     public void onUnlock() {
+        super.onUnlock();
+
         locPart.onUnlock();
     }
 
@@ -600,12 +602,16 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
      * Sets mappings into entry.
      *
      * @param ver Version.
-     * @param mappings Mappings to set.
+     * @param dhtNodeIds Mapped DHT node IDs.
+     * @param nearNodeIds Mapped near node IDs.
      * @return Candidate, if one existed for the version, or {@code null} if candidate was not found.
      * @throws GridCacheEntryRemovedException If removed.
      */
-    @Nullable public synchronized GridCacheMvccCandidate<K> mappings(GridCacheVersion ver, Collection<UUID> mappings)
-        throws GridCacheEntryRemovedException {
+    @Nullable public synchronized GridCacheMvccCandidate<K> mappings(
+        GridCacheVersion ver,
+        Collection<GridNode> dhtNodeIds,
+        Collection<GridNode> nearNodeIds
+    ) throws GridCacheEntryRemovedException {
         checkObsolete();
 
         GridCacheMvcc<K> mvcc = mvccExtras();
@@ -613,9 +619,22 @@ public class GridDhtCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
         GridCacheMvccCandidate<K> cand = mvcc == null ? null : mvcc.candidate(ver);
 
         if (cand != null)
-            cand.mappedNodeIds(mappings);
+            cand.mappedNodeIds(dhtNodeIds, nearNodeIds);
 
         return cand;
+    }
+
+    /**
+     * @param ver Version.
+     * @param mappedNode Mapped node to remove.
+     */
+    public synchronized void removeMapping(GridCacheVersion ver, GridNode mappedNode) {
+        GridCacheMvcc<K> mvcc = mvccExtras();
+
+        GridCacheMvccCandidate<K> cand = mvcc == null ? null : mvcc.candidate(ver);
+
+        if (cand != null)
+            cand.removeMappedNode(mappedNode);
     }
 
     /** {@inheritDoc} */

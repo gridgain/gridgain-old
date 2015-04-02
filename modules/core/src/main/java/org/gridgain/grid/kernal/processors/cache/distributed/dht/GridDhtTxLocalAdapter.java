@@ -288,8 +288,8 @@ public abstract class GridDhtTxLocalAdapter<K, V> extends GridCacheTxLocalAdapte
                             if (nearEntryMap == null)
                                 nearEntryMap = new GridLeanMap<>();
 
-                            cctx.dhtMap(nearNodeId(), topologyVersion(),
-                                (GridDhtCacheEntry<K, V>)e.cached(), log, dhtEntryMap, nearEntryMap);
+                            cctx.dhtMap((GridDhtCacheEntry<K, V>)e.cached(), e.explicitVersion(), log,
+                                dhtEntryMap, nearEntryMap);
                         }
 
                         break;

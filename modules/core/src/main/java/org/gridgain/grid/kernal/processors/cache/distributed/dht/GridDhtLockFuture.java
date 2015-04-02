@@ -16,7 +16,6 @@ import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.timeout.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
-import org.gridgain.grid.product.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.tostring.*;
@@ -734,10 +733,16 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
                 try {
                     while (true) {
                         try {
-                            hasRmtNodes = cctx.dhtMap(nearNodeId, topVer, entry, log, dhtMap, nearMap);
+                            hasRmtNodes = cctx.dhtMap(
+                                nearNodeId,
+                                topVer,
+                                entry,
+                                tx == null ? lockVer : null,
+                                log,
+                                dhtMap,
+                                nearMap);
 
-                            GridCacheMvccCandidate<K> cand = entry.mappings(lockVer,
-                                F.nodeIds(F.concat(false, dhtMap.keySet(), nearMap.keySet())));
+                            GridCacheMvccCandidate<K> cand = entry.candidate(lockVer);
 
                             // Possible in case of lock cancellation.
                             if (cand == null) {
@@ -1142,6 +1147,8 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
 
                             if (tx != null)
                                 tx.removeDhtMapping(node.id(), entry);
+                            else
+                                entry.removeMapping(lockVer, node);
                         }
                     }
 
