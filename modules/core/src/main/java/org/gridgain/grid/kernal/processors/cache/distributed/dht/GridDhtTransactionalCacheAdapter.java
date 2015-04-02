@@ -698,6 +698,16 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                             if (tx == null || !ctx.tm().onStarted(tx))
                                 throw new GridCacheTxRollbackException("Failed to acquire lock " +
                                     "(transaction has been completed): " + req.version());
+
+                            if (ctx.discovery().node(nodeId) == null) {
+                                tx.state(ROLLING_BACK);
+
+                                tx.state(ROLLED_BACK);
+
+                                ctx.tm().uncommitTx(tx);
+
+                                return null;
+                            }
                         }
 
                         tx.addWrite(txEntry.op(), txEntry.key(), txEntry.keyBytes(), txEntry.value(),

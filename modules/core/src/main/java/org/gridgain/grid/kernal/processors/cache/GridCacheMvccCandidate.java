@@ -9,6 +9,8 @@
 
 package org.gridgain.grid.kernal.processors.cache;
 
+import org.gridgain.grid.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.tostring.*;
@@ -84,9 +86,13 @@ public class GridCacheMvccCandidate<K> implements Externalizable,
     /** Other lock version (near version vs dht version). */
     private transient GridCacheVersion otherVer;
 
-    /** Mapped node IDS. */
+    /** Mapped DHT node IDs. */
     @GridToStringInclude
-    private transient volatile Collection<UUID> mappedNodeIds;
+    private transient volatile Collection<GridNode> mappedDhtNodes;
+
+    /** Mapped near node IDs. */
+    @GridToStringInclude
+    private transient volatile Collection<GridNode> mappedNearNodes;
 
     /** Owned lock version by the moment this candidate was added. */
     @GridToStringInclude
@@ -223,13 +229,6 @@ public class GridCacheMvccCandidate<K> implements Externalizable,
     }
 
     /**
-     * @return {@code True} if has reentry.
-     */
-    public boolean hasReentry() {
-        return reentry != null;
-    }
-
-    /**
      * @return Removed reentry candidate or {@code null}.
      */
     @Nullable public GridCacheMvccCandidate<K> unenter() {
@@ -278,15 +277,34 @@ public class GridCacheMvccCandidate<K> implements Externalizable,
     /**
      * @return Mapped node IDs.
      */
-    public Collection<UUID> mappedNodeIds() {
-        return mappedNodeIds;
+    public Collection<GridNode> mappedDhtNodes() {
+        return mappedDhtNodes;
     }
 
     /**
-     * @param mappedNodeIds Mapped node IDs.
+     * @return Mapped node IDs.
      */
-    public void mappedNodeIds(Collection<UUID> mappedNodeIds) {
-        this.mappedNodeIds = mappedNodeIds;
+    public Collection<GridNode> mappedNearNodes() {
+        return mappedDhtNodes;
+    }
+
+    /**
+     * @param mappedDhtNodes Mapped DHT node IDs.
+     */
+    public void mappedNodeIds(Collection<GridNode> mappedDhtNodes, Collection<GridNode> mappedNearNodes) {
+        this.mappedDhtNodes = mappedDhtNodes;
+        this.mappedNearNodes = mappedNearNodes;
+    }
+
+    /**
+     * @param node Node to remove.
+     */
+    public void removeMappedNode(GridNode node) {
+        if (mappedDhtNodes.contains(node))
+            mappedDhtNodes = new ArrayList<>(F.view(mappedDhtNodes, F.notEqualTo(node)));
+
+        if (mappedNearNodes != null && mappedNearNodes.contains(node))
+            mappedNearNodes = new ArrayList<>(F.view(mappedNearNodes, F.notEqualTo(node)));
     }
 
     /**

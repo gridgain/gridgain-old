@@ -468,6 +468,9 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
                 if (cctx.isDrEnabled())
                     cctx.dr().beforeExchange(topVer, exchId.isLeft());
 
+                if (exchId.isLeft())
+                    cctx.mvcc().removeExplicitNodeLocks(exchId.nodeId(), exchId.topologyVersion());
+
                 // Partition release future is done so we can flush the write-behind store.
                 cctx.store().forceFlush();
 
@@ -606,9 +609,6 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
     @Override public boolean onDone(Long res, Throwable err) {
         if (err == null)
             cctx.affinity().cleanUpCache(res - 10);
-
-        if (exchId.isLeft())
-            cctx.mvcc().removeExplicitNodeLocks(exchId.nodeId(), exchId.topologyVersion());
 
         if (super.onDone(res, err) && !dummy && !forcePreload) {
             if (exchId.event() == GridEventType.EVT_NODE_FAILED || exchId.event() == GridEventType.EVT_NODE_LEFT)
