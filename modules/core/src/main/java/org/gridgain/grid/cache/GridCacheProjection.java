@@ -754,6 +754,23 @@ public interface GridCacheProjection<K, V> extends Iterable<GridCacheEntry<K, V>
     public <R> R transformAndCompute(K key, GridClosure<V, GridBiTuple<V, R>> transformer) throws GridException;
 
     /**
+     * Asynchronously applies {@code transformer} closure to the previous value associated with given key in cache,
+     * closure should return {@link GridBiTuple} instance where first value is new value stored in cache
+     * and second value is returned as result of this method.
+     * <h2 class="header">Transactions</h2>
+     * This method is transactional and will enlist the entry into ongoing transaction
+     * if there is one.
+     * <h2 class="header">Cache Flags</h2>
+     * This method is not available if any of the following flags are set on projection:
+     * {@link GridCacheFlag#LOCAL}, {@link GridCacheFlag#READ}.
+     *
+     * @param key Key to store in cache.
+     * @param transformer Closure to be applied to the previous value in cache.
+     * @return Future which will provide value computed by the closure.
+     */
+    public <R> GridFuture<R> transformAndComputeAsync(K key, GridClosure<V, GridBiTuple<V, R>> transformer);
+
+    /**
      * Stores result of applying {@code transformer} closure to the previous value associated with
      * given key in cache. Result of closure application is guaranteed to be atomic, however, closure
      * itself can be applied more than once.
