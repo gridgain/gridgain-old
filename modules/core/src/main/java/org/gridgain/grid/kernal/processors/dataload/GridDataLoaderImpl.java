@@ -140,6 +140,9 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
     /** */
     private final DelayQueue<GridDataLoaderImpl<K, V>> flushQ;
 
+    /** Skip store flag. */
+    private boolean skipStore;
+
     /**
      * @param ctx Grid kernal context.
      * @param cacheName Cache name.
@@ -333,6 +336,13 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
             else if (autoFlushFreq == 0)
                 flushQ.remove(this);
         }
+    }
+
+    /**
+     * @param skipStore Skip store flag.
+     */
+    public void skipStore(boolean skipStore) {
+        this.skipStore = skipStore;
     }
 
     /** {@inheritDoc} */
@@ -908,7 +918,7 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
 
             if (isLocNode) {
                 fut = ctx.closure().callLocalSafe(
-                    new GridDataLoadUpdateJob<>(ctx, log, cacheName, entries, false, updater), false);
+                    new GridDataLoadUpdateJob<>(ctx, log, cacheName, entries, false, updater, skipStore), false);
 
                 locFuts.add(fut);
 
@@ -1010,7 +1020,8 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
                     dep != null ? dep.userVersion() : null,
                     dep != null ? dep.participants() : null,
                     dep != null ? dep.classLoaderId() : null,
-                    dep == null);
+                    dep == null,
+                    skipStore);
 
                 try {
                     ctx.io().send(node, TOPIC_DATALOAD, req, PUBLIC_POOL);

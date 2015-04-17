@@ -36,6 +36,7 @@ import org.gridgain.grid.kernal.processors.cache.local.*;
 import org.gridgain.grid.kernal.processors.cache.local.atomic.*;
 import org.gridgain.grid.kernal.processors.cache.query.*;
 import org.gridgain.grid.kernal.processors.cache.query.continuous.*;
+import org.gridgain.grid.kernal.processors.dataload.*;
 import org.gridgain.grid.kernal.processors.portable.*;
 import org.gridgain.grid.spi.*;
 import org.gridgain.grid.util.*;
@@ -686,6 +687,10 @@ public class GridCacheProcessor extends GridProcessorAdapter {
         ctx.versionConverter().registerLocal(GridNearLockRequest.class,
             GridDhtCacheAdapter.BooleanFlagAddedMessageConverter650.class,
             GridDhtCacheAdapter.PRELOAD_WITH_LOCK_SINCE_VER);
+
+        ctx.versionConverter().registerLocal(GridDataLoadRequest.class,
+            GridDataLoaderProcessor.SkipStoreBooleanFlagAddedMessageConverter665.class,
+            GridDataLoaderProcessor.SKIP_STORE_SINCE_VER);
 
         GridDeploymentMode depMode = ctx.config().getDeploymentMode();
 

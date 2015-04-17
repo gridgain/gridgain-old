@@ -10,6 +10,7 @@
 package org.gridgain.grid.kernal.processors.dataload;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.cache.*;
 import org.gridgain.grid.dataload.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.processors.cache.*;
@@ -22,7 +23,10 @@ import java.util.*;
 /**
  * Job to put entries to cache on affinity node.
  */
-class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
+public class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
+    /** Skip store thread local flag. */
+    public static final ThreadLocal<Boolean> SKIP_STORE = new ThreadLocal<>();
+
     /** */
     private final GridKernalContext ctx;
 
@@ -41,6 +45,9 @@ class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
     /** */
     private final GridDataLoadCacheUpdater<K, V> updater;
 
+    /** */
+    private final boolean skipStore;
+
     /**
      * @param ctx Context.
      * @param log Log.
@@ -48,12 +55,14 @@ class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
      * @param col Entries to put.
      * @param ignoreDepOwnership {@code True} to ignore deployment ownership.
      * @param updater Updater.
+     * @param skipStore Skip store flag.
      */
     GridDataLoadUpdateJob(
         GridKernalContext ctx, GridLogger log, @Nullable String cacheName,
         Collection<Map.Entry<K, V>> col,
         boolean ignoreDepOwnership,
-        GridDataLoadCacheUpdater<K, V> updater) {
+        GridDataLoadCacheUpdater<K, V> updater,
+        boolean skipStore) {
         this.ctx = ctx;
         this.log = log;
 
@@ -64,9 +73,11 @@ class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
         this.col = col;
         this.ignoreDepOwnership = ignoreDepOwnership;
         this.updater = updater;
+        this.skipStore = skipStore;
     }
 
     /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
     @Override public Object call() throws Exception {
         if (log.isDebugEnabled())
             log.debug("Running put job [nodeId=" + ctx.localNodeId() + ", size=" + col.size() + ']');
@@ -81,12 +92,18 @@ class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
         if (ignoreDepOwnership)
             cache.context().deploy().ignoreOwnership(true);
 
+        // Pass over thread-local because otherwise we will have to change "cache.cache()" logic or mess with
+        // updater interface. Tried to pass it in the least intrusive way.
+        SKIP_STORE.set(skipStore);
+
         try {
             updater.update(cache.<K, V>cache(), col);
 
             return null;
         }
         finally {
+            SKIP_STORE.remove();
+
             if (ignoreDepOwnership)
                 cache.context().deploy().ignoreOwnership(false);
 

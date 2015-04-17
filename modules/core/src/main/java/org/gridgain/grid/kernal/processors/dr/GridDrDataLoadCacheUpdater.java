@@ -15,6 +15,7 @@ import org.gridgain.grid.dataload.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
+import org.gridgain.grid.kernal.processors.dataload.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.*;
 
@@ -28,6 +29,7 @@ public class GridDrDataLoadCacheUpdater<K, V> implements GridDataLoadCacheUpdate
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
     @Override public void update(GridCache<K, V> cache0, Collection<Map.Entry<K, V>> col)
         throws GridException {
         String cacheName = cache0.name();
@@ -57,10 +59,17 @@ public class GridDrDataLoadCacheUpdater<K, V> implements GridDataLoadCacheUpdate
                 new GridCacheDrExpirationInfo<>(entry.value(), entry.version(), entry.ttl(), entry.expireTime()) :
                 new GridCacheDrInfo<>(entry.value(), entry.version()) : null;
 
+            Boolean skipStore = GridDataLoadUpdateJob.SKIP_STORE.get();
+
+            assert skipStore != null;
+
+            GridCacheProjectionEx target = !skipStore ? cache :
+                (GridCacheProjectionEx)cache.flagsOn(new GridCacheFlag[] { GridCacheFlag.SKIP_STORE });
+
             if (val == null)
-                cache.removeAllDr(Collections.singletonMap(key, entry.version()));
+                target.removeAllDr(Collections.singletonMap(key, entry.version()));
             else
-                cache.putAllDr(Collections.singletonMap(key, val));
+                target.putAllDr(Collections.singletonMap(key, val));
         }
 
         if (log.isDebugEnabled())

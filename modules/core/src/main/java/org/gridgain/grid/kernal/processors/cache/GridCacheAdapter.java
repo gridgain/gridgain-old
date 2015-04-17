@@ -26,6 +26,7 @@ import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
 import org.gridgain.grid.kernal.processors.cache.query.*;
+import org.gridgain.grid.kernal.processors.dataload.*;
 import org.gridgain.grid.kernal.processors.dr.*;
 import org.gridgain.grid.kernal.processors.task.*;
 import org.gridgain.grid.lang.*;
@@ -3426,6 +3427,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
         if (ctx.store().isLocalStore()) {
             try (final GridDataLoader<K, V> ldr = ctx.kernalContext().<K, V>dataLoad().dataLoader(ctx.namex(), false)) {
                 ldr.updater(new GridDrDataLoadCacheUpdater<K, V>());
+                ((GridDataLoaderImpl)ldr).skipStore(true);
 
                 final Collection<Map.Entry<K, V>> col = new ArrayList<>(ldr.perNodeBufferSize());
 
