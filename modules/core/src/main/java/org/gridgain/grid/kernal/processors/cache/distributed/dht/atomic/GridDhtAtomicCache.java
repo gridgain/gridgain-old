@@ -439,6 +439,13 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
     }
 
     /** {@inheritDoc} */
+    @Override public <R> GridFuture<R> transformAndComputeAsync(K key, GridClosure<V, GridBiTuple<V, R>> transformer) {
+        return (GridFuture<R>)updateAllAsync0(null,
+            Collections.singletonMap(key, new GridCacheTransformComputeClosure<>(transformer)), null, null, true,
+            false, null, 0, null);
+    }
+
+    /** {@inheritDoc} */
     @Override public GridFuture<?> transformAsync(K key, GridClosure<V, V> transformer,
         @Nullable GridCacheEntryEx<K, V> entry, long ttl) {
         return updateAllAsync0(null, Collections.singletonMap(key, transformer), null, null, false, false, entry, ttl,

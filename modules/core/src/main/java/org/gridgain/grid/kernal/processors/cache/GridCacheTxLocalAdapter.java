@@ -1739,6 +1739,21 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
     }
 
     /** {@inheritDoc} */
+    @Override public <R> GridFuture<R> transformComputeAsync(K key, final GridClosure<V, GridBiTuple<V, R>> transformer) {
+        GridFuture<GridCacheReturn<V>> fut = putAllAsync0(null, 
+            Collections.singletonMap(key, new GridCacheTransformComputeClosure<>(transformer)), null, true, null, 
+            -1, CU.<K, V>empty());
+        
+        return fut.chain(new CX1<GridFuture<GridCacheReturn<V>>, R>() {
+            @Override public R applyx(GridFuture<GridCacheReturn<V>> fut) throws GridException {
+                GridCacheReturn<V> ret = fut.get();
+            
+                return transformer.apply(ret.value()).get2();
+            }
+        });
+    }
+
+    /** {@inheritDoc} */
     @Override public void transformAll(@Nullable Map<? extends K, ? extends GridClosure<V, V>> map)
         throws GridException {
         putAllAsync0(null, map, null, false, null, -1, CU.<K, V>empty()).get();

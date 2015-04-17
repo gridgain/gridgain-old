@@ -336,6 +336,17 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
     }
 
     /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override public <R> GridFuture<R> transformAndComputeAsync(K key, GridClosure<V, GridBiTuple<V, R>> transformer) {
+        return updateAllAsync0(null,
+            Collections.singletonMap(key, new GridCacheTransformComputeClosure<>(transformer)), 
+            true, 
+            false,
+            -1, 
+            CU.<K, V>empty());
+    }
+
+    /** {@inheritDoc} */
     @Override public GridFuture<?> transformAsync(K key,
         GridClosure<V, V> transformer,
         @Nullable GridCacheEntryEx<K, V> entry,

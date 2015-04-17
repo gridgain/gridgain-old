@@ -2268,6 +2268,27 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
     }
 
     /** {@inheritDoc} */
+    @Override public <R> GridFuture<R> transformAndComputeAsync(final K key,
+        final GridClosure<V, GridBiTuple<V, R>> transformer) {
+        A.notNull(key, "key", transformer, "transformer");
+
+        if (keyCheck)
+            validateCacheKey(key);
+
+        ctx.denyOnLocalRead();
+
+        return asyncOp(new AsyncOp<R>(key) {
+            @Override public GridFuture<R> op(GridCacheTxLocalAdapter<K, V> tx) {
+                return tx.transformComputeAsync(key, transformer);
+            }
+
+            @Override public String toString() {
+                return "transformAndComputeAsync [key=" + key + ", valTransform=" + transformer + ']';
+            }
+        });
+    }
+
+    /** {@inheritDoc} */
     @Override public GridFuture<Boolean> putxAsync(K key, V val,
         @Nullable GridPredicate<GridCacheEntry<K, V>>... filter) {
         return putxAsync(key, val, null, -1, filter);

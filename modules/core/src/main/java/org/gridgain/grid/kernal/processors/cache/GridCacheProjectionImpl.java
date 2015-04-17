@@ -751,6 +751,13 @@ public class GridCacheProjectionImpl<K, V> implements GridCacheProjectionEx<K, V
     }
 
     /** {@inheritDoc} */
+    @Override public <R> GridFuture<R> transformAndComputeAsync(K key, GridClosure<V, GridBiTuple<V, R>> transformer) {
+        A.notNull(key, "key", transformer, "transformer");
+
+        return cache.transformAndComputeAsync(key, transformer);
+    }
+
+    /** {@inheritDoc} */
     @Override public GridFuture<Boolean> putxAsync(K key, V val,
         @Nullable GridPredicate<GridCacheEntry<K, V>>[] filter) {
         return putxAsync(key, val, null, -1, filter);

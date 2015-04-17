@@ -1262,6 +1262,51 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testTransformComputeAsync() throws Exception {
+        GridCacheProjection<String, Integer> cache = cache();
+
+        GridClosure<Integer, GridBiTuple<Integer, String>> c;
+
+        c = new GridClosure<Integer, GridBiTuple<Integer, String>>() {
+            @Override public GridBiTuple<Integer, String> apply(Integer val) {
+                return val == null ? new GridBiTuple<>(0, "null") : new GridBiTuple<>(val + 1, String.valueOf(val));
+            }
+        };
+
+        assertEquals("null", cache.transformAndComputeAsync("k0", c).get(5000));
+
+        assertEquals((Integer)0, cache.get("k0"));
+
+        assertEquals("0", cache.transformAndComputeAsync("k0", c).get(5000));
+
+        assertEquals((Integer)1, cache.get("k0"));
+
+        cache.put("k1", 1);
+
+        assertEquals("1", cache.transformAndComputeAsync("k1", c).get(5000));
+
+        assertEquals((Integer)2, cache.get("k1"));
+
+        assertEquals("2", cache.transformAndComputeAsync("k1", c).get(5000));
+
+        assertEquals((Integer)3, cache.get("k1"));
+
+        c = new GridClosure<Integer, GridBiTuple<Integer, String>>() {
+            @Override public GridBiTuple<Integer, String> apply(Integer integer) {
+                return new GridBiTuple<>(null, null);
+            }
+        };
+
+        assertNull(cache.transformAndComputeAsync("k1", c).get(5000));
+        assertNull(cache.get("k1"));
+
+        for (int i = 0; i < gridCount(); i++)
+            assertNull(cache(i).peek("k1"));
+    }
+
+    /**
      * @throws Exception In case of error.
      */
     public void testPutAsyncFiltered() throws Exception {
