@@ -947,6 +947,9 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                             retVal = new GridCacheReturn<>(null, true);
 
                         res.returnValue(retVal);
+
+                        if (dhtFut != null)
+                            ctx.mvcc().addAtomicFuture(dhtFut.version(), dhtFut);
                     }
                     else
                         // Should remap all keys.
@@ -2029,12 +2032,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             }
         }
 
-        GridDhtAtomicUpdateFuture<K, V> fut = new GridDhtAtomicUpdateFuture<>(ctx, completionCb, writeVer, updateReq,
-            updateRes);
-
-        ctx.mvcc().addAtomicFuture(fut.version(), fut);
-
-        return fut;
+        return new GridDhtAtomicUpdateFuture<>(ctx, completionCb, writeVer, updateReq, updateRes);
     }
 
     /**

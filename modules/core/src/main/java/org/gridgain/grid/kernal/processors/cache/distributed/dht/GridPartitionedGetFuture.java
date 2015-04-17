@@ -192,18 +192,20 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
 
     /** {@inheritDoc} */
     @Override public boolean onNodeLeft(UUID nodeId) {
+        boolean found = false;
+
         for (GridFuture<Map<K, V>> fut : futures())
             if (isMini(fut)) {
                 MiniFuture f = (MiniFuture)fut;
 
                 if (f.node().id().equals(nodeId)) {
-                    f.onResult(new GridTopologyException("Remote node left grid (will retry): " + nodeId));
+                    found = true;
 
-                    return true;
+                    f.onNodeLeft(new GridTopologyException("Remote node left grid (will retry): " + nodeId));
                 }
             }
 
-        return false;
+        return found;
     }
 
     /**
@@ -346,7 +348,7 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
                 catch (GridException e) {
                     // Fail the whole thing.
                     if (e instanceof GridTopologyException)
-                        fut.onResult((GridTopologyException)e);
+                        fut.onNodeLeft((GridTopologyException)e);
                     else
                         fut.onResult(e);
                 }
@@ -535,6 +537,9 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
         /** Topology version on which this future was mapped. */
         private long topVer;
 
+        /** {@code True} if remapped after node left. */
+        private boolean remapped;
+
         /**
          * Empty constructor required for {@link Externalizable}.
          */
@@ -591,11 +596,16 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
          * @param e Failure exception.
          */
         @SuppressWarnings("UnusedParameters")
-        void onResult(GridTopologyException e) {
+        synchronized void onNodeLeft(GridTopologyException e) {
+            if (remapped)
+                return;
+
+            remapped = true;
+
             if (log.isDebugEnabled())
                 log.debug("Remote node left grid while sending or waiting for reply (will retry): " + this);
 
-            final long updTopVer = ctx.discovery().topologyVersion();
+            final long updTopVer = Math.max(topVer + 1, ctx.discovery().topologyVersion());
 
             final GridFutureRemapTimeoutObject timeout = new GridFutureRemapTimeoutObject(this,
                 cctx.kernalContext().config().getNetworkTimeout(),
