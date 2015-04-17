@@ -197,6 +197,8 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
 
                         @Override public void onTimeout() {
                             try {
+                                timeoutObj = null;
+
                                 ExecutorService execSvc = job.isInternal() ?
                                     ctx.config().getManagementExecutorService() : ctx.config().getExecutorService();
 
@@ -244,8 +246,10 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
                 if (job != null) {
                     GridTimeoutObject timeoutObj0 = timeoutObj;
 
-                    if (timeoutObj0 != null)
+                    if (timeoutObj0 != null) {
                         ctx.timeout().removeTimeoutObject(timeoutObj0);
+                        timeoutObj = null;
+                    }
 
                     // Execute in the same thread.
                     job.execute();

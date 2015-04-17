@@ -135,6 +135,64 @@ public class GridContinuousTaskSelfTest extends GridCommonAbstractTest {
         }
     }
 
+    /**
+     * @throws Exception If test failed.
+     */
+    public void testMultipleHoldccCalls() throws Exception {
+        try {
+            Grid grid = startGrid(0);
+
+            assertTrue(grid.compute().apply(new TestMultipleHoldccCallsClosure(), (Object)null).get());
+        }
+        finally {
+            stopGrid(0);
+        }
+    }
+
+    /** */
+    @SuppressWarnings({"PublicInnerClass"})
+    public static class TestMultipleHoldccCallsClosure implements GridClosure<Object, Boolean> {
+        /** */
+        private int counter;
+
+        /** */
+        private volatile boolean success;
+
+        /** Auto-inject job context. */
+        @GridJobContextResource
+        private GridComputeJobContext jobCtx;
+
+        /** */
+        @GridLoggerResource
+        private GridLogger log;
+
+        @Override public Boolean apply(Object param) {
+            counter++;
+
+            if (counter == 2)
+                return success;
+
+            jobCtx.holdcc(4000);
+
+            try {
+                jobCtx.holdcc();
+            }
+            catch (IllegalStateException e) {
+                success = true;
+                log.info("Second holdcc() threw IllegalStateException as expected.");
+            }
+            finally {
+                new Timer().schedule(new TimerTask() {
+                    @Override public void run() {
+                        jobCtx.callcc();
+                    }
+                }, 1000);
+            }
+
+            return false;
+        }
+    }
+
     /** */
     @SuppressWarnings({"PublicInnerClass"})
     public static class TestClearTimeoutsClosure implements GridClosure<Integer, Object> {
