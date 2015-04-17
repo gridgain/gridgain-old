@@ -31,6 +31,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.logging.*;
 
+import static java.util.concurrent.TimeUnit.*;
 import static org.gridgain.client.GridClientCacheFlag.*;
 import static org.gridgain.client.impl.connection.GridClientConnectionCloseReason.*;
 import static org.gridgain.grid.kernal.processors.rest.client.message.GridClientCacheRequest.GridCacheOperation.*;
@@ -154,7 +155,11 @@ public class GridClientNioTcpConnection extends GridClientConnection {
             sock.setTcpNoDelay(tcpNoDelay);
             sock.setKeepAlive(true);
 
+            final long connectStartedTime = U.currentTimeMillis();
+            
             sock.connect(srvAddr, connectTimeout);
+
+            final long connectTimeoutRest = connectTimeout - (U.currentTimeMillis() - connectStartedTime);
 
             GridClientFuture<?> handshakeFut = new GridClientFutureAdapter<>();
 
@@ -189,7 +194,7 @@ public class GridClientNioTcpConnection extends GridClientConnection {
 
             ses.send(wrapper);
 
-            handshakeFut.get();
+            handshakeFut.get(connectTimeoutRest, MILLISECONDS);
 
             ses.addMeta(SES_META_CONN, this);
 
@@ -205,7 +210,7 @@ public class GridClientNioTcpConnection extends GridClientConnection {
                         log.warning("Failed to send ping message: " + e);
                     }
                 }
-            }, 500, 500, TimeUnit.MILLISECONDS);
+            }, 500, 500, MILLISECONDS);
 
             createTs = System.currentTimeMillis();
 
