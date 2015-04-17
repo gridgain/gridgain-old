@@ -32,6 +32,8 @@ public class GridDrDataLoadCacheUpdater<K, V> implements GridDataLoadCacheUpdate
     @SuppressWarnings("unchecked")
     @Override public void update(GridCache<K, V> cache0, Collection<Map.Entry<K, V>> col)
         throws GridException {
+        assert cache0 instanceof GridCacheProjectionEx : cache0;
+
         String cacheName = cache0.name();
 
         GridKernalContext ctx = ((GridKernal)cache0.gridProjection().grid()).context();
@@ -59,17 +61,10 @@ public class GridDrDataLoadCacheUpdater<K, V> implements GridDataLoadCacheUpdate
                 new GridCacheDrExpirationInfo<>(entry.value(), entry.version(), entry.ttl(), entry.expireTime()) :
                 new GridCacheDrInfo<>(entry.value(), entry.version()) : null;
 
-            Boolean skipStore = GridDataLoadUpdateJob.SKIP_STORE.get();
-
-            assert skipStore != null;
-
-            GridCacheProjectionEx target = !skipStore ? cache :
-                (GridCacheProjectionEx)cache.flagsOn(new GridCacheFlag[] { GridCacheFlag.SKIP_STORE });
-
             if (val == null)
-                target.removeAllDr(Collections.singletonMap(key, entry.version()));
+                ((GridCacheProjectionEx)cache0).removeAllDr(Collections.singletonMap(key, entry.version()));
             else
-                target.putAllDr(Collections.singletonMap(key, val));
+                ((GridCacheProjectionEx)cache0).putAllDr(Collections.singletonMap(key, val));
         }
 
         if (log.isDebugEnabled())

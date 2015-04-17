@@ -24,8 +24,8 @@ import java.util.*;
  * Job to put entries to cache on affinity node.
  */
 public class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
-    /** Skip store thread local flag. */
-    public static final ThreadLocal<Boolean> SKIP_STORE = new ThreadLocal<>();
+    /** */
+    private static final GridCacheFlag[] SKIP_STORE = {GridCacheFlag.SKIP_STORE};
 
     /** */
     private final GridKernalContext ctx;
@@ -58,7 +58,8 @@ public class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
      * @param skipStore Skip store flag.
      */
     GridDataLoadUpdateJob(
-        GridKernalContext ctx, GridLogger log, @Nullable String cacheName,
+        GridKernalContext ctx, GridLogger log,
+        @Nullable String cacheName,
         Collection<Map.Entry<K, V>> col,
         boolean ignoreDepOwnership,
         GridDataLoadCacheUpdater<K, V> updater,
@@ -92,18 +93,17 @@ public class GridDataLoadUpdateJob<K, V> implements GridPlainCallable<Object> {
         if (ignoreDepOwnership)
             cache.context().deploy().ignoreOwnership(true);
 
-        // Pass over thread-local because otherwise we will have to change "cache.cache()" logic or mess with
-        // updater interface. Tried to pass it in the least intrusive way.
-        SKIP_STORE.set(skipStore);
-
         try {
-            updater.update(cache.<K, V>cache(), col);
+            GridCache<K, V> cache0 = cache.cache();
+
+            if (skipStore)
+                cache0 = (GridCache)cache0.flagsOn(SKIP_STORE);
+
+            updater.update(cache0, col);
 
             return null;
         }
         finally {
-            SKIP_STORE.remove();
-
             if (ignoreDepOwnership)
                 cache.context().deploy().ignoreOwnership(false);
 

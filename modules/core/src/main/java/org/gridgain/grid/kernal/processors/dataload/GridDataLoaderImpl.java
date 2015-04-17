@@ -338,10 +338,13 @@ public class GridDataLoaderImpl<K, V> implements GridDataLoader<K, V>, Delayed {
         }
     }
 
-    /**
-     * @param skipStore Skip store flag.
-     */
-    public void skipStore(boolean skipStore) {
+    /** {@inheritDoc} */
+    @Override public boolean skipStore() {
+        return skipStore;
+    }
+
+    /** {@inheritDoc} */
+    @Override public void skipStore(boolean skipStore) {
         this.skipStore = skipStore;
     }
 
