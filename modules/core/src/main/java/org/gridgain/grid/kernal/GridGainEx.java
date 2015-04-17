@@ -1415,6 +1415,8 @@ public class GridGainEx {
             myCfg.setServiceConfiguration(cfg.getServiceConfiguration());
             myCfg.setWarmupClosure(cfg.getWarmupClosure());
             myCfg.setDotNetConfiguration(cfg.getDotNetConfiguration());
+            myCfg.setTimeServerPortBase(cfg.getTimeServerPortBase());
+            myCfg.setTimeServerPortRange(cfg.getTimeServerPortRange());
 
             GridClientConnectionConfiguration clientCfg = cfg.getClientConnectionConfiguration();
 
