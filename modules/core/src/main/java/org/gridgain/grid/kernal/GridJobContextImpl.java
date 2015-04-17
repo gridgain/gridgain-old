@@ -9,17 +9,17 @@
 
 package org.gridgain.grid.kernal;
 
-import org.gridgain.grid.compute.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.affinity.*;
+import org.gridgain.grid.compute.*;
 import org.gridgain.grid.kernal.processors.job.*;
 import org.gridgain.grid.kernal.processors.timeout.*;
 import org.gridgain.grid.logger.*;
-import org.gridgain.grid.util.typedef.*;
-import org.gridgain.grid.util.typedef.internal.*;
 import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.tostring.*;
+import org.gridgain.grid.util.typedef.*;
+import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.io.*;
@@ -49,8 +49,14 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
     /** Logger. */
     private GridLogger log;
 
+    /** Current timeout object. */
+    private volatile GridTimeoutObject timeoutObj;
+
     /** Attributes mux. Do not use this as object is exposed to user. */
     private final Object mux = new Object();
+
+    /** */
+    private volatile boolean callccGuard;
 
     /** */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
@@ -109,7 +115,9 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
         A.notNull(key, "key");
 
         synchronized (mux) {
-            attrs.put(key, val);
+            attrs.put(
+                key,
+                val);
         }
     }
 
@@ -163,46 +171,52 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
                 job = ctx.job().activeJob(jobId);
 
             // Completed?
-            if (job != null) {
-                job.hold();
+            if (job != null && !job.isDone()) {
+                if (!job.hold())
+                    throw new IllegalStateException("Job has already been held [ctx=" + this + ']');
 
-                if (timeout > 0 && !job.isDone()) {
-                    final long endTime = U.currentTimeMillis() + timeout;
+                assert timeoutObj == null;
 
-                    // Overflow.
-                    if (endTime > 0) {
-                        ctx.timeout().addTimeoutObject(new GridTimeoutObject() {
-                            private final GridUuid id = GridUuid.randomUuid();
+                if (timeout <= 0)
+                    return null;
 
-                            @Override public GridUuid timeoutId() {
-                                return id;
+                final long endTime = U.currentTimeMillis() + timeout;
+
+                // Overflow.
+                if (endTime > 0) {
+                    timeoutObj = new GridTimeoutObject() {
+                        private final GridUuid id = GridUuid.randomUuid();
+
+                        @Override public GridUuid timeoutId() {
+                            return id;
+                        }
+
+                        @Override public long endTime() {
+                            return endTime;
+                        }
+
+                        @Override public void onTimeout() {
+                            try {
+                                ExecutorService execSvc = job.isInternal() ?
+                                    ctx.config().getManagementExecutorService() : ctx.config().getExecutorService();
+
+                                assert execSvc != null;
+
+                                execSvc.submit(new Runnable() {
+                                    @Override public void run() {
+                                        callcc();
+                                    }
+                                });
                             }
+                            catch (RejectedExecutionException e) {
+                                U.error(log(), "Failed to execute job (will execute synchronously).", e);
 
-                            @Override public long endTime() {
-                                return endTime;
+                                callcc();
                             }
+                        }
+                    };
 
-                            @Override public void onTimeout() {
-                                try {
-                                    ExecutorService execSvc = job.isInternal() ?
-                                        ctx.config().getManagementExecutorService() : ctx.config().getExecutorService();
-
-                                    assert execSvc != null;
-
-                                    execSvc.submit(new Runnable() {
-                                        @Override public void run() {
-                                            callcc();
-                                        }
-                                    });
-                                }
-                                catch (RejectedExecutionException e) {
-                                    U.error(log(), "Failed to execute job (will execute synchronously).", e);
-
-                                    callcc();
-                                }
-                            }
-                        });
-                    }
+                    ctx.timeout().addTimeoutObject(timeoutObj);
                 }
             }
         }
@@ -212,13 +226,34 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
 
     /** {@inheritDoc} */
     @Override public void callcc() {
-        if (ctx != null) {
-            if (job == null)
-                job = ctx.job().activeJob(jobId);
+        if (callccGuard)
+            return;
 
-            if (job != null)
-                // Execute in the same thread.
-                job.execute();
+        synchronized (mux) {
+            if (callccGuard)
+                return;
+
+            callccGuard = true;
+        }
+
+        try {
+            if (ctx != null) {
+                if (job == null)
+                    job = ctx.job().activeJob(jobId);
+
+                if (job != null) {
+                    GridTimeoutObject timeoutObj0 = timeoutObj;
+
+                    if (timeoutObj0 != null)
+                        ctx.timeout().removeTimeoutObject(timeoutObj0);
+
+                    // Execute in the same thread.
+                    job.execute();
+                }
+            }
+        }
+        finally {
+            callccGuard = false;
         }
     }
 

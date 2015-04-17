@@ -346,12 +346,15 @@ public class GridJobWorker extends GridWorker implements GridTimeoutObject {
     /**
      * Sets halt flags.
      */
-    public void hold() {
-        held.incrementAndGet();
-
+    public boolean hold() {
         HOLD.set(true);
 
-        holdLsnr.onHold(this);
+        boolean res;
+
+        if (res = holdLsnr.onHeld(this))
+            held.incrementAndGet();
+
+        return res;
     }
 
     /**
@@ -423,7 +426,7 @@ public class GridJobWorker extends GridWorker implements GridTimeoutObject {
     }
 
     /**
-     * @param skipNtf {@code True} to skip job processor {@code onUnhold()}
+     * @param skipNtf {@code True} to skip job processor {@code onUnheld()}
      *      notification (only from {@link #body()}).
      */
     private void execute0(boolean skipNtf) {
@@ -435,13 +438,11 @@ public class GridJobWorker extends GridWorker implements GridTimeoutObject {
             super.cancel();
 
         if (!skipNtf) {
-            holdLsnr.onUnhold(this);
-
-            int c = held.decrementAndGet();
-
-            if (c > 0) {
+            if (holdLsnr.onUnheld(this))
+                held.decrementAndGet();
+            else {
                 if (log.isDebugEnabled())
-                    log.debug("Ignoring job execution (job was held several times) [c=" + c + ']');
+                    log.debug("Ignoring job execution (job was not held).");
 
                 return;
             }
