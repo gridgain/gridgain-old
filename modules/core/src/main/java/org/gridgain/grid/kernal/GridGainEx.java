@@ -1202,6 +1202,12 @@ public class GridGainEx {
         /** Utility cache executor service. */
         private ExecutorService utilityCacheExecSvc;
 
+        /** Auto utility cache service flag. */
+        private boolean isAutoUtilityCacheSvc;
+
+        /** Utility cache executor service shutdown flag. */
+        private boolean utilityCacheSvcShutdown;
+
         /** Grid state. */
         private volatile GridGainState state = STOPPED;
 
@@ -1516,6 +1522,7 @@ public class GridGainEx {
             p2pExecSvc = cfg.getPeerClassLoadingExecutorService();
             mgmtExecSvc = cfg.getManagementExecutorService();
             ggfsExecSvc = cfg.getGgfsExecutorService();
+            utilityCacheExecSvc = cfg.getUtilityCacheExecutorService();
 
             if (execSvc == null) {
                 isAutoExecSvc = true;
@@ -1611,12 +1618,16 @@ public class GridGainEx {
                 clientCfg.setRestExecutorService(restExecSvc);
             }
 
-            utilityCacheExecSvc = new GridThreadPoolExecutor(
-                "utility-" + cfg.getGridName(),
-                DFLT_SYSTEM_CORE_THREAD_CNT,
-                DFLT_SYSTEM_MAX_THREAD_CNT,
-                DFLT_SYSTEM_KEEP_ALIVE_TIME,
-                new LinkedBlockingQueue<Runnable>(DFLT_SYSTEM_THREADPOOL_QUEUE_CAP));
+            if (utilityCacheExecSvc == null) {
+                isAutoUtilityCacheSvc = true;
+
+                utilityCacheExecSvc = new GridThreadPoolExecutor(
+                    "utility-" + cfg.getGridName(),
+                    DFLT_SYSTEM_CORE_THREAD_CNT,
+                    DFLT_SYSTEM_MAX_THREAD_CNT,
+                    DFLT_SYSTEM_KEEP_ALIVE_TIME,
+                    new LinkedBlockingQueue<Runnable>(DFLT_SYSTEM_THREADPOOL_QUEUE_CAP));
+            }
 
             execSvcShutdown = cfg.getExecutorServiceShutdown();
             sysSvcShutdown = cfg.getSystemExecutorServiceShutdown();
@@ -1624,6 +1635,7 @@ public class GridGainEx {
             p2pSvcShutdown = cfg.getPeerClassLoadingExecutorServiceShutdown();
             ggfsSvcShutdown = cfg.getGgfsExecutorServiceShutdown();
             restSvcShutdown = clientCfg != null && clientCfg.isRestExecutorServiceShutdown();
+            utilityCacheSvcShutdown = cfg.getUtilityCacheExecutorServiceShutdown();
 
             if (marsh == null) {
                 if (!U.isHotSpot()) {
@@ -1663,11 +1675,13 @@ public class GridGainEx {
             myCfg.setManagementExecutorService(mgmtExecSvc);
             myCfg.setPeerClassLoadingExecutorService(p2pExecSvc);
             myCfg.setGgfsExecutorService(ggfsExecSvc);
+            myCfg.setUtilityCacheExecutorService(utilityCacheExecSvc);
             myCfg.setExecutorServiceShutdown(execSvcShutdown);
             myCfg.setSystemExecutorServiceShutdown(sysSvcShutdown);
             myCfg.setManagementExecutorServiceShutdown(mgmtSvcShutdown);
             myCfg.setPeerClassLoadingExecutorServiceShutdown(p2pSvcShutdown);
             myCfg.setGgfsExecutorServiceShutdown(ggfsSvcShutdown);
+            myCfg.setUtilityCacheExecutorServiceShutdown(utilityCacheSvcShutdown);
             myCfg.setNodeId(nodeId);
 
             GridGgfsConfiguration[] ggfsCfgs = cfg.getGgfsConfiguration();
@@ -2241,7 +2255,7 @@ public class GridGainEx {
                 restExecSvc = null;
             }
 
-            if (utilityCacheExecSvc != null) {
+            if (isAutoUtilityCacheSvc || utilityCacheSvcShutdown) {
                 U.shutdownNow(getClass(), utilityCacheExecSvc, log);
 
                 utilityCacheExecSvc = null;

@@ -245,6 +245,9 @@ public class GridConfiguration {
     /** GGFS executor service. */
     private ExecutorService ggfsSvc;
 
+    /** Utility cache executor service. */
+    private ExecutorService utilityCacheSvc;
+
     /** REST requests executor service. */
     private ExecutorService restExecSvc;
 
@@ -262,6 +265,9 @@ public class GridConfiguration {
 
     /** GGFS executor service shutdown flag. */
     private boolean ggfsSvcShutdown = true;
+
+    /** Utility cache executor service shutdown flag. */
+    private boolean utilityCacheSvcShutdown = true;
 
     /** REST executor service shutdown flag. */
     private boolean restSvcShutdown = true;
@@ -661,6 +667,8 @@ public class GridConfiguration {
         timeSrvPortBase = cfg.getTimeServerPortBase();
         timeSrvPortRange = cfg.getTimeServerPortRange();
         userAttrs = cfg.getUserAttributes();
+        utilityCacheSvc = cfg.getUtilityCacheExecutorService();
+        utilityCacheSvcShutdown = cfg.getUtilityCacheExecutorServiceShutdown();
         waitForSegOnStart = cfg.isWaitForSegmentOnStart();
         warmupClos = cfg.getWarmupClosure();
         dotNetCfg = cfg.getDotNetConfiguration() == null ?
@@ -1196,6 +1204,22 @@ public class GridConfiguration {
     }
 
     /**
+     * Executor service that is in charge of processing utility cache messages.
+     * <p>
+     * If not provided, new executor service will be created using the following configuration:
+     * <ul>
+     *     <li>Core pool size - {@link #DFLT_SYSTEM_CORE_THREAD_CNT}</li>
+     *     <li>Max pool size - {@link #DFLT_SYSTEM_MAX_THREAD_CNT}</li>
+     *     <li>Queue capacity - {@link #DFLT_SYSTEM_THREADPOOL_QUEUE_CAP}</li>
+     * </ul>
+     *
+     * @return Thread pool implementation to be used in grid for utility cache messages.
+     */
+    public ExecutorService getUtilityCacheExecutorService() {
+        return utilityCacheSvc;
+    }
+
+    /**
      * Shutdown flag for executor service.
      * <p>
      * If not provided, default value {@code true} will be used which will shutdown
@@ -1257,6 +1281,19 @@ public class GridConfiguration {
      */
     public boolean getGgfsExecutorServiceShutdown() {
         return ggfsSvcShutdown;
+    }
+
+    /**
+     * Shutdown flag for utility cache executor service.
+     * <p>
+     * If not provided, default value {@code true} will be used which will shutdown
+     * executor service when GridGain stops regardless whether it was started before GridGain
+     * or by GridGain.
+     *
+     * @return Utility cache executor service shutdown flag.
+     */
+    public boolean getUtilityCacheExecutorServiceShutdown() {
+        return utilityCacheSvcShutdown;
     }
 
     /**
@@ -1350,6 +1387,16 @@ public class GridConfiguration {
     }
 
     /**
+     * Set executor service that will be used to process utility cache messages.
+     *
+     * @param utilityCacheSvc Executor service to use for utility cache messages.
+     * @see GridConfiguration#getUtilityCacheExecutorService()
+     */
+    public void setUtilityCacheExecutorService(ExecutorService utilityCacheSvc) {
+        this.utilityCacheSvc = utilityCacheSvc;
+    }
+
+    /**
      * Sets GGFS executor service shutdown flag.
      *
      * @param ggfsSvcShutdown GGFS executor service shutdown flag.
@@ -1357,6 +1404,16 @@ public class GridConfiguration {
      */
     public void setGgfsExecutorServiceShutdown(boolean ggfsSvcShutdown) {
         this.ggfsSvcShutdown = ggfsSvcShutdown;
+    }
+
+    /**
+     * Sets cache utility executor service shutdown flag.
+     *
+     * @param utilityCacheSvcShutdown Utility cache executor service shutdown flag.
+     * @see GridConfiguration#getUtilityCacheExecutorServiceShutdown()
+     */
+    public void setUtilityCacheExecutorServiceShutdown(boolean utilityCacheSvcShutdown) {
+        this.utilityCacheSvcShutdown = utilityCacheSvcShutdown;
     }
 
     /**
