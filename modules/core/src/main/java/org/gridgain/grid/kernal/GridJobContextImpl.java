@@ -56,9 +56,6 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
     private final Object mux = new Object();
 
     /** */
-    private volatile boolean callccGuard;
-
-    /** */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
     @GridToStringInclude
     private Map<Object, Object> attrs;
@@ -197,7 +194,15 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
 
                         @Override public void onTimeout() {
                             try {
-                                timeoutObj = null;
+                                synchronized (mux) {
+                                    GridTimeoutObject timeoutObj0 = timeoutObj;
+
+                                    if (timeoutObj0 == null || timeoutObj0.timeoutId() != id)
+                                        // The timer was canceled by explicit callcc() call.
+                                        return;
+
+                                    timeoutObj = null;
+                                }
 
                                 ExecutorService execSvc = job.isInternal() ?
                                     ctx.config().getManagementExecutorService() : ctx.config().getExecutorService();
@@ -206,14 +211,14 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
 
                                 execSvc.submit(new Runnable() {
                                     @Override public void run() {
-                                        callcc();
+                                        callcc0();
                                     }
                                 });
                             }
                             catch (RejectedExecutionException e) {
                                 U.error(log(), "Failed to execute job (will execute synchronously).", e);
 
-                                callcc();
+                                callcc0();
                             }
                         }
                     };
@@ -228,36 +233,32 @@ public class GridJobContextImpl extends GridMetadataAwareAdapter implements Grid
 
     /** {@inheritDoc} */
     @Override public void callcc() {
-        if (callccGuard)
-            return;
-
         synchronized (mux) {
-            if (callccGuard)
-                return;
+            GridTimeoutObject timeoutObj0 = timeoutObj;
 
-            callccGuard = true;
-        }
+            if (timeoutObj0 != null) {
+                if (ctx != null)
+                    ctx.timeout().removeTimeoutObject(timeoutObj0);
 
-        try {
-            if (ctx != null) {
-                if (job == null)
-                    job = ctx.job().activeJob(jobId);
-
-                if (job != null) {
-                    GridTimeoutObject timeoutObj0 = timeoutObj;
-
-                    if (timeoutObj0 != null) {
-                        ctx.timeout().removeTimeoutObject(timeoutObj0);
-                        timeoutObj = null;
-                    }
-
-                    // Execute in the same thread.
-                    job.execute();
-                }
+                timeoutObj = null;
             }
         }
-        finally {
-            callccGuard = false;
+
+        callcc0();
+    }
+
+    /**
+     * Unholds job.
+     */
+    private void callcc0() {
+        if (ctx != null) {
+            if (job == null)
+                job = ctx.job().activeJob(jobId);
+
+            if (job != null) {
+                // Execute in the same thread.
+                job.execute();
+            }
         }
     }
 
