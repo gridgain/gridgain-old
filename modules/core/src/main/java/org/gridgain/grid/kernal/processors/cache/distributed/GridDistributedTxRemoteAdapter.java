@@ -769,6 +769,9 @@ public class GridDistributedTxRemoteAdapter<K, V> extends GridCacheTxAdapter<K, 
                         catch (Throwable ex) {
                             state(UNKNOWN);
 
+                            if (ex instanceof Error)
+                                throw ex;
+                            
                             // In case of error, we still make the best effort to commit,
                             // as there is no way to rollback at this point.
                             err = ex instanceof GridException ? (GridException)ex :

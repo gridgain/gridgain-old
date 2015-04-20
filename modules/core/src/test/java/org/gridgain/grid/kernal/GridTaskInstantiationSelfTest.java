@@ -44,7 +44,7 @@ public class GridTaskInstantiationSelfTest extends GridCommonAbstractTest {
 
             assert false : "Exception should have been thrown.";
         }
-        catch (Exception e) {
+        catch (AssertionError e) {
             info("Caught expected exception: " + e);
         }
     }

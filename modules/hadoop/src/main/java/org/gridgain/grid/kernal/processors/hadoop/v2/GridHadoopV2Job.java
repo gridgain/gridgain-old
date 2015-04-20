@@ -162,7 +162,7 @@ public class GridHadoopV2Job implements GridHadoopJob {
                     return res;
                 }
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 throw transformException(e);
             }
         }
@@ -221,7 +221,10 @@ public class GridHadoopV2Job implements GridHadoopJob {
 
             fut.onDone(te);
 
-            throw te;
+            if (e instanceof Error)
+                throw (Error)e;
+            else 
+                throw te;
         }
     }
 

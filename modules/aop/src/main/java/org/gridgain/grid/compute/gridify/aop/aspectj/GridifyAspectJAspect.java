@@ -93,7 +93,7 @@ public class GridifyAspectJAspect {
             // If task name was specified.
             return grid.compute().withTimeout(ann.timeout()).execute(ann.taskName(), arg).get();
         }
-        catch (Throwable e) {
+        catch (Exception e) {
             for (Class<?> ex : ((MethodSignature) joinPnt.getSignature()).getMethod().getExceptionTypes()) {
                 // Descend all levels down.
                 Throwable cause = e.getCause();

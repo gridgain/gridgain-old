@@ -44,6 +44,9 @@ public abstract class GridGgfsThread extends Thread {
             X.error("Failed to execute GGFS ad-hoc thread: " + e.getMessage());
 
             e.printStackTrace();
+            
+            if (e instanceof Error)
+                throw e;
         }
         finally {
             try {
@@ -54,6 +57,9 @@ public abstract class GridGgfsThread extends Thread {
                 X.error("Failed to clean up GGFS ad-hoc thread: " + e.getMessage());
 
                 e.printStackTrace();
+                
+                if (e instanceof Error)
+                    throw e;
             }
         }
     }

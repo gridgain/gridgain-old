@@ -196,6 +196,9 @@ public class GridTcpDiscoverySharedFsMetricsStore extends GridTcpDiscoveryMetric
                 }
                 catch (Throwable e) {
                     U.error(log, "Failed to release lock when updating metrics for local node: " + locNodeId, e);
+
+                    if (e instanceof Error)
+                        throw (Error)e;
                 }
 
             U.closeQuiet(file);
@@ -250,6 +253,9 @@ public class GridTcpDiscoverySharedFsMetricsStore extends GridTcpDiscoveryMetric
                     }
                     catch (Throwable e) {
                         U.error(log, "Failed to release lock when reading metrics for node: " + id, e);
+
+                        if (e instanceof Error)
+                            throw (Error)e;
                     }
 
                 U.closeQuiet(file);

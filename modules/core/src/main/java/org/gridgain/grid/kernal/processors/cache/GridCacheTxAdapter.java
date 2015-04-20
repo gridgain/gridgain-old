@@ -1142,9 +1142,15 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
                     for (GridClosure<V, V> clos : txEntry.transformClosures())
                         val = clos.apply(val);
                 }
-                catch (Throwable e) {
+                catch (Exception e) {
                     throw new GridRuntimeException("Transform closure must not throw any exceptions " +
                         "(transaction will be invalidated)", e);
+                }
+                catch (Throwable e) {
+                    U.error(log, "Transform closure must not throw any exceptions " +
+                        "(transaction will be invalidated)", e);
+                    
+                    throw e;
                 }
 
                 GridCacheOperation op = val == null ? DELETE : UPDATE;

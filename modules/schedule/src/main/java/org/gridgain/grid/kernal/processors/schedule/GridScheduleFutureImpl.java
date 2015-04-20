@@ -646,6 +646,9 @@ class GridScheduleFutureImpl<R> extends GridMetadataAwareAdapter implements Grid
             }
             catch (Throwable e) {
                 U.error(log, "Failed to notify listener: " + this, e);
+                
+                if (e instanceof Error)
+                    throw e;
             }
         }
     }

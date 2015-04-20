@@ -84,6 +84,9 @@ public class GridDeploymentSelfTest extends GridCommonAbstractTest {
         }
         catch (Throwable e) {
             error("Got error when stopping grid.", e);
+            
+            if (e instanceof Error)
+                throw e;
         }
     }
 

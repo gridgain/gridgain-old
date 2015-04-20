@@ -263,6 +263,9 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
                     "[senderId=" + nodeId + ", err=" + X.cause(e, ClassNotFoundException.class).getMessage() + ']');
             else
                 U.error(log, "Failed to process message [senderId=" + nodeId + ']', e);
+
+            if (e instanceof Error)
+                throw (Error)e;
         }
         finally {
             if (depEnabled)
@@ -294,6 +297,9 @@ public class GridCacheIoManager<K, V> extends GridCacheManagerAdapter<K, V> {
         }
         catch (Throwable e) {
             U.error(log, "Failed processing message [senderId=" + nodeId + ']', e);
+            
+            if (e instanceof Error)
+                throw e;
         }
         finally {
             // Clear thread-local tx contexts.

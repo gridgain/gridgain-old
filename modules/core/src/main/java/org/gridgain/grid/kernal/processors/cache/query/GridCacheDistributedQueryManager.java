@@ -167,6 +167,9 @@ public class GridCacheDistributedQueryManager<K, V> extends GridCacheQueryManage
                     catch (Throwable e) {
                         U.error(log(), "Failed to run query.", e);
 
+                        if (e instanceof Error)
+                            throw (Error)e;
+
                         sendQueryResponse(sndId, new GridCacheQueryResponse(req.id(), e.getCause()), 0);
                     }
                     finally {

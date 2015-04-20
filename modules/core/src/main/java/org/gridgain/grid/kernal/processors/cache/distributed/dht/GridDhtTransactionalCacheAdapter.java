@@ -317,7 +317,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             try {
                 ctx.io().send(nodeId, res);
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 // Double-check.
                 if (ctx.discovery().node(nodeId) == null) {
                     if (log.isDebugEnabled())
@@ -327,6 +327,11 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                 else
                     U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " +
                         "res=" + res + ']', e);
+            }
+            catch (Throwable e) {
+                U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " + "res=" + res + ']', e);
+
+                throw e;                
             }
 
             return null;
@@ -414,7 +419,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                     try {
                         ctx.io().send(nodeId, res);
                     }
-                    catch (Throwable e) {
+                    catch (Exception e) {
                         // Double-check.
                         if (ctx.discovery().node(nodeId) == null) {
                             if (log.isDebugEnabled())
@@ -424,6 +429,12 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                         else
                             U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " +
                                     "res=" + res + ']', e);
+                    }
+                    catch (Throwable e) {
+                        U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " + 
+                            "res=" + res + ']', e);
+
+                        throw e;
                     }
 
                     return null;
@@ -435,6 +446,9 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
 
             if (tx != null)
                 return tx.rollbackAsync();
+
+            if (e instanceof Error)
+                throw (Error)e;
 
             return new GridFinishedFuture<>(ctx.kernalContext(), e);
         }
@@ -527,6 +541,9 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             catch (GridException ex) {
                 U.error(log, "Failed to invalidate transaction: " + tx, ex);
             }
+            
+            if (e instanceof Error)
+                throw (Error)e;
         }
     }
 
@@ -1405,7 +1422,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             try {
                 ctx.io().send(nodeId, res);
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 // Double-check.
                 if (ctx.discovery().node(nodeId) == null) {
                     if (log.isDebugEnabled())
@@ -1413,6 +1430,11 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                 }
                 else
                     U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", res=" + res + ']', e);
+            }
+            catch (Throwable e) {
+                U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", res=" + res + ']', e);
+                
+                throw e;                
             }
         }
     }

@@ -99,7 +99,7 @@ public class GridifySetToSetSpringAspect extends GridifySetToSetAbstractAspect i
             return execute(grid, invoc.getMethod().getDeclaringClass(), arg, nodeFilter,
                 ann.threshold(), ann.splitSize(), ann.timeout());
         }
-        catch (Throwable e) {
+        catch (Exception e) {
             for (Class<?> ex : invoc.getMethod().getExceptionTypes()) {
                 // Descend all levels down.
                 Throwable cause = e.getCause();

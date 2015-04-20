@@ -729,8 +729,11 @@ public class GridEventStorageManager extends GridManagerAdapter<GridEventStorage
                 try {
                     lsnr.onEvent(evt);
                 }
-                catch (Throwable e) {
+                catch (Throwable e) {                    
                     U.error(log, "Unexpected exception in listener notification for event: " + evt, e);
+                    
+                    if (e instanceof Error)
+                        throw e;
                 }
             }
         }
@@ -1061,13 +1064,18 @@ public class GridEventStorageManager extends GridManagerAdapter<GridEventStorage
 
                     ex = e;
                 }
-                catch (Throwable e) {
+                catch (Exception e) {
                     U.error(log, "Failed to query events due to user exception [nodeId=" + nodeId +
                         ", filter=" + filter + ']', e);
 
                     evts = Collections.emptyList();
 
                     ex = e;
+                }
+                catch (Throwable e) {
+                    U.error(log, "Failed to query events [nodeId=" + nodeId + ", filter=" + filter + ']', e);
+                    
+                    throw e;
                 }
 
                 // Response message.

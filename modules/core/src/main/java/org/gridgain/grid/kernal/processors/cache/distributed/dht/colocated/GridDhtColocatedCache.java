@@ -812,10 +812,15 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         catch (Throwable e) {
             U.error(log, "Failed completing transaction [commit=" + commit + ", tx=" + tx + ']', e);
 
-            if (tx != null)
-                return tx.rollbackAsync();
+            GridFuture<GridCacheTx> fut = null;
 
-            return new GridFinishedFuture<>(ctx.kernalContext(), e);
+            if (tx != null)
+                fut = tx.rollbackAsync();
+
+            if (e instanceof Error)
+                throw e;
+
+            return fut != null ? fut : new GridFinishedFuture<GridCacheTx>(ctx.kernalContext(), e);
         }
     }
 

@@ -391,6 +391,9 @@ public class GridHadoopExternalTaskExecutor extends GridHadoopTaskExecutorAdapte
                 }
                 catch (Throwable e) {
                     fut.onDone(new GridException("Failed to initialize child process: " + job, e));
+                    
+                    if (e instanceof Error)
+                        throw (Error)e;
                 }
                 finally {
                     busyLock.readUnlock();

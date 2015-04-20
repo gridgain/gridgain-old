@@ -218,6 +218,9 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
                     }
                     catch (Throwable t) {
                         U.error(log, "Failed to invalidate entry.", t);
+
+                        if (t instanceof Error)
+                            throw (Error)t;
                     }
                 }
             }

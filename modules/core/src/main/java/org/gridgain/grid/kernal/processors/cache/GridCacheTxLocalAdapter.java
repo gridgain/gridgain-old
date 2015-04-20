@@ -360,10 +360,15 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
         catch (GridException e) {
             throw e;
         }
-        catch (Throwable e) {
+        catch (Exception e) {
             setRollbackOnly();
 
             throw new GridException("Transaction validation produced a runtime exception: " + this, e);
+        }
+        catch (Throwable e) {
+            U.error(log, "Transaction validation produced a runtime exception", e);            
+            
+            throw e;            
         }
     }
 
@@ -410,6 +415,9 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
             catch (Throwable t) {
                 U.error(log, "Failed to invalidate transaction entries while reverting a commit.", t);
 
+                if (t instanceof Error)
+                    throw (Error)t;
+                
                 break;
             }
         }
@@ -556,7 +564,7 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
 
                 throw ex;
             }
-            catch (Throwable ex) {
+            catch (Exception ex) {
                 commitError(ex);
 
                 setRollbackOnly();
@@ -565,6 +573,11 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
                 cctx.tm().removeCommittedTx(this);
 
                 throw new GridException("Failed to commit transaction to database: " + this, ex);
+            }
+            catch (Throwable e) {
+                U.error(log, "Failed to commit transaction to database", e);
+                
+                throw e;
             }
         }
     }
@@ -828,7 +841,7 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
                             }
                         }
                     }
-                    catch (Throwable ex) {
+                    catch (Exception ex) {
                         // We are about to initiate transaction rollback when tx has started to committing.
                         // Need to remove version from committed list.
                         cctx.tm().removeCommittedTx(this);
@@ -862,12 +875,20 @@ public abstract class GridCacheTxLocalAdapter<K, V> extends GridCacheTxAdapter<K
                             }
                             catch (Throwable ex1) {
                                 U.error(log, "Failed to uncommit transaction: " + this, ex1);
+                                
+                                if (ex1 instanceof Error)
+                                    throw ex1;
                             }
 
                             throw err;
                         }
                     }
                 }
+            }
+            catch (Throwable e) {
+                U.error(log, "Failed to locally write to cache", e);
+                
+                throw e;
             }
             finally {
                 cctx.tm().txContextReset();

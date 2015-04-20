@@ -220,6 +220,9 @@ public class GridIndexingManager extends GridManagerAdapter<GridIndexingSpi> {
                     log.error("Failed to rebuild indexes for type: " + desc.name(), e);
 
                     fut.onDone(e);
+                    
+                    if (e instanceof Error)
+                        throw e;
                 }
             }
         };

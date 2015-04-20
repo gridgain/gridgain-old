@@ -1999,7 +1999,10 @@ public class GridGainEx {
             catch (Throwable e) {
                 unregisterFactoryMBean();
 
-                throw new GridException("Unexpected exception when starting grid.", e);
+                if (e instanceof Error) 
+                    throw e;
+                else
+                    throw new GridException("Unexpected exception when starting grid.", e);
             }
             finally {
                 if (!started)
@@ -2177,6 +2180,9 @@ public class GridGainEx {
             }
             catch (Throwable e) {
                 U.error(log, "Failed to properly stop grid instance due to undeclared exception.", e);
+                
+                if (e instanceof Error)
+                    throw e;
             }
             finally {
                 state = grid0.context().segmented() ? STOPPED_ON_SEGMENTATION : STOPPED;
