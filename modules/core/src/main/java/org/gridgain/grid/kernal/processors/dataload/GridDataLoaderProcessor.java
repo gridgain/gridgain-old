@@ -15,7 +15,9 @@ import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.managers.communication.*;
 import org.gridgain.grid.kernal.managers.deployment.*;
 import org.gridgain.grid.kernal.processors.*;
+import org.gridgain.grid.kernal.processors.version.*;
 import org.gridgain.grid.marshaller.*;
+import org.gridgain.grid.product.*;
 import org.gridgain.grid.thread.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
@@ -23,6 +25,7 @@ import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.worker.*;
 import org.jetbrains.annotations.*;
 
+import java.nio.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -33,6 +36,9 @@ import static org.gridgain.grid.kernal.managers.communication.GridIoPolicy.*;
  *
  */
 public class GridDataLoaderProcessor<K, V> extends GridProcessorAdapter {
+    /** */
+    public static final GridProductVersion SKIP_STORE_SINCE_VER = GridProductVersion.fromString("6.6.5");
+
     /** Loaders map (access is not supposed to be highly concurrent). */
     private Collection<GridDataLoaderImpl> ldrs = new GridConcurrentHashSet<>();
 
@@ -55,6 +61,7 @@ public class GridDataLoaderProcessor<K, V> extends GridProcessorAdapter {
         super(ctx);
 
         ctx.io().addMessageListener(TOPIC_DATALOAD, new GridMessageListener() {
+            @SuppressWarnings("unchecked")
             @Override public void onMessage(UUID nodeId, Object msg) {
                 assert msg instanceof GridDataLoadRequest;
 
@@ -242,7 +249,7 @@ public class GridDataLoaderProcessor<K, V> extends GridProcessorAdapter {
             }
 
             GridDataLoadUpdateJob<K, V> job = new GridDataLoadUpdateJob<>(ctx, log, req.cacheName(), col,
-                req.ignoreDeploymentOwnership(), updater);
+                req.ignoreDeploymentOwnership(), updater, req.skipStore());
 
             Exception err = null;
 
@@ -300,5 +307,43 @@ public class GridDataLoaderProcessor<K, V> extends GridProcessorAdapter {
         X.println(">>>");
         X.println(">>> Data loader processor memory stats [grid=" + ctx.gridName() + ']');
         X.println(">>>   ldrsSize: " + ldrs.size());
+    }
+
+    /**
+     * Boolean "skipStore" flag is added to GridDataLoadRequest in 6.6.5.
+     */
+    @SuppressWarnings("PublicInnerClass")
+    public static class SkipStoreBooleanFlagAddedMessageConverter665 extends GridVersionConverter {
+        /** {@inheritDoc} */
+        @Override public boolean writeTo(ByteBuffer buf) {
+            commState.setBuffer(buf);
+
+            switch (commState.idx) {
+                case 0:
+                    if (!commState.putBoolean(false))
+                        return false;
+
+                    commState.idx++;
+            }
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean readFrom(ByteBuffer buf) {
+            commState.setBuffer(buf);
+
+            switch (commState.idx) {
+                case 0:
+                    if (buf.remaining() < 1)
+                        return false;
+
+                    commState.getBoolean();
+
+                    commState.idx++;
+            }
+
+            return true;
+        }
     }
 }

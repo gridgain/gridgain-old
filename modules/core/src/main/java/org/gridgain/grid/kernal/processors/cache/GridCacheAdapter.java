@@ -3447,6 +3447,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
         if (ctx.store().isLocalStore()) {
             try (final GridDataLoader<K, V> ldr = ctx.kernalContext().<K, V>dataLoad().dataLoader(ctx.namex(), false)) {
                 ldr.updater(new GridDrDataLoadCacheUpdater<K, V>());
+                ldr.skipStore(true);
 
                 final Collection<Map.Entry<K, V>> col = new ArrayList<>(ldr.perNodeBufferSize());
 

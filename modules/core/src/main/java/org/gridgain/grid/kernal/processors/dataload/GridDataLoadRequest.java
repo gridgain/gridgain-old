@@ -64,6 +64,10 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
     /** */
     private boolean forceLocDep;
 
+    /** Skip-store flag for loads from local store. */
+    @GridDirectVersion(1)
+    private boolean skipStore;
+
     /**
      * {@code Externalizable} support.
      */
@@ -84,6 +88,7 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
      * @param ldrParticipants Loader participants.
      * @param clsLdrId Class loader ID.
      * @param forceLocDep Force local deployment.
+     * @param skipStore Skip store flag.
      */
     public GridDataLoadRequest(long reqId,
         byte[] resTopicBytes,
@@ -96,7 +101,8 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
         String userVer,
         Map<UUID, GridUuid> ldrParticipants,
         GridUuid clsLdrId,
-        boolean forceLocDep) {
+        boolean forceLocDep,
+        boolean skipStore) {
         this.reqId = reqId;
         this.resTopicBytes = resTopicBytes;
         this.cacheName = cacheName;
@@ -109,6 +115,7 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
         this.ldrParticipants = ldrParticipants;
         this.clsLdrId = clsLdrId;
         this.forceLocDep = forceLocDep;
+        this.skipStore = skipStore;
     }
 
     /**
@@ -193,6 +200,13 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
      */
     public boolean forceLocalDeployment() {
         return forceLocDep;
+    }
+
+    /**
+     * @return Skip store flag.
+     */
+    public boolean skipStore() {
+        return skipStore;
     }
 
     /** {@inheritDoc} */
@@ -312,6 +326,12 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
 
             case 11:
                 if (!commState.putString(userVer))
+                    return false;
+
+                commState.idx++;
+
+            case 12:
+                if (!commState.putBoolean(skipStore))
                     return false;
 
                 commState.idx++;
@@ -472,6 +492,14 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
 
                 commState.idx++;
 
+            case 12:
+                if (buf.remaining() < 1)
+                    return false;
+
+                skipStore = commState.getBoolean();
+
+                commState.idx++;
+
         }
 
         return true;
@@ -507,5 +535,6 @@ public class GridDataLoadRequest<K, V> extends GridTcpCommunicationMessageAdapte
         _clone.ldrParticipants = ldrParticipants;
         _clone.clsLdrId = clsLdrId;
         _clone.forceLocDep = forceLocDep;
+        _clone.skipStore = skipStore;
     }
 }

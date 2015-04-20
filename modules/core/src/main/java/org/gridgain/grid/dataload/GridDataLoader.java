@@ -113,6 +113,22 @@ public interface GridDataLoader<K, V> extends AutoCloseable {
     public void isolated(boolean isolated) throws GridException;
 
     /**
+     * Gets flag indicating that write-through behavior should be disabled for data loader.
+     * Default is {@code false}.
+     *
+     * @return Skip store flag.
+     */
+    public boolean skipStore();
+
+    /**
+     * Sets flag indicating that write-through behavior should be disabled for data loader.
+     * Default is {@code false}.
+     *
+     * @param skipStore Skip store flag.
+     */
+    public void skipStore(boolean skipStore);
+
+    /**
      * Gets size of per node key-value pairs buffer.
      *
      * @return Per node buffer size.
