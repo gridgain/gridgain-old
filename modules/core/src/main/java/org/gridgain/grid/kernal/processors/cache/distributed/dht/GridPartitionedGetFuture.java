@@ -424,6 +424,12 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
 
                 GridNode node = cctx.affinity().primary(key, topVer);
 
+                if (node == null) {
+                    onDone(new GridTopologyException("Failed to get keys (all data nodes left grid)."));
+
+                    break;
+                }
+
                 remote = !node.isLocal();
 
                 LinkedHashMap<K, Boolean> keys = mapped.get(node);

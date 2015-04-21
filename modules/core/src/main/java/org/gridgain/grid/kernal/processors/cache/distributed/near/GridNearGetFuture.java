@@ -431,6 +431,12 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
                         else {
                             primary = cctx.affinity().primary(key, topVer);
 
+                            if (primary == null) {
+                                onDone(new GridTopologyException("Failed to get keys (all data nodes left grid)."));
+
+                                break;
+                            }
+
                             if (!primary.isLocal())
                                 near.metrics0().onRead(false);
                         }
@@ -454,8 +460,15 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
                     add(new GridFinishedFuture<>(cctx.kernalContext(), Collections.singletonMap(key, v)));
                 }
                 else {
-                    if (primary == null)
+                    if (primary == null) {
                         primary = cctx.affinity().primary(key, topVer);
+
+                        if (primary == null) {
+                            onDone(new GridTopologyException("Failed to get keys (all data nodes left grid)."));
+
+                            break;
+                        }
+                    }
 
                     GridNearCacheEntry<K, V> nearEntry = allowLocRead ? near.peekExx(key) : null;
 

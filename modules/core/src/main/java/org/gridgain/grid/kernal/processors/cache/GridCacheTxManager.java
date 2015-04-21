@@ -1843,6 +1843,9 @@ public class GridCacheTxManager<K, V> extends GridCacheManagerAdapter<K, V> {
     private boolean keyBelongs(K key, GridCacheTxEx<K, V> tx) {
         GridNode primary = cctx.affinity().primary(key, tx.topologyVersion());
 
+        if (primary == null)
+            return false;
+
         if (tx.local() && primary.id().equals(cctx.localNodeId()))
             return true;
         else if (!tx.local())
