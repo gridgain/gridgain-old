@@ -525,7 +525,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
                         if (cctx.offheapTiered() && e.offheapPointer() > 0)
                             valPtr = e.offheapPointer();
 
-                        cctx.queries().onUnswap(key, val, null);
+                        cctx.queries().onUnswap(key, val, e.valueBytes());
 
                         return val;
                     }
