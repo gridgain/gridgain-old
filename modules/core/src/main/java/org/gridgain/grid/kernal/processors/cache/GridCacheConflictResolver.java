@@ -51,7 +51,7 @@ public class GridCacheConflictResolver {
      */
     @SuppressWarnings("unchecked")
     public <K, V> GridDrReceiverConflictContextImpl<K, V> resolve(GridDrEntryEx<K, V> oldEntry,
-        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
+        GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator, boolean useGlobalTime) throws GridException {
         GridDrReceiverConflictContextImpl<K, V> ctx = new GridDrReceiverConflictContextImpl<>(oldEntry, newEntry);
 
         if (newEntry.dataCenterId() != oldEntry.dataCenterId() || mode == DR_ALWAYS) {
@@ -75,7 +75,7 @@ public class GridCacheConflictResolver {
             else {
                 if (atomicVerComparator) {
                     // Handle special case when version check using ATOMIC cache comparator is required.
-                    if (GridCacheMapEntry.ATOMIC_VER_COMPARATOR.compare(oldEntry.version(), newEntry.version()) >= 0)
+                    if (GridCacheMapEntry.ATOMIC_VER_COMPARATOR.compare(oldEntry.version(), newEntry.version(), useGlobalTime) >= 0)
                         ctx.useOld();
                     else
                         ctx.useNew();

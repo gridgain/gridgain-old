@@ -137,7 +137,9 @@ public class GridNearCacheEntry<K, V> extends GridDistributedCacheEntry<K, V> {
                                     }
                                 }
 
-                                recordNodeId(cctx.affinity().primary(key, topVer).id());
+                                GridNode primary = cctx.affinity().primary(key, topVer);
+
+                                recordNodeId(primary != null ? primary.id() : null);
 
                                 dhtVer = e.isNew() || e.isDeleted() ? null : e.version();
 

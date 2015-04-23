@@ -1685,7 +1685,8 @@ public class GridCacheContext<K, V> implements Externalizable {
         GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
         assert rslvr != null : "Should not reach this place.";
 
-        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator);
+        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator,
+            config().getAtomicWriteOrderMode() == GridCacheAtomicWriteOrderMode.CLOCK);
 
         if (ctx.isManualResolve())
             cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());
