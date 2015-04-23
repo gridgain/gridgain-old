@@ -10,6 +10,7 @@
 package org.gridgain.testsuites;
 
 import junit.framework.*;
+import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.replicated.*;
@@ -94,6 +95,8 @@ public class GridCacheFullApiSelfTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheAtomicOffHeapMultiNodeFullApiSelfTest.class);
         suite.addTestSuite(GridCacheAtomicPrimaryWrityOrderOffHeapMultiNodeFullApiSelfTest.class);
         suite.addTestSuite(GridCachePartitionedNearDisabledOffHeapMultiNodeFullApiSelfTest.class);
+
+        suite.addTestSuite(GridCachePartitionedFilterRemoveSelfTest.class);
 
         // Private cache API.
         suite.addTestSuite(GridCacheExLocalFullApiSelfTest.class);

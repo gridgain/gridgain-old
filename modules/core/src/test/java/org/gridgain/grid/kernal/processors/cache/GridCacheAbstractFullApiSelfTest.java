@@ -3186,11 +3186,13 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         if (lockingEnabled()) {
             assertTrue(cache.lock(first, 0));
 
-            cache.clearAll();
+            try {
+                cache.clearAll();
 
-            assertEquals(vals.get(first), peek(cache, first));
-
-            cache.unlock(first);
+                assertEquals(vals.get(first), peek(cache, first));
+            } finally {
+                cache.unlock(first);
+            }
         }
         else {
             cache.clearAll();
