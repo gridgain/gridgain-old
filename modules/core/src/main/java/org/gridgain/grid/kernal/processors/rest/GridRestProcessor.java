@@ -108,9 +108,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
                                         throw (Error)e;
                                     }
                                 }
-                                finally {
-                                    workersCnt.decrement();
-                                }
                             }
                         });
                     }
