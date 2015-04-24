@@ -18,6 +18,7 @@ import org.jetbrains.annotations.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static org.gridgain.grid.cache.GridCacheMode.*;
 import static org.gridgain.grid.cache.GridCachePeekMode.*;
 
 /**
@@ -181,12 +182,18 @@ public class GridCacheFilterEvaluationEntry<K, V> implements GridCacheEntry<K, V
 
     /** {@inheritDoc} */
     @Override public boolean primary() {
-        throw new UnsupportedOperationException("primary");
+        GridCacheContext<K, V> ctx = impl.context();
+
+        return ctx.config().getCacheMode() == LOCAL ||
+            ctx.affinity().primary(ctx.localNode(), key, ctx.affinity().affinityTopologyVersion());
     }
 
     /** {@inheritDoc} */
     @Override public boolean backup() {
-        throw new UnsupportedOperationException("backup");
+        GridCacheContext<K, V> ctx = impl.context();
+
+        return ctx.config().getCacheMode() != LOCAL &&
+                ctx.affinity().backups(key, ctx.affinity().affinityTopologyVersion()).contains(ctx.localNode());
     }
 
     /** {@inheritDoc} */

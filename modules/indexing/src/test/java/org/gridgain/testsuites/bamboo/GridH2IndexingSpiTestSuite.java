@@ -62,6 +62,8 @@ public class GridH2IndexingSpiTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheTtlOnheapAtomicLocalSelfTest.class);
         suite.addTestSuite(GridCacheTtlOnheapAtomicPartitionedSelfTest.class);
 
+        suite.addTestSuite(GridCachePartitionedIndexedOffheapMultiNodeFullApiSelfTest.class);
+
         return suite;
     }
 }
