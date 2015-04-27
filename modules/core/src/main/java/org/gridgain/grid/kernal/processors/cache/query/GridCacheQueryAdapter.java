@@ -411,6 +411,10 @@ public class GridCacheQueryAdapter<T> implements GridCacheQuery<T> {
 
         cctx.checkSecurity(GridSecurityPermission.CACHE_READ);
 
+        if (F.isEmpty(nodes))
+            return new GridCacheQueryErrorFuture<>(cctx.kernalContext(),
+                new GridEmptyProjectionException("There are no data nodes for cache: " + cctx.namexx()));
+
         if (log.isDebugEnabled())
             log.debug("Executing query [query=" + this + ", nodes=" + nodes + ']');
 
