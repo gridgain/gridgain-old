@@ -56,8 +56,7 @@ public class GridDhtTxLocal<K, V> extends GridDhtTxLocalAdapter<K, V> implements
 
     /** Future. */
     @GridToStringExclude
-    private final AtomicReference<GridDhtTxPrepareFuture<K, V>> prepFut =
-        new AtomicReference<>();
+    private final AtomicReference<GridDhtTxPrepareFuture<K, V>> prepFut = new AtomicReference<>();
 
     /**
      * Empty constructor required for {@link Externalizable}.

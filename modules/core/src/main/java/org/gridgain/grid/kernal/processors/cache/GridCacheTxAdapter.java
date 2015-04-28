@@ -1279,6 +1279,11 @@ public abstract class GridCacheTxAdapter<K, V> extends GridMetadataAwareAdapter
     }
 
     /** {@inheritDoc} */
+    @Override public GridFuture<?> currentPrepareFuture() {
+        return null;
+    }
+
+    /** {@inheritDoc} */
     @Override public void writeExternal(ObjectOutput out) throws IOException {
         writeExternalMeta(out);
 

@@ -177,6 +177,7 @@ class GridLocalTx<K, V> extends GridCacheTxLocalAdapter<K, V> {
         rollbackAsync().get();
     }
 
+    /** {@inheritDoc} */
     @Override public GridFuture<GridCacheTx> rollbackAsync() {
         try {
             state(ROLLING_BACK);

@@ -22,6 +22,9 @@ import java.util.*;
  * Transaction managed by cache ({@code 'Ex'} stands for external).
  */
 public interface GridCacheTxEx<K, V> extends GridCacheTx, GridTimeoutObject {
+    /**
+     *
+     */
     @SuppressWarnings("PublicInnerClass")
     public enum FinalizationStatus {
         /** Transaction was not finalized yet. */
@@ -510,4 +513,9 @@ public interface GridCacheTxEx<K, V> extends GridCacheTx, GridTimeoutObject {
      * @return {@code True} if entry was found.
      */
     public boolean setWriteValue(GridCacheTxEntry<K, V> e);
+
+    /**
+     * @return Future for transaction prepare if prepare is in progress.
+     */
+    @Nullable public GridFuture<?> currentPrepareFuture();
 }

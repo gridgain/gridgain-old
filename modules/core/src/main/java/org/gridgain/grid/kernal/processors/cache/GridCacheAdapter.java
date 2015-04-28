@@ -1410,8 +1410,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
 
         return getAllAsync(Collections.singletonList(key), /*force primary*/true, /*skip tx*/false, null, null,
             taskName, true).chain(new CX1<GridFuture<Map<K, V>>, V>() {
-                @Override
-                public V applyx(GridFuture<Map<K, V>> e) throws GridException {
+                @Override public V applyx(GridFuture<Map<K, V>> e) throws GridException {
                     return e.get().get(key);
                 }
             });
@@ -2097,8 +2096,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                 return tx.put(key, val, cached, ttl, filter);
             }
 
-            @Override
-            public String toString() {
+            @Override public String toString() {
                 return "put [key=" + key + ", val=" + val + ", filter=" + Arrays.toString(filter) + ']';
             }
         }));
@@ -2117,13 +2115,11 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
         ctx.denyOnLocalRead();
 
         return syncOp(new SyncOp<Boolean>(true) {
-            @Override
-            public Boolean op(GridCacheTxLocalAdapter<K, V> tx) throws GridException {
+            @Override public Boolean op(GridCacheTxLocalAdapter<K, V> tx) throws GridException {
                 return tx.putx(key, val, cached, ttl, filter);
             }
 
-            @Override
-            public String toString() {
+            @Override public String toString() {
                 return "put [key=" + key + ", val=" + val + ", filter=" + Arrays.toString(filter) + ']';
             }
         });
@@ -2585,8 +2581,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
         ctx.denyOnLocalRead();
 
         return asyncOp(new AsyncOp<Boolean>(key) {
-            @Override
-            public GridFuture<Boolean> op(GridCacheTxLocalAdapter<K, V> tx) {
+            @Override public GridFuture<Boolean> op(GridCacheTxLocalAdapter<K, V> tx) {
                 // Register before hiding in the filter.
                 if (ctx.deploymentEnabled()) {
                     try {
@@ -2600,8 +2595,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                 return tx.putxAsync(key, newVal, ctx.equalsPeekArray(oldVal));
             }
 
-            @Override
-            public String toString() {
+            @Override public String toString() {
                 return "replaceAsync [key=" + key + ", oldVal=" + oldVal + ", newVal=" + newVal + ']';
             }
         });
@@ -3004,8 +2998,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
             validateCacheKey(key);
 
         return asyncOp(new AsyncOp<GridCacheReturn<V>>(key) {
-            @Override
-            public GridFuture<GridCacheReturn<V>> op(GridCacheTxLocalAdapter<K, V> tx) {
+            @Override public GridFuture<GridCacheReturn<V>> op(GridCacheTxLocalAdapter<K, V> tx) {
                 // Register before hiding in the filter.
                 try {
                     if (ctx.deploymentEnabled())
@@ -3018,8 +3011,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
                 return tx.removexAsync0(key, null, ctx.vararg(F.<K, V>cacheContainsPeek(val)));
             }
 
-            @Override
-            public String toString() {
+            @Override public String toString() {
                 return "removeAsync [key=" + key + ", val=" + val + ']';
             }
         });
@@ -3097,8 +3089,7 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
         validateCacheValue(val);
 
         return asyncOp(new AsyncOp<Boolean>(key) {
-            @Override
-            public GridFuture<Boolean> op(GridCacheTxLocalAdapter<K, V> tx) {
+            @Override public GridFuture<Boolean> op(GridCacheTxLocalAdapter<K, V> tx) {
                 // Register before hiding in the filter.
                 if (ctx.deploymentEnabled()) {
                     try {
@@ -4774,12 +4765,57 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
      * @param nodeId Node ID.
      * @param req Request.
      */
-    protected void processCheckPreparedTxRequest(UUID nodeId, GridCacheOptimisticCheckPreparedTxRequest<K, V> req) {
+    protected void processCheckPreparedTxRequest(final UUID nodeId,
+        final GridCacheOptimisticCheckPreparedTxRequest<K, V> req)
+    {
         if (log.isDebugEnabled())
             log.debug("Processing check prepared transaction requests [nodeId=" + nodeId + ", req=" + req + ']');
 
-        boolean prepared = ctx.tm().txsPreparedOrCommitted(req.nearXidVersion(), req.transactions());
+        GridFuture<Boolean> fut = ctx.tm().txsPreparedOrCommitted(req.nearXidVersion(), req.transactions());
 
+        if (fut == null || fut.isDone()) {
+            boolean prepared;
+
+            try {
+                prepared = fut == null ? true : fut.get();
+            }
+            catch (GridException e) {
+                U.error(log, "Check prepared transaction future failed [req=" + req + ']', e);
+
+                prepared = false;
+            }
+
+            sendCheckPreparedResponse(nodeId, req, prepared);
+        }
+        else {
+            fut.listenAsync(new CI1<GridFuture<Boolean>>() {
+                @Override public void apply(GridFuture<Boolean> fut) {
+                    boolean prepared;
+
+                    try {
+                        prepared = fut.get();
+                    }
+                    catch (GridException e) {
+                        U.error(log, "Check prepared transaction future failed [req=" + req + ']', e);
+
+                        prepared = false;
+                    }
+
+                    sendCheckPreparedResponse(nodeId, req, prepared);
+                }
+            });
+        }
+    }
+
+    /**
+     * @param nodeId Node ID.
+     * @param req Request.
+     * @param prepared {@code True} if all transaction prepared or committed.
+     */
+    private void sendCheckPreparedResponse(UUID nodeId,
+        GridCacheOptimisticCheckPreparedTxRequest<K, V> req,
+        boolean prepared)
+    {
         GridCacheOptimisticCheckPreparedTxResponse<K, V> res =
             new GridCacheOptimisticCheckPreparedTxResponse<>(req.version(), req.futureId(), req.miniId(), prepared);
 
