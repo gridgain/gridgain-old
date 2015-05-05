@@ -933,7 +933,7 @@ public class GridOffHeapSnapTreeMap<K extends GridOffHeapSmartPointer,V extends 
         protected final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
         /** */
-        private final AtomicBoolean stopped = new AtomicBoolean(false);
+        private volatile boolean stopped;
 
         /** {@inheritDoc} */
         @Override public boolean add(long node) {
@@ -943,6 +943,9 @@ public class GridOffHeapSnapTreeMap<K extends GridOffHeapSmartPointer,V extends 
                 return false;
 
             try {
+                if (stopped)
+                    return false;
+
                 return super.add(node);
             }
             finally {
@@ -958,6 +961,9 @@ public class GridOffHeapSnapTreeMap<K extends GridOffHeapSmartPointer,V extends 
                 return false;
 
             try {
+                if (stopped)
+                    return false;
+
                 return super.add(que);
             }
             finally {
@@ -976,20 +982,27 @@ public class GridOffHeapSnapTreeMap<K extends GridOffHeapSmartPointer,V extends 
          * @return {@code true} If we stopped this queue.
          */
         public boolean stop() {
-            if (stopped.compareAndSet(false, true)) {
-                lock.writeLock().lock();
+            lock.writeLock().lock();
 
-                return true;
+            try {
+                if (!stopped) {
+                    stopped = true;
+
+                    return true;
+                }
+
+                return false;
             }
-
-            return false;
+            finally {
+                lock.writeLock().unlock();
+            }
         }
 
         /**
          * @return {@code true} If this queue is stopped..
          */
         public boolean isStopped() {
-            return stopped.get();
+            return stopped;
         }
     }
 
