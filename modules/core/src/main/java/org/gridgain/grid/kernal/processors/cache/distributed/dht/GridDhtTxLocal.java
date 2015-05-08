@@ -616,7 +616,7 @@ public class GridDhtTxLocal<K, V> extends GridDhtTxLocalAdapter<K, V> implements
             }
 
             GridNearTxFinishResponse<K, V> res = new GridNearTxFinishResponse<>(nearXidVer, threadId, nearFinFutId,
-                nearFinMiniId, err);
+                nearFinMiniId, xidVer, err);
 
             try {
                 cctx.io().send(nearNodeId, res);

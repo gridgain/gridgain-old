@@ -618,6 +618,9 @@ public class GridNearTransactionalCache<K, V> extends GridNearCacheAdapter<K, V>
      * @param res Response.
      */
     private void processFinishResponse(UUID nodeId, GridNearTxFinishResponse<K, V> res) {
+        if (res.dhtVersion() != null)
+            ctx.versions().onReceived(nodeId, res.dhtVersion());
+
         ctx.tm().onFinishedRemote(nodeId, res.threadId());
 
         GridNearTxFinishFuture<K, V> fut = (GridNearTxFinishFuture<K, V>)ctx.mvcc().<GridCacheTx>future(
