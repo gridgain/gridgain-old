@@ -571,6 +571,25 @@ public interface GridCacheProjection<K, V> extends Iterable<GridCacheEntry<K, V>
     public GridFuture<Map<K, V>> getAllAsync(@Nullable Collection<? extends K> keys);
 
     /**
+     * Gets values from cache. Will bypass started transaction, if any, i.e. will not enlist entries
+     * and will not lock any keys if pessimistic transaction is started by thread.
+     *
+     * @param keys Keys to get values for.
+     * @return Value.
+     * @throws GridException If failed.
+     */
+    @Nullable public Map<K, V> getAllOutTx(List<K> keys) throws GridException;
+
+    /**
+     * Asynchronously gets values from cache. Will bypass started transaction, if any, i.e. will not enlist entries
+     * and will not lock any keys if pessimistic transaction is started by thread.
+     *
+     * @param keys Keys to get values for.
+     * @return Future with result.
+     */
+    public GridFuture<Map<K, V>> getAllOutTxAsync(List<K> keys);
+
+    /**
      * Stores given key-value pair in cache. If filters are provided, then entries will
      * be stored in cache only if they pass the filter. Note that filter check is atomic,
      * so value stored in cache is guaranteed to be consistent with the filters. If cache
