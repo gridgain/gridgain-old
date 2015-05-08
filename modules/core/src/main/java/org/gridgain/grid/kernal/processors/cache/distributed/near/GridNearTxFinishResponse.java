@@ -40,6 +40,10 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
     /** Near tx thread ID. */
     private long nearThreadId;
 
+    /** */
+    @GridDirectVersion(1)
+    private GridCacheVersion dhtVer;
+
     /**
      * Empty constructor required by {@link Externalizable}.
      */
@@ -55,7 +59,7 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
      * @param err Error.
      */
     public GridNearTxFinishResponse(GridCacheVersion xid, long nearThreadId, GridUuid futId, GridUuid miniId,
-        @Nullable Throwable err) {
+        GridCacheVersion dhtVer, @Nullable Throwable err) {
         super(xid, futId);
 
         assert miniId != null;
@@ -63,6 +67,7 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
         this.nearThreadId = nearThreadId;
         this.miniId = miniId;
         this.err = err;
+        this.dhtVer = dhtVer;
     }
 
     /**
@@ -84,6 +89,13 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
      */
     public long threadId() {
         return nearThreadId;
+    }
+
+    /**
+     * @return DHT version.
+     */
+    public GridCacheVersion dhtVersion() {
+        return dhtVer;
     }
 
     /** {@inheritDoc} */
@@ -122,6 +134,7 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
         _clone.errBytes = errBytes;
         _clone.miniId = miniId;
         _clone.nearThreadId = nearThreadId;
+        _clone.dhtVer = dhtVer;
     }
 
     /** {@inheritDoc} */
@@ -154,6 +167,12 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
 
             case 6:
                 if (!commState.putLong(nearThreadId))
+                    return false;
+
+                commState.idx++;
+
+            case 7:
+                if (!commState.putCacheVersion(dhtVer))
                     return false;
 
                 commState.idx++;
@@ -197,6 +216,16 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
                     return false;
 
                 nearThreadId = commState.getLong();
+
+                commState.idx++;
+
+            case 7:
+                GridCacheVersion dhtVer0 = commState.getCacheVersion();
+
+                if (dhtVer0 == CACHE_VER_NOT_READ)
+                    return false;
+
+                dhtVer = dhtVer0;
 
                 commState.idx++;
 

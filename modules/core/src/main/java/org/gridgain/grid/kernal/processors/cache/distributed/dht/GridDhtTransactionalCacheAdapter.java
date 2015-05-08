@@ -15,8 +15,11 @@ import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.dht.preloader.*;
 import org.gridgain.grid.kernal.processors.cache.distributed.near.*;
+import org.gridgain.grid.kernal.processors.version.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.product.*;
 import org.gridgain.grid.util.*;
+import org.gridgain.grid.util.direct.*;
 import org.gridgain.grid.util.future.*;
 import org.gridgain.grid.util.lang.*;
 import org.gridgain.grid.util.typedef.*;
@@ -24,6 +27,7 @@ import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
 import java.io.*;
+import java.nio.*;
 import java.util.*;
 
 import static org.gridgain.grid.cache.GridCacheTxConcurrency.*;
@@ -39,6 +43,9 @@ import static org.gridgain.grid.kernal.processors.cache.GridCacheUtils.*;
 public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCacheAdapter<K, V> {
     /** */
     private static final long serialVersionUID = 0L;
+
+    /** */
+    public static final GridProductVersion DHT_VERSION_IN_FINISH_RESPONSE_SINCE = GridProductVersion.fromString("6.6.7");
 
     /**
      * Empty constructor required for {@link Externalizable}.
@@ -312,7 +319,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
 
             // Always send finish response.
             GridCacheMessage<K, V> res = new GridNearTxFinishResponse<>(req.version(), req.threadId(), req.futureId(),
-                req.miniId(), new GridException("Transaction has been already completed."));
+                req.miniId(), req.version(), new GridException("Transaction has been already completed."));
 
             try {
                 ctx.io().send(nodeId, res);
@@ -414,7 +421,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                 else {
                     // Always send finish response.
                     GridCacheMessage<K, V> res = new GridNearTxFinishResponse<>(req.version(), req.threadId(),
-                        req.futureId(), req.miniId(), null);
+                        req.futureId(), req.miniId(), req.version(), null);
 
                     try {
                         ctx.io().send(nodeId, res);
@@ -2409,5 +2416,39 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
 
         if (nearEntry != null)
             nearEntry.markObsolete(ver);
+    }
+
+    /**
+     * Converter for DHT version added in near tx finish response.
+     */
+    public static class NearFinishResponse667Converter extends GridVersionConverter {
+        /** {@inheritDoc} */
+        @Override public boolean writeTo(ByteBuffer buf) {
+            commState.setBuffer(buf);
+
+            switch (commState.idx) {
+                case 0: {
+                    if (!commState.putCacheVersion(null))
+                        return false;
+
+                    commState.idx++;
+                }
+            }
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean readFrom(ByteBuffer buf) {
+            commState.setBuffer(buf);
+
+            switch (commState.idx) {
+                case 0:
+                    if (commState.getCacheVersion() == GridTcpCommunicationMessageAdapter.CACHE_VER_NOT_READ)
+                        return false;
+            }
+
+            return true;
+        }
     }
 }
