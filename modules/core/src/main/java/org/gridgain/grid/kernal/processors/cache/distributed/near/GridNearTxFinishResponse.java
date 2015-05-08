@@ -40,7 +40,7 @@ public class GridNearTxFinishResponse<K, V> extends GridDistributedTxFinishRespo
     /** Near tx thread ID. */
     private long nearThreadId;
 
-    /** */
+    /** DHT Version. */
     @GridDirectVersion(1)
     private GridCacheVersion dhtVer;
 
