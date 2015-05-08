@@ -498,7 +498,7 @@ public class GridCacheProxyImpl<K, V> implements GridCacheProxy<K, V>, Externali
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Map<K, V> getAllOutTx(List<K> keys) throws GridException {
+    @Nullable @Override public Map<K, V> getAllOutTx(Collection<K> keys) throws GridException {
         GridCacheProjectionImpl<K, V> prev = gate.enter(prj);
 
         try {
@@ -510,7 +510,7 @@ public class GridCacheProxyImpl<K, V> implements GridCacheProxy<K, V>, Externali
     }
 
     /** {@inheritDoc} */
-    @Override public GridFuture<Map<K, V>> getAllOutTxAsync(List<K> keys) {
+    @Override public GridFuture<Map<K, V>> getAllOutTxAsync(Collection<K> keys) {
         GridCacheProjectionImpl<K, V> prev = gate.enter(prj);
 
         try {

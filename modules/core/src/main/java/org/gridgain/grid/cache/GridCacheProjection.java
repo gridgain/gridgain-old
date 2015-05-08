@@ -572,22 +572,46 @@ public interface GridCacheProjection<K, V> extends Iterable<GridCacheEntry<K, V>
 
     /**
      * Gets values from cache. Will bypass started transaction, if any, i.e. will not enlist entries
-     * and will not lock any keys if pessimistic transaction is started by thread.
+     * and will not lock any keys if pessimistic transaction is started by thread. If requested key-value pair
+     * is not present in the returned map, then it means that cache has no mapping for the key.
+     * <p>
+     * If some value is not present in cache, then it will be looked up from swap storage. If
+     * it's not present in swap, or if swap is disabled, and if read-through is allowed, value
+     * will be loaded from {@link GridCacheStore} persistent storage via
+     * {@link GridCacheStore#loadAll(GridCacheTx, Collection, GridBiInClosure)} method.
+     * <h2 class="header">Transactions</h2>
+     * This method is NOT transactional and will not enlist the entry into ongoing transaction
+     * if there is one.
+     * <h2 class="header">Cache Flags</h2>
+     * This method is not available if {@link GridCacheFlag#LOCAL} flag is set on projection.
      *
-     * @param keys Keys to get values for.
-     * @return Value.
-     * @throws GridException If failed.
+     * @param keys Keys to get.
+     * @return Map of key-value pairs.
+     * @throws GridException If get operation failed.
+     * @throws GridCacheFlagException If failed projection flags validation.
      */
-    @Nullable public Map<K, V> getAllOutTx(List<K> keys) throws GridException;
+    @Nullable public Map<K, V> getAllOutTx(@Nullable Collection<K> keys) throws GridException;
 
     /**
      * Asynchronously gets values from cache. Will bypass started transaction, if any, i.e. will not enlist entries
-     * and will not lock any keys if pessimistic transaction is started by thread.
+     * and will not lock any keys if pessimistic transaction is started by thread. If requested key-value pair
+     * is not present in the returned map, then it means that cache has no mapping for the key.
+     * <p>
+     * If some value is not present in cache, then it will be looked up from swap storage. If
+     * it's not present in swap, or if swap is disabled, and if read-through is allowed, value
+     * will be loaded from {@link GridCacheStore} persistent storage via
+     * {@link GridCacheStore#loadAll(GridCacheTx, Collection, GridBiInClosure)} method.
+     * <h2 class="header">Transactions</h2>
+     * This method is NOT transactional and will not enlist the entry into ongoing transaction
+     * if there is one.
+     * <h2 class="header">Cache Flags</h2>
+     * This method is not available if {@link GridCacheFlag#LOCAL} flag is set on projection.
      *
-     * @param keys Keys to get values for.
-     * @return Future with result.
+     * @param keys Keys to get.
+     * @return Future for the get operation.
+     * @throws GridCacheFlagException If failed projection flags validation.
      */
-    public GridFuture<Map<K, V>> getAllOutTxAsync(List<K> keys);
+    public GridFuture<Map<K, V>> getAllOutTxAsync(Collection<K> keys);
 
     /**
      * Stores given key-value pair in cache. If filters are provided, then entries will
