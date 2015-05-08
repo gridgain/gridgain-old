@@ -503,7 +503,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
         catch (Throwable e) {
             U.error(log, "Failed to notify lifecycle bean (safely ignored) [evt=" + evt +
                 ", gridName=" + gridName + ']', e);
-            
+
             if (e instanceof Error)
                 throw (Error)e;
         }
@@ -569,6 +569,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
         // Ack various information.
         ackAsciiLogo();
+        ackNodeId();
         ackConfigUrl();
         ackDaemon();
         ackOsInfo();
@@ -1741,6 +1742,17 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
     }
 
     /**
+     *
+     */
+    private void ackNodeId() {
+        assert log != null;
+
+        U.quietAndInfo(log,
+            "Local node information [id=" + configuration().getNodeId() +
+                (F.isEmpty(gridName) ? "" : ", grid=" + gridName) + ']');
+    }
+
+    /**
      * Prints start info.
      *
      * @param rtBean Java runtime bean.
@@ -1925,7 +1937,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                     errOnStop = true;
 
                     U.error(log, "Failed to pre-stop processor: " + comp, e);
-                    
+
                     if (e instanceof Error)
                         throw e;
                 }
@@ -2010,7 +2022,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                     errOnStop = true;
 
                     U.error(log, "Failed to stop component (ignoring): " + comp, e);
-                    
+
                     if (e instanceof Error)
                         throw (Error)e;
                 }

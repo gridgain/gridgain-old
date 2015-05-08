@@ -338,7 +338,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             catch (Throwable e) {
                 U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " + "res=" + res + ']', e);
 
-                throw e;                
+                throw e;
             }
 
             return null;
@@ -438,7 +438,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                                     "res=" + res + ']', e);
                     }
                     catch (Throwable e) {
-                        U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " + 
+                        U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", " +
                             "res=" + res + ']', e);
 
                         throw e;
@@ -548,7 +548,7 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             catch (GridException ex) {
                 U.error(log, "Failed to invalidate transaction: " + tx, ex);
             }
-            
+
             if (e instanceof Error)
                 throw (Error)e;
         }
@@ -1440,8 +1440,8 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
             }
             catch (Throwable e) {
                 U.error(log, "Failed to send finish response to node [nodeId=" + nodeId + ", res=" + res + ']', e);
-                
-                throw e;                
+
+                throw e;
             }
         }
     }
