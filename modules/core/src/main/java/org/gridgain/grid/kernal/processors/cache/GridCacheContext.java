@@ -1608,6 +1608,44 @@ public class GridCacheContext<K, V> implements Externalizable {
     }
 
     /**
+     * @param topVer Topology version.
+     */
+    public void dumpPendingObjects(long topVer) {
+        U.warn(log, "Failed to wait for partition release future. Dumping pending objects that might be the cause " +
+            "[cache=" + cacheName + ", topVer=" + topVer + ", node=" + localNodeId() + "]:");
+
+        GridCacheContext<K, V> cacheCtx = isDht() ? dht().near().context() : cache().context();
+
+        if (cacheCtx.transactional()) {
+            U.warn(log, "Pending explicit locks:");
+
+            for (GridCacheExplicitLockSpan<?> lockSpan : cacheCtx.mvcc().activeExplicitLocks())
+                U.warn(log, ">>> " + lockSpan);
+
+            U.warn(log, "Pending transactions:");
+
+            for (GridCacheTxEx<?, ?> tx : cacheCtx.tm().txs())
+                U.warn(log, ">>> " + tx);
+
+            if (isDht()) {
+                for (GridCacheTxEx<?, ?> tx : dht().context().tm().txs())
+                    U.warn(log, ">>> " + tx);
+            }
+
+            U.warn(log, "Pending cache futures:");
+
+            for (GridCacheFuture<?> fut : mvcc().activeFutures())
+                U.warn(log, ">>> " + fut);
+        }
+        else {
+            U.warn(log, "Pending atomic cache futures:");
+
+            for (GridCacheFuture<?> fut : mvcc().atomicFutures())
+                U.warn(log, ">>> " + fut);
+        }
+    }
+
+    /**
      * Checks if at least one of the given keys belongs to one of the given partitions.
      *
      * @param keys Collection of keys to check.
@@ -1647,7 +1685,8 @@ public class GridCacheContext<K, V> implements Externalizable {
         GridDrEntryEx<K, V> newEntry, boolean atomicVerComparator) throws GridException {
         assert rslvr != null : "Should not reach this place.";
 
-        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator);
+        GridDrReceiverConflictContextImpl<K, V> ctx = rslvr.resolve(oldEntry, newEntry, atomicVerComparator,
+            config().getAtomicWriteOrderMode() == GridCacheAtomicWriteOrderMode.CLOCK);
 
         if (ctx.isManualResolve())
             cache.metrics0().onReceiveCacheConflictResolved(ctx.isUseNew(), ctx.isUseOld(), ctx.isMerge());

@@ -50,6 +50,7 @@ public class GridH2IndexingSpiTestSuite extends TestSuite {
         suite.addTestSuite(GridCachePartitionedHitsAndMissesSelfTest.class);
         suite.addTestSuite(GridCacheSwapSelfTest.class);
         suite.addTestSuite(GridCacheOffHeapSelfTest.class);
+        suite.addTestSuite(GridCacheOffheapIndexGetSelfTest.class);
 
         //ttl
         suite.addTestSuite(GridCacheTtlOffheapAtomicLocalSelfTest.class);
@@ -60,6 +61,8 @@ public class GridH2IndexingSpiTestSuite extends TestSuite {
         suite.addTestSuite(GridCacheTtlOnheapTransactionalPartitionedSelfTest.class);
         suite.addTestSuite(GridCacheTtlOnheapAtomicLocalSelfTest.class);
         suite.addTestSuite(GridCacheTtlOnheapAtomicPartitionedSelfTest.class);
+
+        suite.addTestSuite(GridCachePartitionedIndexedOffheapMultiNodeFullApiSelfTest.class);
 
         return suite;
     }

@@ -80,7 +80,7 @@ public class VisorResolveHostNameTask extends VisorOneNodeTask<Void, Map<String,
                         res.put(ip, hostName);
                 }
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 throw new GridException("Failed to resolve host name", e);
             }
 

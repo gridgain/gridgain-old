@@ -209,6 +209,20 @@ public class GridCacheMvccManager<K, V> extends GridCacheManagerAdapter<K, V> {
     }
 
     /**
+     * @return Collection of pending explicit locks.
+     */
+    public Collection<GridCacheExplicitLockSpan<K>> activeExplicitLocks() {
+        return pendingExplicit.values();
+    }
+
+    /**
+     * @return Collection of active futures.
+     */
+    public Collection<GridCacheFuture<?>> activeFutures() {
+        return F.flatCollections(futs.values());
+    }
+
+    /**
      * @param leftNodeId Left node ID.
      */
     public void removeExplicitNodeLocks(UUID leftNodeId, long topVer) {

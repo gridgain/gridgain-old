@@ -503,6 +503,9 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
         catch (Throwable e) {
             U.error(log, "Failed to notify lifecycle bean (safely ignored) [evt=" + evt +
                 ", gridName=" + gridName + ']', e);
+            
+            if (e instanceof Error)
+                throw (Error)e;
         }
     }
 
@@ -794,7 +797,9 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
             stop(true);
 
-            if (e instanceof GridException)
+            if (e instanceof Error)
+                throw e;
+            else if (e instanceof GridException)
                 throw (GridException)e;
             else
                 throw new GridException(e);
@@ -906,6 +911,9 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                         // Stop the grid if we get unknown license-related error.
                         // Should never happen. Practically an assertion...
                         G.stop(gridName, true);
+
+                        if (e instanceof Error)
+                            throw e;
                     }
                 }
             }, PERIODIC_LIC_CHECK_DELAY, PERIODIC_LIC_CHECK_DELAY);
@@ -1842,7 +1850,7 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
 
                 return "Scala ver. " + props.getProperty("version.number", "<unknown>");
             }
-            catch (Throwable ignore) {
+            catch (Exception ignore) {
                 return "Scala ver. <unknown>";
             }
         }
@@ -1917,6 +1925,9 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                     errOnStop = true;
 
                     U.error(log, "Failed to pre-stop processor: " + comp, e);
+                    
+                    if (e instanceof Error)
+                        throw e;
                 }
             }
 
@@ -1999,6 +2010,9 @@ public class GridKernal extends GridProjectionAdapter implements GridEx, GridKer
                     errOnStop = true;
 
                     U.error(log, "Failed to stop component (ignoring): " + comp, e);
+                    
+                    if (e instanceof Error)
+                        throw (Error)e;
                 }
             }
 

@@ -15,6 +15,7 @@ import org.gridgain.grid.dataload.*;
 import org.gridgain.grid.kernal.*;
 import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.kernal.processors.cache.dr.*;
+import org.gridgain.grid.kernal.processors.dataload.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.typedef.*;
 
@@ -28,8 +29,11 @@ public class GridDrDataLoadCacheUpdater<K, V> implements GridDataLoadCacheUpdate
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
     @Override public void update(GridCache<K, V> cache0, Collection<Map.Entry<K, V>> col)
         throws GridException {
+        assert cache0 instanceof GridCacheProjectionEx : cache0;
+
         String cacheName = cache0.name();
 
         GridKernalContext ctx = ((GridKernal)cache0.gridProjection().grid()).context();
@@ -58,9 +62,9 @@ public class GridDrDataLoadCacheUpdater<K, V> implements GridDataLoadCacheUpdate
                 new GridCacheDrInfo<>(entry.value(), entry.version()) : null;
 
             if (val == null)
-                cache.removeAllDr(Collections.singletonMap(key, entry.version()));
+                ((GridCacheProjectionEx)cache0).removeAllDr(Collections.singletonMap(key, entry.version()));
             else
-                cache.putAllDr(Collections.singletonMap(key, val));
+                ((GridCacheProjectionEx)cache0).putAllDr(Collections.singletonMap(key, val));
         }
 
         if (log.isDebugEnabled())

@@ -902,6 +902,11 @@ public class GridDhtColocatedTxLocal<K, V> extends GridDhtTxLocalAdapter<K, V> {
     }
 
     /** {@inheritDoc} */
+    @Override public GridFuture<?> currentPrepareFuture() {
+        return prepFut.get();
+    }
+
+    /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(GridDhtColocatedTxLocal.class, this, "topSnapshot", topSnapshot.get(), "super",
             super.toString());

@@ -311,7 +311,8 @@ public class GridCacheStoreManager<K, V> extends GridCacheManagerAdapter<K, V> {
                 log.debug("Storing value in cache store [key=" + key + ", val=" + val + ']');
 
             try {
-                store.put(tx, key, locStore ? F.t(val, ver) : val);
+                // Local store must operate only on real versions, so unwrap it.
+                store.put(tx, key, locStore ? F.t(val, ver.drVersion()) : val);
             }
             catch (ClassCastException e) {
                 handleClassCastException(e);

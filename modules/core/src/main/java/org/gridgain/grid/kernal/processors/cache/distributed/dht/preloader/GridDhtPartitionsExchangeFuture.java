@@ -458,7 +458,17 @@ public class GridDhtPartitionsExchangeFuture<K, V> extends GridFutureAdapter<Lon
                     if (log.isDebugEnabled())
                         log.debug("Before waiting for partition release future: " + this);
 
-                    partReleaseFut.get();
+                    while (true) {
+                        try {
+                            partReleaseFut.get(2 * cctx.gridConfig().getNetworkTimeout(), TimeUnit.MILLISECONDS);
+
+                            break;
+                        }
+                        catch (GridFutureTimeoutException ignored) {
+                            // Print pending transactions and locks that might have led to hang.
+                            cctx.dumpPendingObjects(topVer);
+                        }
+                    }
 
                     if (log.isDebugEnabled())
                         log.debug("After waiting for partition release future: " + this);

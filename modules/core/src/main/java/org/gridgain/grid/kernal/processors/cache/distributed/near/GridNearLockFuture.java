@@ -1146,6 +1146,9 @@ public final class GridNearLockFuture<K, V> extends GridCompoundIdentityFuture<B
 
         GridNode primary = cctx.affinity().primary(key, topVer);
 
+        if (primary == null)
+            throw new GridTopologyException("Failed to lock keys (all data nodes left grid).");
+
         if (cctx.discovery().node(primary.id()) == null)
             // If primary node left the grid before lock acquisition, fail the whole future.
             throw newTopologyException(null, primary.id());

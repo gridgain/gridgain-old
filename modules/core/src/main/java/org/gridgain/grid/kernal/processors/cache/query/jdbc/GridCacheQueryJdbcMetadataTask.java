@@ -139,6 +139,9 @@ public class GridCacheQueryJdbcMetadataTask extends GridComputeTaskAdapter<Strin
             catch (Throwable t) {
                 U.error(log, "Failed to get metadata for JDBC.", t);
 
+                if (t instanceof Error)
+                    throw t;
+
                 SQLException err = new SQLException(t.getMessage());
 
                 status = 1;

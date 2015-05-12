@@ -167,6 +167,9 @@ public class GridCacheDistributedQueryManager<K, V> extends GridCacheQueryManage
                     catch (Throwable e) {
                         U.error(log(), "Failed to run query.", e);
 
+                        if (e instanceof Error)
+                            throw (Error)e;
+
                         sendQueryResponse(sndId, new GridCacheQueryResponse(req.id(), e.getCause()), 0);
                     }
                     finally {
@@ -502,6 +505,7 @@ public class GridCacheDistributedQueryManager<K, V> extends GridCacheQueryManage
     @SuppressWarnings("unchecked")
     @Override public GridCacheQueryFuture<?> queryDistributed(GridCacheQueryBean qry, Collection<GridNode> nodes) {
         assert cctx.config().getCacheMode() != LOCAL;
+        assert !F.isEmpty(nodes);
 
         if (log.isDebugEnabled())
             log.debug("Executing distributed query: " + qry);

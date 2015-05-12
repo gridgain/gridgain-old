@@ -10,17 +10,16 @@
 package org.gridgain.grid.kernal.processors.cache;
 
 import java.io.*;
-import java.util.*;
 
 /**
  * Atomic cache version comparator.
  */
-public class GridCacheAtomicVersionComparator implements Comparator<GridCacheVersion>, Serializable {
+public class GridCacheAtomicVersionComparator implements Serializable {
     /** */
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
-    @Override public int compare(GridCacheVersion one, GridCacheVersion other) {
+    public int compare(GridCacheVersion one, GridCacheVersion other, boolean useGlobalTime) {
         int topVer = one.topologyVersion();
         int otherTopVer = other.topologyVersion();
 
@@ -28,7 +27,7 @@ public class GridCacheAtomicVersionComparator implements Comparator<GridCacheVer
             long globalTime = one.globalTime();
             long otherGlobalTime = other.globalTime();
 
-            if (globalTime == otherGlobalTime) {
+            if (!useGlobalTime || globalTime == otherGlobalTime) {
                 long locOrder = one.order();
                 long otherLocOrder = other.order();
 

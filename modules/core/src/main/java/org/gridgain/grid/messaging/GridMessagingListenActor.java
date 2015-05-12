@@ -85,6 +85,9 @@ public abstract class GridMessagingListenActor<T> implements GridBiPredicate<UUI
         U.error(log, "Listener operation failed.", e);
 
         stop();
+
+        if (e instanceof Error)
+            throw (Error)e;
     }
 
     /**

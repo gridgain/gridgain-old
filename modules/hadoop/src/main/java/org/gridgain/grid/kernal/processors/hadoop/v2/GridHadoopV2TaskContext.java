@@ -172,7 +172,7 @@ public class GridHadoopV2TaskContext extends GridHadoopTaskContext {
             try {
                 task = createTask();
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 throw transformException(e);
             }
 
@@ -182,7 +182,7 @@ public class GridHadoopV2TaskContext extends GridHadoopTaskContext {
             try {
                 task.run(this);
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 throw transformException(e);
             }
         }
@@ -231,7 +231,7 @@ public class GridHadoopV2TaskContext extends GridHadoopTaskContext {
 
             locFs.setWorkingDirectory(new Path(locDir.getAbsolutePath()));
         }
-        catch (Throwable e) {
+        catch (Exception e) {
             throw transformException(e);
         }
         finally {

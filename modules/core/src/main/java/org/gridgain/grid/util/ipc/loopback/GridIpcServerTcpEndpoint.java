@@ -161,7 +161,7 @@ public class GridIpcServerTcpEndpoint implements GridIpcServerEndpoint {
                 }
             }
             catch (Throwable t) {
-                if (t instanceof GridException)
+                if (t instanceof Error || t instanceof GridException)
                     throw t;
 
                 throw new GridException("Invalid value '" + e.getValue() + "' of the property '" + e.getKey() + "' in " +

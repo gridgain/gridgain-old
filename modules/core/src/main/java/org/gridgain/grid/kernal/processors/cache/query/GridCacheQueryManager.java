@@ -1107,6 +1107,9 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             catch (Throwable e) {
                 U.error(log, "Failed to run fields query [qry=" + qryInfo + ", node=" + cctx.nodeId() + "]", e);
 
+                if (e instanceof Error)
+                    throw e;
+
                 onFieldsPageReady(qryInfo.local(), qryInfo, null, null, null, true, e);
             }
             finally {
@@ -1355,6 +1358,9 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             catch (Throwable e) {
                 U.error(log, "Failed to run query [qry=" + qryInfo + ", node=" + cctx.nodeId() + "]", e);
 
+                if (e instanceof Error)
+                    throw (Error)e;
+
                 onPageReady(loc, qryInfo, null, true, e);
             }
             finally {
@@ -1446,6 +1452,9 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             }
             catch (Throwable e) {
                 fut.onDone(e);
+                
+                if (e instanceof Error)
+                    throw e;
             }
         }
 

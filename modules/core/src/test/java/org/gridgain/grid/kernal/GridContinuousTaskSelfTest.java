@@ -11,6 +11,7 @@ package org.gridgain.grid.kernal;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.compute.*;
+import org.gridgain.grid.lang.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.resources.*;
 import org.gridgain.testframework.*;
@@ -109,6 +110,119 @@ public class GridContinuousTaskSelfTest extends GridCommonAbstractTest {
         }
         finally {
             stopGrid(0);
+        }
+    }
+
+    /**
+     * @throws Exception If test failed.
+     */
+    public void testClearTimeouts() throws Exception {
+        int holdccTimeout = 4000;
+
+        try {
+            Grid grid = startGrid(0);
+
+            TestClearTimeoutsClosure closure = new TestClearTimeoutsClosure();
+
+            grid.compute().apply(closure, holdccTimeout).get();
+
+            Thread.sleep(holdccTimeout * 2);
+
+            assert closure.counter == 2;
+        }
+        finally {
+            stopGrid(0);
+        }
+    }
+
+    /**
+     * @throws Exception If test failed.
+     */
+    public void testMultipleHoldccCalls() throws Exception {
+        try {
+            Grid grid = startGrid(0);
+
+            assertTrue(grid.compute().apply(new TestMultipleHoldccCallsClosure(), (Object)null).get());
+        }
+        finally {
+            stopGrid(0);
+        }
+    }
+
+    /** */
+    @SuppressWarnings({"PublicInnerClass"})
+    public static class TestMultipleHoldccCallsClosure implements GridClosure<Object, Boolean> {
+        /** */
+        private int counter;
+
+        /** */
+        private volatile boolean success;
+
+        /** Auto-inject job context. */
+        @GridJobContextResource
+        private GridComputeJobContext jobCtx;
+
+        /** */
+        @GridLoggerResource
+        private GridLogger log;
+
+        @Override public Boolean apply(Object param) {
+            counter++;
+
+            if (counter == 2)
+                return success;
+
+            jobCtx.holdcc(4000);
+
+            try {
+                jobCtx.holdcc();
+            }
+            catch (IllegalStateException e) {
+                success = true;
+                log.info("Second holdcc() threw IllegalStateException as expected.");
+            }
+            finally {
+                new Timer().schedule(new TimerTask() {
+                    @Override public void run() {
+                        jobCtx.callcc();
+                    }
+                }, 1000);
+            }
+
+            return false;
+        }
+    }
+
+    /** */
+    @SuppressWarnings({"PublicInnerClass"})
+    public static class TestClearTimeoutsClosure implements GridClosure<Integer, Object> {
+        /** */
+        private int counter;
+
+        /** Auto-inject job context. */
+        @GridJobContextResource
+        private GridComputeJobContext jobCtx;
+
+        @Override public Object apply(Integer holdccTimeout) {
+            assert holdccTimeout >= 2000;
+
+            counter++;
+
+            if (counter == 1) {
+                new Timer().schedule(new TimerTask() {
+                    @Override public void run() {
+                        jobCtx.callcc();
+                    }
+                }, 1000);
+
+                jobCtx.holdcc(holdccTimeout);
+            }
+
+            if (counter == 2)
+                // Job returned from the suspended state.
+                return null;
+
+            return null;
         }
     }
 

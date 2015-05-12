@@ -99,17 +99,26 @@ public class GridRestProcessor extends GridProcessorAdapter {
                                 try {
                                     fut.onDone(f.get());
                                 }
-                                catch (GridException e) {
+                                catch (Throwable e) {
                                     fut.onDone(e);
+
+                                    if (e instanceof Error) {
+                                        U.error(log, "Client request execution failed with error.", e);
+
+                                        throw (Error)e;
+                                    }
                                 }
                             }
                         });
                     }
                     catch (Throwable e) {
-                        if (e instanceof Error)
+                        fut.onDone(U.cast(e));
+
+                        if (e instanceof Error) {
                             U.error(log, "Client request execution failed with error.", e);
 
-                        fut.onDone(U.cast(e));
+                            throw e;
+                        }
                     }
                     finally {
                         workersCnt.decrement();

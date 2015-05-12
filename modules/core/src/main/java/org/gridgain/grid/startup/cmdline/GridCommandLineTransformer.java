@@ -82,6 +82,9 @@ public class GridCommandLineTransformer {
 
             if (ps != null)
                 ps.println(TRANSFORMATION_FAILED_FLAG);
+
+            if (t instanceof Error)
+                throw (Error)t;
         }
     }
 

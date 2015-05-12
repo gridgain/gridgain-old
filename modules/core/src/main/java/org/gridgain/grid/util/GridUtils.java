@@ -8076,7 +8076,7 @@ public abstract class GridUtils {
 
             return true;
         }
-        catch (Throwable ignored) {
+        catch (Exception ignored) {
             return false;
         }
     }

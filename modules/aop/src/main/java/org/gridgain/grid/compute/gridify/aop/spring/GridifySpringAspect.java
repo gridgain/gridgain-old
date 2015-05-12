@@ -88,7 +88,7 @@ public class GridifySpringAspect implements MethodInterceptor {
             // If task name was specified.
             return grid.compute().withTimeout(ann.timeout()).execute(ann.taskName(), arg).get();
         }
-        catch (Throwable e) {
+        catch (Exception e) {
             for (Class<?> ex : invoc.getMethod().getExceptionTypes()) {
                 // Descend all levels down.
                 Throwable cause = e.getCause();

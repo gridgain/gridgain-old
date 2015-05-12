@@ -10,6 +10,7 @@
 package org.gridgain.grid.kernal;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.resources.*;
 import org.gridgain.grid.util.typedef.*;
 import org.gridgain.testframework.junits.common.*;
 
@@ -39,6 +40,41 @@ public class GridLifecycleBeanSelfTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testGetGrid() throws Exception {
+        final AtomicBoolean done = new AtomicBoolean();
+
+        bean = new LifeCycleBaseBean() {
+            /** */
+            @GridInstanceResource
+            private Grid grid;
+
+            @Override public void onLifecycleEvent(GridLifecycleEventType evt) throws GridException {
+                super.onLifecycleEvent(evt);
+
+                if (evt == AFTER_GRID_START) {
+                    Grid grid0 = G.grid(grid.name());
+
+                    assertNotNull(grid0);
+                    assertNotNull(grid0.localNode());
+
+                    done.set(true);
+                }
+            }
+        };
+
+        try {
+            startGrid();
+
+            assertTrue(done.get());
+        }
+        finally {
+            stopAllGrids();
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testNoErrors() throws Exception {
         bean = new LifeCycleBaseBean();
 
@@ -55,7 +91,6 @@ public class GridLifecycleBeanSelfTest extends GridCommonAbstractTest {
         finally {
             stopAllGrids();
         }
-
 
         assertEquals(GridGainState.STOPPED, G.state(getTestGridName()));
 
@@ -260,6 +295,7 @@ public class GridLifecycleBeanSelfTest extends GridCommonAbstractTest {
         /** */
         private GridLifecycleEventType errType;
 
+        /** */
         private boolean gridErr;
 
         /**

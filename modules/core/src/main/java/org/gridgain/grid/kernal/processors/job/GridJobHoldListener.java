@@ -18,11 +18,13 @@ import java.util.*;
 interface GridJobHoldListener extends EventListener {
     /**
      * @param worker Held job worker.
+     * @return {@code True} if worker has been h.
      */
-    public void onHold(GridJobWorker worker);
+    public boolean onHeld(GridJobWorker worker);
 
     /**
      * @param worker Unheld job worker.
+     *
      */
-    public void onUnhold(GridJobWorker worker);
+    public boolean onUnheld(GridJobWorker worker);
 }

@@ -219,8 +219,7 @@ public class GridCacheVersionManager<K, V> extends GridCacheManagerAdapter<K, V>
             topVer += (gridStartTime - TOP_VER_BASE_TIME) / 1000;
         }
 
-        long globalTime = cctx.config().getAtomicWriteOrderMode() == GridCacheAtomicWriteOrderMode.CLOCK ?
-            cctx.kernalContext().clockSync().adjustedTime(topVer) : 0;
+        long globalTime = cctx.kernalContext().clockSync().adjustedTime(topVer);
 
         int locNodeOrder = (int)cctx.localNode().order();
 

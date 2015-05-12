@@ -125,6 +125,9 @@ public class GridTimeoutProcessor extends GridProcessorAdapter {
                         }
                         catch (Throwable e) {
                             U.error(log, "Error when executing timeout callback: " + timeoutObj, e);
+
+                            if (e instanceof Error)
+                                throw e;
                         }
                     }
                     else

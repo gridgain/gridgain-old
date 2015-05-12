@@ -998,7 +998,7 @@ public class GridHadoopJobTracker extends GridHadoopComponent {
             try {
                 fut.get();
             }
-            catch (Throwable e) {
+            catch (Exception e) {
                 if (e.getCause() instanceof GridHadoopTaskCancelledException)
                     return true;
             }
@@ -1042,6 +1042,9 @@ public class GridHadoopJobTracker extends GridHadoopComponent {
             }
             catch (Throwable e) {
                 U.error(log, "Unhandled exception while processing event.", e);
+
+                if (e instanceof Error)
+                    throw (Error)e;
             }
             finally {
                 busyLock.readUnlock();

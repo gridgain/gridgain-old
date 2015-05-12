@@ -86,6 +86,8 @@ public class GridCacheQuerySelfTestSuite extends TestSuite {
 
         suite.addTestSuite(GridCacheSwapScanQuerySelfTest.class);
 
+        suite.addTestSuite(GridCacheQueryNoDataNodesTest.class);
+
         return suite;
     }
 }

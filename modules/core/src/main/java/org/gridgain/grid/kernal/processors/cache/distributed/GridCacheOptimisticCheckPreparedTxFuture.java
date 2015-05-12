@@ -14,6 +14,7 @@ import org.gridgain.grid.kernal.processors.cache.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.util.*;
 import org.gridgain.grid.util.future.*;
+import org.gridgain.grid.util.typedef.*;
 import org.gridgain.grid.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 
@@ -110,14 +111,64 @@ public class GridCacheOptimisticCheckPreparedTxFuture<K, V> extends GridCompound
         // First check transactions on local node.
         int locTxNum = nodeTransactions(cctx.localNodeId());
 
-        if (locTxNum > 1 && !cctx.tm().txsPreparedOrCommitted(tx.nearXidVersion(), locTxNum)) {
-            onDone(false);
+        if (locTxNum > 1) {
+            GridFuture<Boolean> fut = cctx.tm().txsPreparedOrCommitted(tx.nearXidVersion(), locTxNum);
 
-            markInitialized();
+            if (fut == null || fut.isDone()) {
+                boolean prepared;
 
-            return;
+                try {
+                    prepared = fut == null ? true : fut.get();
+                }
+                catch (GridException e) {
+                    U.error(log, "Check prepared transaction future failed: " + e, e);
+
+                    prepared = false;
+                }
+
+                if (!prepared) {
+                    onDone(false);
+
+                    markInitialized();
+
+                    return;
+                }
+            }
+            else {
+                fut.listenAsync(new CI1<GridFuture<Boolean>>() {
+                    @Override public void apply(GridFuture<Boolean> fut) {
+                        boolean prepared;
+
+                        try {
+                            prepared = fut.get();
+                        }
+                        catch (GridException e) {
+                            U.error(log, "Check prepared transaction future failed: " + e, e);
+
+                            prepared = false;
+                        }
+
+                        if (!prepared) {
+                            onDone(false);
+
+                            markInitialized();
+                        }
+                        else
+                            proceedPrepare();
+                    }
+                });
+
+                return;
+            }
         }
 
+        proceedPrepare();
+    }
+
+    /**
+     * Process prepare after local check.
+     */
+    private void proceedPrepare() {
         for (Map.Entry<UUID, Collection<UUID>> entry : txNodes.entrySet()) {
             UUID nodeId = entry.getKey();
 
@@ -163,7 +214,7 @@ public class GridCacheOptimisticCheckPreparedTxFuture<K, V> extends GridCompound
                 add(fut);
 
                 GridCacheOptimisticCheckPreparedTxRequest<K, V> req = new GridCacheOptimisticCheckPreparedTxRequest<>(tx,
-                        nodeTransactions(nodeId), futureId(), fut.futureId());
+                    nodeTransactions(nodeId), futureId(), fut.futureId());
 
                 try {
                     cctx.io().send(nodeId, req);

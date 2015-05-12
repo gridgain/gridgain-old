@@ -67,6 +67,10 @@ public class GridKernalSelfTestSuite extends TestSuite {
         suite.addTestSuite(GridServiceProcessorProxySelfTest.class);
         suite.addTestSuite(GridServiceReassignmentSelfTest.class);
 
+        suite.addTestSuite(GridTimeServerConfigurationSelfTest.class);
+
+        suite.addTestSuite(GridUtilityCacheServiceExecutorConfigurationTest.class);
+
         return suite;
     }
 }

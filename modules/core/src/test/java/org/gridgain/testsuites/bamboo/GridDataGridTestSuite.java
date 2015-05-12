@@ -336,6 +336,8 @@ public class GridDataGridTestSuite extends TestSuite {
 
         suite.addTestSuite(GridCacheLockFailoverSelfTest.class);
 
+        suite.addTestSuite(GridCacheNearTxRollbackTest.class);
+
         return suite;
     }
 }

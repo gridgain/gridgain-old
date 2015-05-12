@@ -126,14 +126,16 @@ class FibonacciClosure (
                         jobCtx.callcc() // Resume job execution.
                 }
 
+                // Hold (suspend) job execution.
+                // It will be resumed in listener above via 'callcc()' call
+                // once both futures are done.
+                jobCtx.holdcc()
+
                 // Attach the same listener to both futures.
                 fut1.listenAsync(lsnr)
                 fut2.listenAsync(lsnr)
 
-                // Hold (suspend) job execution.
-                // It will be resumed in listener above via 'callcc()' call
-                // once both futures are done.
-                return jobCtx.holdcc()
+                return null
             }
         }
 

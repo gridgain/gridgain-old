@@ -112,7 +112,7 @@ public final class GridCommandLineStartup {
 
             appCls.getDeclaredMethod("setAboutHandler", aboutHndCls).invoke(osxApp, aboutHndProxy);
         }
-        catch (Throwable ignore) {
+        catch (Exception ignore) {
             // Ignore.
         }
     }
