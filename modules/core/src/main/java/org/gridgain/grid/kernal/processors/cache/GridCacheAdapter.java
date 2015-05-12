@@ -1417,14 +1417,14 @@ public abstract class GridCacheAdapter<K, V> extends GridMetadataAwareAdapter im
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Map<K, V> getAllOutTx(List<K> keys) throws GridException {
+    @Nullable @Override public Map<K, V> getAllOutTx(Collection<K> keys) throws GridException {
         String taskName = ctx.kernalContext().job().currentTaskName();
 
         return getAllAsync(keys, ctx.hasFlag(GET_PRIMARY), /*skip tx*/true, null, null, taskName, true).get();
     }
 
     /** {@inheritDoc} */
-    @Override public GridFuture<Map<K, V>> getAllOutTxAsync(List<K> keys) {
+    @Override public GridFuture<Map<K, V>> getAllOutTxAsync(Collection<K> keys) {
         String taskName = ctx.kernalContext().job().currentTaskName();
 
         return getAllAsync(keys, ctx.hasFlag(GET_PRIMARY), /*skip tx*/true, null, null, taskName, true);
