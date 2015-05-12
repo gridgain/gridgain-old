@@ -633,12 +633,12 @@ public class GridCacheProjectionImpl<K, V> implements GridCacheProjectionEx<K, V
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Map<K, V> getAllOutTx(List<K> keys) throws GridException {
+    @Nullable @Override public Map<K, V> getAllOutTx(Collection<K> keys) throws GridException {
         return cache.getAllOutTx(keys);
     }
 
     /** {@inheritDoc} */
-    @Override public GridFuture<Map<K, V>> getAllOutTxAsync(List<K> keys) {
+    @Override public GridFuture<Map<K, V>> getAllOutTxAsync(Collection<K> keys) {
         return cache.getAllOutTxAsync(keys);
     }
 

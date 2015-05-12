@@ -692,6 +692,10 @@ public class GridCacheProcessor extends GridProcessorAdapter {
             GridDataLoaderProcessor.SkipStoreBooleanFlagAddedMessageConverter665.class,
             GridDataLoaderProcessor.SKIP_STORE_SINCE_VER);
 
+        ctx.versionConverter().registerLocal(GridNearTxFinishResponse.class,
+            GridDhtTransactionalCacheAdapter.NearFinishResponse667Converter.class,
+                GridDhtTransactionalCacheAdapter.DHT_VERSION_IN_FINISH_RESPONSE_SINCE);
+
         GridDeploymentMode depMode = ctx.config().getDeploymentMode();
 
         if (!F.isEmpty(ctx.config().getCacheConfiguration())) {

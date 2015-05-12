@@ -1021,7 +1021,7 @@ public interface GridEventType {
      * partition has not been fully loaded.
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
-     * internal Ignite events and should not be used by user-defined events.
+     * internal GridGain events and should not be used by user-defined events.
      */
     public static final int EVT_CACHE_PRELOAD_PART_DATA_LOST = 130;
 
@@ -1030,7 +1030,7 @@ public interface GridEventType {
      * All cache data has been lost.
      * <p>
      * NOTE: all types in range <b>from 1 to 1000 are reserved</b> for
-     * internal Ignite events and should not be used by user-defined events.
+     * internal GridGain events and should not be used by user-defined events.
      */
     public static final int EVT_CACHE_DATA_LOST = 131;
 
