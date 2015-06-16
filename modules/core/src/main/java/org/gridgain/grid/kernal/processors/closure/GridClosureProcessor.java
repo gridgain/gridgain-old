@@ -803,7 +803,7 @@ public class GridClosureProcessor extends GridProcessorAdapter {
         catch (Throwable e) {
             if (e instanceof Error) {
                 U.error(log, "Closure execution failed with error.", e);
-                
+
                 throw (Error)e;
             }
 
@@ -876,8 +876,11 @@ public class GridClosureProcessor extends GridProcessorAdapter {
                             fut.onDone(c.call());
                     }
                     catch (Throwable e) {
-                        if (e instanceof Error)
+                        if (e instanceof Error) {
                             U.error(log, "Closure execution failed with error.", e);
+
+                            throw (Error)e;
+                        }
 
                         fut.onDone(U.cast(e));
                     }
