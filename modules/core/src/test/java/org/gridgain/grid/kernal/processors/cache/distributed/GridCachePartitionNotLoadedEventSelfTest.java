@@ -13,10 +13,17 @@ import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.affinity.*;
 import org.gridgain.grid.events.*;
+import org.gridgain.grid.kernal.*;
+import org.gridgain.grid.kernal.managers.communication.*;
+import org.gridgain.grid.kernal.processors.cache.distributed.dht.preloader.*;
 import org.gridgain.grid.lang.*;
+import org.gridgain.grid.spi.*;
+import org.gridgain.grid.spi.communication.tcp.*;
 import org.gridgain.grid.spi.discovery.tcp.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.*;
 import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
+import org.gridgain.grid.util.direct.*;
+import org.gridgain.testframework.*;
 import org.gridgain.testframework.junits.common.*;
 
 import java.util.*;
@@ -50,6 +57,8 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
 
             cfg.setNodeId(UUID.fromString(new String(chars)));
         }
+
+        cfg.setCommunicationSpi(new TestTcpCommunicationSpi());
 
         GridCacheConfiguration cacheCfg = new GridCacheConfiguration();
 
@@ -141,6 +150,83 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
         assert lsnr.latch.await(5, SECONDS);
     }
 
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testStableTopology() throws Exception {
+        backupCnt = 1;
+
+        startGrid(1);
+
+        awaitPartitionMapExchange();
+
+        startGrid(0);
+
+        PartitionNotFullyLoadedListener lsnr = new PartitionNotFullyLoadedListener();
+
+        grid(1).events().localListen(lsnr, EVT_CACHE_PRELOAD_PART_DATA_LOST);
+
+        GridCache<Integer, Integer> cache0 = cache(0);
+
+        int key = primaryKey(cache0);
+
+        cache(1).put(key, key);
+
+        assert cache0.containsKey(key);
+
+        stopGrid(0, true);
+
+        awaitPartitionMapExchange();
+
+        assert cache(1).containsKey(key);
+
+        assert !lsnr.latch.await(5, SECONDS);
+    }
+
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testMapPartitioned() throws Exception {
+        backupCnt = 0;
+
+        startGrid(0);
+
+        startGrid(1);
+
+        awaitPartitionMapExchange();
+
+        PartitionNotFullyLoadedListener lsnr = new PartitionNotFullyLoadedListener();
+
+        grid(1).events().localListen(lsnr, EVT_CACHE_PRELOAD_PART_DATA_LOST);
+
+        TestTcpCommunicationSpi.skipMsgType(grid(0), GridDhtPartitionsFullMessage.class);
+
+        GridFuture<Object> fut = GridTestUtils.runAsync(new Callable<Object>() {
+            @Override public Object call() throws Exception {
+                startGrid(2);
+
+                return null;
+            }
+        });
+
+        boolean timeout = false;
+
+        try {
+            fut.get(2, SECONDS);
+        }
+        catch (GridFutureTimeoutException e) {
+            timeout = true;
+        }
+
+        assert timeout;
+
+        stopGrid(0, true);
+
+        assert lsnr.latch.await(5, SECONDS);
+    }
+
     /**
      *
      */
@@ -155,4 +241,36 @@ public class GridCachePartitionNotLoadedEventSelfTest extends GridCommonAbstract
             return true;
         }
     }
+
+    /**
+     * TcpCommunicationSpi with additional features needed for tests.
+     */
+    public static class TestTcpCommunicationSpi extends GridTcpCommunicationSpi {
+        /** */
+        private volatile Class ignoreMsg;
+
+        /** {@inheritDoc} */
+        @Override public void sendMessage(GridNode node, GridTcpCommunicationMessageAdapter msg)
+            throws GridSpiException {
+            if (ignoreMsg != null && ((GridIoMessage)msg).message().getClass().equals(ignoreMsg))
+                return;
+
+            super.sendMessage(node, msg);
+        }
+
+        /**
+         *
+         */
+        public void stop(Class ignoreMsg) {
+            this.ignoreMsg = ignoreMsg;
+        }
+
+        /**
+         * Skip messages will not send anymore.
+         */
+        public static void skipMsgType(GridEx node, Class clazz) {
+            ((TestTcpCommunicationSpi)node.configuration().getCommunicationSpi()).stop(clazz);
+        }
+    }
+
 }
