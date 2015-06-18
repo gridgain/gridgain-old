@@ -1139,17 +1139,21 @@ public class GridTaskProcessor extends GridProcessorAdapter {
         @Override public void onEvent(GridEvent evt) {
             assert evt.type() == EVT_NODE_FAILED || evt.type() == EVT_NODE_LEFT;
 
-            UUID nodeId = ((GridDiscoveryEvent)evt).eventNode().id();
+            final UUID nodeId = ((GridDiscoveryEvent)evt).eventNode().id();
 
-            lock.readLock();
+            ctx.closure().runLocalSafe(new Runnable() {
+                @Override public void run() {
+                    lock.readLock();
 
-            try {
-                for (GridTaskWorker<?, ?> task : tasks.values())
-                    task.onNodeLeft(nodeId);
-            }
-            finally {
-                lock.readUnlock();
-            }
+                    try {
+                        for (GridTaskWorker<?, ?> task : tasks.values())
+                            task.onNodeLeft(nodeId);
+                    }
+                    finally {
+                        lock.readUnlock();
+                    }
+                }
+            }, false);
         }
     }
 

@@ -89,6 +89,7 @@ public class GridComputeGridTestSuite {
         suite.addTestSuite(GridMultinodeRedeploySharedModeSelfTest.class);
         suite.addTestSuite(GridMultinodeRedeployPrivateModeSelfTest.class);
         suite.addTestSuite(GridMultinodeRedeployIsolatedModeSelfTest.class);
+        suite.addTestSuite(GridTaskFailoverAffinityRunTest.class);
 
         return suite;
     }
