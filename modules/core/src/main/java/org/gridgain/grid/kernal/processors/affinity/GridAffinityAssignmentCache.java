@@ -67,6 +67,9 @@ public class GridAffinityAssignmentCache {
     /** Log. */
     private GridLogger log;
 
+    /** Node stop flag. */
+    private volatile boolean stopping;
+
     /**
      * Constructs affinity cached calculations.
      *
@@ -245,6 +248,8 @@ public class GridAffinityAssignmentCache {
 
             fut.onDone(topVer);
         }
+        else if (stopping)
+            fut.onDone(new GridException("Failed to wait for topology update, cache (or node) is stopping."));
 
         return fut;
     }
@@ -309,6 +314,18 @@ public class GridAffinityAssignmentCache {
      */
     public Set<Integer> backupPartitions(UUID nodeId, long topVer) {
         return cachedAffinity(topVer).backupPartitions(nodeId);
+    }
+
+    /**
+     * Kernal stop callback.
+     */
+    public void onKernalStop() {
+        stopping = true;
+
+        GridException err = new GridException("Failed to wait for topology update, cache (or node) is stopping.");
+
+        for (AffinityReadyFuture fut : readyFuts.values())
+            fut.onDone(err);
     }
 
     /**
