@@ -1143,7 +1143,8 @@ public class GridTaskProcessor extends GridProcessorAdapter {
 
             ctx.closure().runLocalSafe(new Runnable() {
                 @Override public void run() {
-                    lock.readLock();
+                    if (!lock.tryReadLock())
+                        return;
 
                     try {
                         for (GridTaskWorker<?, ?> task : tasks.values())

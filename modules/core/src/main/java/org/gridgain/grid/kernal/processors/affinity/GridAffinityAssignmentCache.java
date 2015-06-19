@@ -424,7 +424,7 @@ public class GridAffinityAssignmentCache {
 
         /** {@inheritDoc} */
         @Override public boolean onDone(Long res, @Nullable Throwable err) {
-            assert res != null;
+            assert res != null || err != null;
 
             boolean done = super.onDone(res, err);
 
