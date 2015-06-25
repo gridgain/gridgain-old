@@ -488,6 +488,9 @@ public class GridTcpDiscoveryMulticastIpFinder extends GridTcpDiscoveryVmIpFinde
 
     /** {@inheritDoc} */
     @Override public void close() {
+        if (addrSnds == null)
+            return;
+
         for (AddressSender addrSnd : addrSnds)
             U.interrupt(addrSnd);
 

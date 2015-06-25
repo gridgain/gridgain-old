@@ -1828,6 +1828,7 @@ public class GridGainEx {
             }
 
             myCfg.setSegmentationResolvers(cfg.getSegmentationResolvers());
+            myCfg.setSegmentationResolveAttempts(cfg.getSegmentationResolveAttempts());
             myCfg.setSegmentationPolicy(segPlc);
             myCfg.setSegmentCheckFrequency(cfg.getSegmentCheckFrequency());
             myCfg.setWaitForSegmentOnStart(cfg.isWaitForSegmentOnStart());
