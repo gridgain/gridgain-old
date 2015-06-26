@@ -1796,6 +1796,7 @@ public class GridGainEx {
             myCfg.setSmtpUsername(cfg.getSmtpUsername());
             myCfg.setSmtpPassword(cfg.getSmtpPassword());
             myCfg.setAdminEmails(cfg.getAdminEmails());
+            myCfg.setSmtpStartTls(cfg.isSmtpStartTls());
 
             // REST configuration.
             myCfg.setClientConnectionConfiguration(clientCfg);
