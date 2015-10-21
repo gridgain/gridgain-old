@@ -136,6 +136,9 @@ public class GridDrSenderHubFsStore implements GridDrSenderHubStore, GridLifecyc
     /** */
     private final GridConcurrentSkipListSet<LogFile> files = new GridConcurrentSkipListSet<>();
 
+    /** Collection of all Cursors created for this Store. Used solely for diagnostic counting. */
+    private final Set<Cursor> cursors = new GridConcurrentHashSet<>();
+
     /** */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
     @GridLoggerResource
@@ -940,8 +943,28 @@ public class GridDrSenderHubFsStore implements GridDrSenderHubStore, GridLifecyc
          * @return Cursor.
          */
         public GridDrSenderHubStoreCursor cursor() {
-            return new Cursor(this);
+            Cursor cursor = new Cursor(this);
+
+            boolean added = cursors.add(cursor);
+
+            assert added;
+
+            return cursor;
         }
+    }
+
+    /**
+     * Gets sum of Cursor.active.size() for all Cursors created for this Store.
+     *
+     * @return The sum active size for all Cursors.
+     */
+    public long getActiveEntriesCount() {
+        long cnt = 0;
+
+        for (Cursor c : cursors)
+            cnt += c.active.size();
+
+        return cnt;
     }
 
     /**
@@ -1178,18 +1201,31 @@ public class GridDrSenderHubFsStore implements GridDrSenderHubStore, GridLifecyc
         void acknowledge(EntryOut entry) {
             EntryOut e0 = null;
 
-            for (EntryOut e : active) {
-                e0 = e;
+            boolean entryRmvd = false;
 
-                if (e.acked) {
-                    if (!active.remove(e))
+            try {
+                for (EntryOut e : active) {
+                    e0 = e;
+
+                    if (e.acked) {
+                        if (active.remove(e))
+                            if (e == entry)
+                                entryRmvd = true;
+                            else
+                                return;
+                    }
+                    else {
+                        stream.position(e.pos);
+
                         return;
+                    }
                 }
-                else {
-                    stream.position(e.pos);
+            }
+            finally {
+                if (!entryRmvd)
+                    active.remove(entry);
 
-                    return;
-                }
+                assert !active.contains(entry);
             }
 
             if (e0 != null) { // We removed all the active entries.
@@ -1205,6 +1241,8 @@ public class GridDrSenderHubFsStore implements GridDrSenderHubStore, GridLifecyc
 
             for (ByteBuffer buf : bufs)
                 release(buf);
+
+            cursors.remove(this);
         }
     }
 
